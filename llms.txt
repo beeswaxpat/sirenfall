@@ -10,6 +10,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - Watch rain, lightning, and a city skyline through the shelter window
 - Operate a shutter and a CRT monitor as scene controls
 - Use the whole experience free, with no signup and no install
+- Double-click the window or press F for fullscreen (locks landscape on Android); click the wall monitor or press S to save a picture of the current frame
 
 ## Key facts
 - URL: https://sirenfall.live/
@@ -21,6 +22,9 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 
 - Author: Beeswaxpat (https://github.com/beeswaxpat)
 - Source code: https://github.com/beeswaxpat/sirenfall (MIT; audio licenses documented in the repo)
+
+## Pages
+- [How it works](https://sirenfall.live/how-it-works): the siren physics (5:6 dual tone, 515 and 618 Hz, 103 rev/s chopper, 4 RPM horn), the city and weather engine, controls, and answers to common questions
 
 ## Machine-readable
 - [Sitemap](https://sirenfall.live/sitemap.xml)

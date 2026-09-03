@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Sirenfall works: a siren synthesized live in Web Audio</title>
+<meta name="description" content="How Sirenfall synthesizes a civil-defense siren in the browser: a 5:6 dual tone at 515 and 618 Hz, a chopper at 103 revolutions per second, a horn turning at 4 RPM, and why it is not a recording.">
+<link rel="canonical" href="https://sirenfall.live/how-it-works">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How Sirenfall works">
+<meta property="og:description" content="A civil-defense siren synthesized live in Web Audio: the physics, the numbers, and why nothing is a recording.">
+<meta property="og:url" content="https://sirenfall.live/how-it-works">
+<meta property="og:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
+<meta property="og:image:width" content="1920">
+<meta property="og:image:height" content="1005">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="describedby" href="/llms.txt">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://sirenfall.live/how-it-works#article",
+      "headline": "How Sirenfall works",
+      "description": "How Sirenfall synthesizes a civil-defense siren in the browser: a 5:6 dual tone at 515 and 618 Hz, a chopper at 103 revolutions per second, a horn turning at 4 RPM, and why it is not a recording.",
+      "url": "https://sirenfall.live/how-it-works",
+      "inLanguage": "en",
+      "datePublished": "2026-09-02",
+      "dateModified": "2026-09-02",
+      "author": { "@id": "https://sirenfall.live/#creator" },
+      "publisher": { "@id": "https://sirenfall.live/#organization" },
+      "about": { "@id": "https://sirenfall.live/#webapp" },
+      "isPartOf": { "@id": "https://sirenfall.live/#website" },
+      "image": "https://sirenfall.live/og.jpg?v=8e6f9feb"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://sirenfall.live/how-it-works#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is the siren a recording?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The siren is generated in real time by the Web Audio API in your browser. Two port rings chopped at 103 revolutions per second produce a 5:6 dual tone at 515 and 618 Hz. Nothing about the siren is sampled." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which parts are recordings?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the AUDIO-CREDITS document in the source repository. Every console sound is synthesized." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Sirenfall free?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. No account, no signup, no download, no cookies. Besides audio, the only network request is an anonymous page-count pixel to the author's own service." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work on phones?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes, in landscape. Portrait shows a rotate prompt. Double-tap the window for fullscreen; on Android that also locks landscape. iOS stops web audio when the screen locks, so keep the screen on." }
+        },
+        {
+          "@type": "Question",
+          "name": "What siren is it modeled on?",
+          "acceptedAnswer": { "@type": "Answer", "text": "An original rotating dual-tone outdoor warning siren in the tradition of mid-century civil-defense units: a minor third between the two tones, a supercharged chopper, and a horn that rotates at 4 RPM. It copies no specific product and uses no recording of one." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the source code available?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Sirenfall is one HTML file under the MIT license at github.com/beeswaxpat/sirenfall. The recordings carry their own licenses." }
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Sirenfall", "item": "https://sirenfall.live/" },
+        { "@type": "ListItem", "position": 2, "name": "How it works", "item": "https://sirenfall.live/how-it-works" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root { color-scheme: dark; }
+  html { background: #060708; }
+  body { margin: 0; background: #060708; color: #b9b1a3; font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.65; }
+  a { color: #d6c4a6; text-decoration-color: rgba(214,196,166,0.4); }
+  a:hover, a:focus-visible { text-decoration-color: #d6c4a6; outline: none; }
+  a:focus-visible { outline: 1px solid #d6c4a6; outline-offset: 3px; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; padding: 18px 20px; }
+  .wm { font-size: 13px; font-weight: 600; letter-spacing: 6px; color: rgba(214,196,166,0.55); text-decoration: none; }
+  .back { font-size: 13px; letter-spacing: 1px; }
+  main { max-width: 68ch; margin: 0 auto; padding: 8px 20px 72px; }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: 0.5px; color: #d6c4a6; margin: 12px 0 8px; text-wrap: balance; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: rgba(214,196,166,0.6); margin: 40px 0 10px; }
+  p, li { margin: 0 0 12px; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 8px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .card { display: block; width: 100%; height: auto; margin: 18px 0 6px; border: 1px solid rgba(214,196,166,0.12); }
+  .cap { font-size: 12px; color: rgba(160,150,135,0.7); margin: 0 0 8px; }
+  dl { margin: 0; }
+  dt { color: #d6c4a6; font-weight: 600; margin-top: 16px; }
+  dd { margin: 4px 0 0; }
+  .foot { margin-top: 48px; padding-top: 16px; border-top: 1px solid rgba(214,196,166,0.12); font-size: 13px; color: rgba(160,150,135,0.7); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="top"><a class="wm" href="/">SIRENFALL</a><a class="back" href="/">Back to the window</a></div>
+<main>
+<h1>How Sirenfall works</h1>
+<p>Sirenfall is a browser scene: a shelter window over a dead city in the rain. Pull the breaker and a siren tower across the blocks spins up. The siren is synthesized live in your browser. It is not a recording.</p>
+<a href="/"><img class="card" src="/og.jpg?v=8e6f9feb" width="1920" height="1005" alt="The Sirenfall shelter window: a rainy dead city, sheet lightning in low cloud, a siren tower facing the viewer, smoke from a burning building, the breaker thrown on."></a>
+<p class="cap">The scene at full power, during a sheet flash.</p>
+
+<h2>The siren</h2>
+<ul>
+  <li>Mechanical outdoor sirens make their tone by chopping air: a spinning rotor passes ports in a stator, and the pitch is the number of ports times the rotor speed. Sirenfall models that directly. Two port rings on one rotor turning at <span class="num">103</span> revolutions per second give two tones, <span class="num">515 Hz</span> and <span class="num">618 Hz</span>, a 5:6 ratio.</li>
+  <li>5:6 is a minor third. The UK Home Office chose that interval for air raid sirens in 1940 for its psychological effect, and most dual-tone civil-defense sirens since have kept it.</li>
+  <li>Each tone is a pulse train shaped by the chopper duty cycle, mixed with a blower undertone and soft-clipped through a horn equalizer. The spin-up growl and the long coast-down are not separate sound effects; they are what the same model does when the rotor speed ramps.</li>
+  <li>The horn rotates at <span class="num">4</span> RPM, one sweep every 15 seconds. Every frame, the drawn horn angle sets the audio's directivity gain, an off-axis lowpass, a true Doppler delay, and the stereo position. The siren is loudest and brightest exactly when the horn on the tower faces you.</li>
+  <li>The distance knob runs from <span class="num">150 m</span> to <span class="num">2.8 km</span>: inverse-distance gain, air absorption as a lowpass, and a three-tap city echo. The blast shutter routes every outside sound through a lowpass that closes with it.</li>
+</ul>
+
+<h2>The city</h2>
+<ul>
+  <li>The skyline is painted once per window size onto an offscreen canvas at up to twice the screen resolution, then reused every frame. Five depth rows dissolve into cold haze. Buildings get floor lines, bays, side faces in perspective, and their damage: burned profiles, collapses, blast holes, boarded glass. One tower is still burning; the smoke rises from it and bends with the wind.</li>
+  <li>Weather runs on a slow random walk through calm, building, squall, and passing. Rain speed, density, lean, the fog, the smoke, and the rain bed's gain all follow it. Lightning is mostly sheet flashes inside the low cloud, sometimes a far bolt, rarely a double strike. Thunder arrives late by distance.</li>
+  <li>The scene draws at 30 frames per second on one canvas with no framework and no build step.</li>
+</ul>
+
+<h2>Controls</h2>
+<ul>
+  <li>Breaker: powers the siren. Volume, distance, lamp: knobs. Camera: a wall monitor watching the door. Wipe: clears the glass. Shutter: drops the blast shutter and muffles the world.</li>
+  <li>Double-click the window, or press F, for fullscreen. On Android, fullscreen also locks landscape.</li>
+  <li>Click the wall monitor, or press S, to save a picture of the current frame.</li>
+</ul>
+
+<h2>Questions</h2>
+<dl>
+  <dt>Is the siren a recording?</dt>
+  <dd>No. The siren is generated in real time by the Web Audio API in your browser. Two port rings chopped at 103 revolutions per second produce a 5:6 dual tone at 515 and 618 Hz. Nothing about the siren is sampled.</dd>
+  <dt>Which parts are recordings?</dt>
+  <dd>Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the <a href="https://github.com/beeswaxpat/sirenfall/blob/main/AUDIO-CREDITS.md">AUDIO-CREDITS</a> document in the source repository. Every console sound is synthesized.</dd>
+  <dt>Is Sirenfall free?</dt>
+  <dd>Yes. No account, no signup, no download, no cookies. Besides audio, the only network request is an anonymous page-count pixel to the author's own service.</dd>
+  <dt>Does it work on phones?</dt>
+  <dd>Yes, in landscape. Portrait shows a rotate prompt. Double-tap the window for fullscreen; on Android that also locks landscape. iOS stops web audio when the screen locks, so keep the screen on.</dd>
+  <dt>What siren is it modeled on?</dt>
+  <dd>An original rotating dual-tone outdoor warning siren in the tradition of mid-century civil-defense units: a minor third between the two tones, a supercharged chopper, and a horn that rotates at 4 RPM. It copies no specific product and uses no recording of one.</dd>
+  <dt>Is the source code available?</dt>
+  <dd>Yes. Sirenfall is one HTML file under the MIT license at <a href="https://github.com/beeswaxpat/sirenfall">github.com/beeswaxpat/sirenfall</a>. The recordings carry their own licenses.</dd>
+</dl>
+
+<p class="foot">Built by <a href="https://github.com/beeswaxpat">Beeswaxpat</a>. <a href="/">Open the window</a>.</p>
+</main>
+</body>
+</html>

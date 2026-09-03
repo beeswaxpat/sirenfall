@@ -4,7 +4,7 @@ A shelter window over a dead city, in the rain. Pull the breaker and a civil-def
 
 The siren is synthesized live in your browser. It is not a recording.
 
-**Play it: [sirenfall.live](https://sirenfall.live)** (sound on, landscape on phones)
+**Play it: [sirenfall.live](https://sirenfall.live)** (sound on, landscape on phones). [How it works](https://sirenfall.live/how-it-works).
 
 <img src="og.jpg" width="640" alt="A rainy dead city seen from a shelter window: sheet lightning in low cloud, a siren tower facing the viewer, smoke from a burning building, the breaker thrown on.">
 
@@ -17,7 +17,7 @@ The siren is synthesized live in your browser. It is not a recording.
 
 ## The room
 
-Every control is drawn on one canvas: volume, distance, lamp, a door camera, glass wipe, blast shutter, breaker. Weather moves through calm, building, squall, and passing on a slow random walk. Lightning is mostly sheet flashes inside the cloud deck.
+Every control is drawn on one canvas: volume, distance, lamp, a door camera, glass wipe, blast shutter, breaker. Double-click the window or press F for fullscreen. Click the wall monitor or press S to save a picture. Weather moves through calm, building, squall, and passing on a slow random walk. Lightning is mostly sheet flashes inside the cloud deck.
 
 ## Run it locally
 
