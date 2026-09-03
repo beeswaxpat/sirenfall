@@ -175,10 +175,7 @@
       <path d="M14 52 a22 22 0 0 0 36 0" stroke="#8a93a6" stroke-width="2.2" stroke-linecap="round" fill="none"/>
       <path d="M50 52 l1.5 -6 M50 52 l-6 -1.5" stroke="#8a93a6" stroke-width="2.2" stroke-linecap="round"/>
     </svg>
-    <div class="rt1">Rotate your device sideways.</div>
-    <div class="rt2">SIRENFALL is built for landscape.<br>Use a desktop or tablet for the full experience.</div>
-    <p class="rt3">SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.</p>
-    <p class="rt3">Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.</p>
+    <div class="rt1">Turn your phone sideways.</div>
   </div>
 </div>
 <script>
@@ -2280,6 +2277,12 @@ function frame(now) {
     g.drawImage(grainC, -ox, -oy);
     g.globalAlpha = 1;
   }
+}
+{
+  // one line each, and fullscreen told the way this device does it
+  const coarse = matchMedia("(pointer: coarse)").matches;
+  document.getElementById("hint").textContent = coarse ? "Pull the breaker." : "Pull the breaker to power the siren.";
+  document.getElementById("hp").textContent = coarse ? "\u{1F3A7} Headphones. Double-tap for fullscreen." : "\u{1F3A7} Headphones recommended. F for fullscreen.";
 }
 resize();
 requestAnimationFrame(frame);
