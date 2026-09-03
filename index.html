@@ -1,0 +1,2227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07080a">
+<title>SIRENFALL: a browser civil-defense siren scene</title>
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=1">
+  <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png?v=1">
+  <link rel="apple-touch-icon" href="/favicon.png?v=1">
+<meta name="description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio.">
+<link rel="canonical" href="https://sirenfall.live/">
+  <link rel="describedby" href="https://sirenfall.live/llms.txt">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sirenfall.live/">
+<meta property="og:site_name" content="SIRENFALL">
+<meta property="og:title" content="SIRENFALL: a browser civil-defense siren scene">
+<meta property="og:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio.">
+<meta property="og:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
+<meta property="og:image:width" content="1920">
+<meta property="og:image:height" content="1005">
+<meta property="og:image:alt" content="A rainy dead city seen from a shelter window: sheet lightning in low cloud, a siren tower facing you, smoke from a burning building, the breaker thrown on.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SIRENFALL: a browser civil-defense siren scene">
+<meta name="twitter:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio.">
+<meta name="twitter:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://sirenfall.live/#website",
+      "url": "https://sirenfall.live/",
+      "name": "SIRENFALL",
+      "alternateName": [
+        "Sirenfall",
+        "sirenfall.live"
+      ],
+      "inLanguage": "en",
+      "publisher": {
+        "@id": "https://sirenfall.live/#organization"
+      }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://sirenfall.live/#organization",
+      "name": "SIRENFALL",
+      "alternateName": [
+        "Sirenfall",
+        "sirenfall.live"
+      ],
+      "url": "https://sirenfall.live/",
+      "founder": {
+        "@id": "https://sirenfall.live/#creator"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://sirenfall.live/#creator",
+      "name": "Beeswaxpat",
+      "url": "https://github.com/beeswaxpat",
+      "sameAs": [
+        "https://github.com/beeswaxpat"
+      ]
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://sirenfall.live/#webapp",
+      "name": "SIRENFALL",
+      "url": "https://sirenfall.live/",
+      "description": "SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio.",
+      "applicationCategory": "EntertainmentApplication",
+      "author": {
+        "@id": "https://sirenfall.live/#creator"
+      },
+      "creator": {
+        "@id": "https://sirenfall.live/#creator"
+      },
+      "sameAs": [
+        "https://github.com/beeswaxpat/sirenfall"
+      ],
+      "operatingSystem": "Any (web browser)",
+      "browserRequirements": "Requires JavaScript and Web Audio",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isPartOf": {
+        "@id": "https://sirenfall.live/#website"
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    color-scheme: dark;
+    --handcur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='%23171310'%3E%3Crect x='9.1' y='0.2' width='7.6' height='14.6' rx='3.8'/%3E%3Crect x='13.2' y='7.2' width='11.4' height='8.8' rx='4.2'/%3E%3Crect x='6.7' y='10.2' width='17.4' height='13.4' rx='6.2'/%3E%3Cellipse cx='8.4' cy='16' rx='4.2' ry='5'/%3E%3C/g%3E%3Cg fill='%23e8dbc2'%3E%3Crect x='10.6' y='1.6' width='4.6' height='12' rx='2.3'/%3E%3Crect x='14.6' y='8.6' width='8.6' height='6' rx='2.8'/%3E%3Crect x='8.2' y='11.6' width='14.4' height='10.4' rx='4.6'/%3E%3Cellipse cx='8.6' cy='15.8' rx='2.7' ry='3.6'/%3E%3C/g%3E%3Cg stroke='%23171310' stroke-width='1.1' stroke-linecap='round' opacity='0.55'%3E%3Cline x1='17.2' y1='9.4' x2='17.2' y2='12.9'/%3E%3Cline x1='20' y1='9.6' x2='20' y2='13.1'/%3E%3C/g%3E%3C/svg%3E") 13 2;
+    --grabcur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='%23171310'%3E%3Crect x='5.9' y='7.6' width='16.8' height='9' rx='4.4'/%3E%3Crect x='5.3' y='10' width='18' height='13.2' rx='6.4'/%3E%3Cellipse cx='9' cy='17.6' rx='4.6' ry='5.2'/%3E%3C/g%3E%3Cg fill='%23e8dbc2'%3E%3Crect x='7.4' y='9.1' width='13.8' height='6' rx='3'/%3E%3Crect x='6.8' y='11.5' width='15' height='10.2' rx='4.9'/%3E%3Cellipse cx='9.2' cy='17.4' rx='3.1' ry='3.8'/%3E%3C/g%3E%3Cg stroke='%23171310' stroke-width='1.1' stroke-linecap='round' opacity='0.55'%3E%3Cline x1='11.2' y1='9.9' x2='11.2' y2='13.4'/%3E%3Cline x1='14.2' y1='9.7' x2='14.2' y2='13.6'/%3E%3Cline x1='17.2' y1='9.9' x2='17.2' y2='13.4'/%3E%3C/g%3E%3C/svg%3E") 14 14;
+  }
+  * { margin: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { height: 100%; overflow: hidden; }
+  body { background: #060708; font-family: "Segoe UI", system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  #scene.hand { cursor: var(--handcur), pointer; }
+  body.grabbing #scene, body.grabbing { cursor: var(--grabcur), grabbing !important; }
+  .ov { position: fixed; pointer-events: none; z-index: 3; }
+  #wm { top: 16px; left: 18px; font-size: 13px; font-weight: 600; letter-spacing: 6px; color: rgba(214,196,166,0.42); }
+  #hint {
+    left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-size: 13px; letter-spacing: 1.2px; color: rgba(222,196,158,0.7);
+    transition: opacity 1.4s ease; animation: breathe 3.4s ease-in-out infinite alternate;
+  }
+  #hint.gone { opacity: 0; animation: none; }
+  @keyframes breathe { from { opacity: 0.45; } to { opacity: 0.85; } }
+  @media (prefers-reduced-motion: reduce) { #hint { animation: none; } }
+  #disc { bottom: 9px; width: 100%; text-align: center; font-size: 11px; color: rgba(160,150,135,0.38); letter-spacing: 0.4px; }
+  #hp {
+    left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-size: 11.5px; letter-spacing: 1px; color: rgba(200,185,160,0.5);
+    transition: opacity 1.4s ease;
+  }
+  #hp.gone { opacity: 0; }
+  @media (max-height: 480px) {
+    #disc { font-size: 10px; bottom: 6px; }
+    #hint { font-size: 12px; }
+    #hp { font-size: 10.5px; }
+  }
+  #rot {
+    position: fixed; inset: 0; z-index: 9; display: none;
+    background: #0a0b0e; align-items: center; justify-content: center;
+    text-align: center; padding: 30px;
+  }
+  #rot.show { display: flex; }
+  #rot .rt1 { font-size: 15px; letter-spacing: 1.4px; color: #d6c4a6; margin-top: 18px; }
+  #rot .rt2 { font-size: 12px; letter-spacing: 0.4px; color: #8a93a6; margin-top: 9px; line-height: 1.6; }
+  #rot .rt3 { font-size: 12px; letter-spacing: 0.2px; color: #8a93a6; line-height: 1.65; text-align: left; max-width: 440px; margin: 16px auto 0; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="sr">
+<h1>SIRENFALL: a browser civil-defense siren scene</h1>
+<p>SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.</p>
+<p>Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.</p>
+<p>Built by <a href="https://github.com/beeswaxpat">Beeswaxpat</a>. Source code: <a href="https://github.com/beeswaxpat/sirenfall">github.com/beeswaxpat/sirenfall</a> (MIT).</p>
+</div>
+<canvas id="scene"></canvas>
+<div class="ov" id="wm">SIRENFALL</div>
+<div class="ov" id="hint">Pull the breaker to power the siren.</div>
+<div class="ov" id="hp">&#127911; Headphones recommended</div>
+<div class="ov" id="disc">The siren is synthesized live in your browser. It is not a recording.</div>
+<div id="rot">
+  <div>
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="22" y="10" width="20" height="36" rx="3.5" stroke="#d38b4a" stroke-width="2.5"/>
+      <circle cx="32" cy="41" r="1.6" fill="#d38b4a"/>
+      <path d="M14 52 a22 22 0 0 0 36 0" stroke="#8a93a6" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+      <path d="M50 52 l1.5 -6 M50 52 l-6 -1.5" stroke="#8a93a6" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>
+    <div class="rt1">Rotate your device sideways.</div>
+    <div class="rt2">SIRENFALL is built for landscape.<br>Use a desktop or tablet for the full experience.</div>
+    <p class="rt3">SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.</p>
+    <p class="rt3">Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.</p>
+  </div>
+</div>
+<script>
+"use strict";
+
+/* ============================== AUDIO: the v4 STEADY hero voice (ported from siren-lab) ============================== */
+let ctx = null, built = false;
+const S = {
+  rpsFull: 103, rotRpm: 4, dist: 450, blow: 0.5, wind: 0.25, vol: 0.85,
+  va: 5, vb: 6, spinTauUp: 3.2, spinTauDown: 7.0,
+  simRps: 0, simTarget: 0, simTau: 3.2, simT: 0
+};
+const N = {};
+let rotT0 = 0;
+
+function pulseWave(duty) {
+  const H = 48, real = new Float32Array(H + 1), imag = new Float32Array(H + 1);
+  for (let n = 1; n <= H; n++) {
+    const a = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * duty);
+    real[n] = a / (1 + Math.pow(n / 22, 2));
+  }
+  return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+}
+function noiseBuf(sec) {
+  const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * sec), ctx.sampleRate);
+  const d = b.getChannelData(0);
+  let l = 0;
+  for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; l = 0.82 * l + 0.18 * w; d[i] = l * 2.2; }
+  return b;
+}
+function shaperCurve(fn) {
+  const c = new Float32Array(2048);
+  for (let i = 0; i < 2048; i++) { const x = i / 2047 * 2 - 1; c[i] = fn(x); }
+  return c;
+}
+function ampCurve() {
+  return shaperCurve(x => {
+    if (x <= 0.004) return 0;
+    const u = Math.min(1, Math.max(0, x));
+    return Math.pow(u, 0.8) * (u < 0.12 ? u / 0.12 : 1);
+  });
+}
+function qDelay() { return S.rotRpm > 0 ? (60 / S.rotRpm) / 4 : 0.01; }
+
+function build() {
+  N.rps = new ConstantSourceNode(ctx, { offset: 0 }); N.rps.start();
+  N.g1 = new GainNode(ctx, { gain: S.va }); N.g2 = new GainNode(ctx, { gain: S.vb });
+  N.rps.connect(N.g1); N.rps.connect(N.g2);
+  const wave = pulseWave(0.32);
+  N.o1 = new OscillatorNode(ctx, { frequency: 0 }); N.o1.setPeriodicWave(wave);
+  N.o2 = new OscillatorNode(ctx, { frequency: 0 }); N.o2.setPeriodicWave(wave);
+  N.g1.connect(N.o1.frequency); N.g2.connect(N.o2.frequency);
+  N.wob = new OscillatorNode(ctx, { frequency: 0.19 });
+  N.wobG = new GainNode(ctx, { gain: 2.6 });
+  N.wob.connect(N.wobG).connect(N.o2.detune); N.wob.start();
+  N.drift = new OscillatorNode(ctx, { frequency: 0.13 });
+  N.driftG = new GainNode(ctx, { gain: 2.2 });
+  N.drift.connect(N.driftG).connect(N.o1.detune); N.drift.start();
+  N.breath = new OscillatorNode(ctx, { frequency: 0.11 });
+  N.breathG = new GainNode(ctx, { gain: 18 });
+  N.breath.connect(N.breathG);
+  N.breathG.connect(N.o1.detune); N.breathG.connect(N.o2.detune);
+  N.breath.start();
+  N.m1 = new GainNode(ctx, { gain: 0.55 }); N.m2 = new GainNode(ctx, { gain: 0.45 });
+  N.o1.connect(N.m1); N.o2.connect(N.m2);
+  N.o1.start(); N.o2.start();
+
+  N.ampSig = new WaveShaperNode(ctx, { curve: ampCurve() });
+  N.rpsNorm = new GainNode(ctx, { gain: 1 / 160 });
+  N.rps.connect(N.rpsNorm).connect(N.ampSig);
+  N.vca = new GainNode(ctx, { gain: 0 });
+  N.ampSig.connect(N.vca.gain);
+  N.mix = new GainNode(ctx, { gain: 1 });
+  N.m1.connect(N.mix); N.m2.connect(N.mix);
+  N.clip = new WaveShaperNode(ctx, { curve: shaperCurve(x => Math.tanh(2.6 * x) / Math.tanh(2.6)), oversample: "2x" });
+  N.mix.connect(N.clip).connect(N.vca);
+
+  N.hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 240, Q: 0.7 });
+  N.pk1 = new BiquadFilterNode(ctx, { type: "peaking", frequency: 1050, Q: 1.4, gain: 4 });
+  N.pk2 = new BiquadFilterNode(ctx, { type: "peaking", frequency: 2100, Q: 1.6, gain: 3 });
+  N.pk3 = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 1600, gain: 3.5 });
+  N.vca.connect(N.hp).connect(N.pk1).connect(N.pk2).connect(N.pk3);
+
+  N.brSrc = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.3), loop: true });
+  N.brBp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 900, Q: 2.2 });
+  N.brTrack = new GainNode(ctx, { gain: S.va * 2 });
+  N.rps.connect(N.brTrack).connect(N.brBp.frequency);
+  N.brVca = new GainNode(ctx, { gain: 0 });
+  N.brAmt = new GainNode(ctx, { gain: 0.15 });
+  N.ampSig.connect(N.brAmt).connect(N.brVca.gain);
+  N.brSrc.connect(N.brBp).connect(N.brVca).connect(N.hp);
+  N.brSrc.start();
+
+  N.blowSrc = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.7), loop: true });
+  N.blowBp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 150, Q: 0.7 });
+  N.blowLp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 900, Q: 0.5 });
+  N.blowVca = new GainNode(ctx, { gain: 0 });
+  N.blowAmt = new GainNode(ctx, { gain: S.blow * 0.9 });
+  N.ampSig.connect(N.blowAmt).connect(N.blowVca.gain);
+  N.blowSrc.connect(N.blowBp).connect(N.blowLp).connect(N.blowVca);
+  N.blowSrc.start();
+
+  N.rotLfo = new OscillatorNode(ctx, { frequency: S.rotRpm / 60 });
+  N.rotLfo.start();
+  rotT0 = ctx.currentTime;
+  N.panDelay = new DelayNode(ctx, { maxDelayTime: 90, delayTime: qDelay() });
+  N.rotLfo.connect(N.panDelay);
+  N.rotLp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 2600, Q: 0.6 });
+  N.rotLpDepth = new GainNode(ctx, { gain: 0 });
+  N.rotLfo.connect(N.rotLpDepth).connect(N.rotLp.frequency);
+  N.dir = new GainNode(ctx, { gain: 0.55 });
+  N.dirDepth = new GainNode(ctx, { gain: 0 }); // rotation now follows the VISIBLE horn from the frame loop
+  N.rotLfo.connect(N.dirDepth).connect(N.dir.gain);
+  N.dop = new DelayNode(ctx, { maxDelayTime: 0.1, delayTime: 0.012 });
+  N.dopDepth = new GainNode(ctx, { gain: 0 });
+  N.rotLfo.connect(N.dopDepth).connect(N.dop.delayTime);
+  N.pan = new StereoPannerNode(ctx, { pan: 0 });
+  N.panDepth = new GainNode(ctx, { gain: 0 });
+  N.panDelay.connect(N.panDepth).connect(N.pan.pan);
+  N.pk3.connect(N.rotLp).connect(N.dir).connect(N.dop).connect(N.pan);
+  N.blowVca.connect(N.dir);
+
+  N.airLp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 8000, Q: 0.5 });
+  N.dry = new GainNode(ctx, { gain: 1 });
+  N.pan.connect(N.airLp);
+  N.airLp.connect(N.dry);
+  N.wetSend = new GainNode(ctx, { gain: 0.34 });
+  N.airLp.connect(N.wetSend);
+  N.echoSum = new GainNode(ctx, { gain: 1 });
+  for (const [i, ms] of [0.165, 0.121, 0.033].entries()) {
+    const d = new DelayNode(ctx, { maxDelayTime: 1, delayTime: ms });
+    const fb = new GainNode(ctx, { gain: 0.68 });
+    N.wetSend.connect(d); d.connect(fb).connect(d); d.connect(N.echoSum);
+    N["ed" + i] = d;
+  }
+  N.echoLp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 2400, Q: 0.4 });
+  N.wet = new GainNode(ctx, { gain: 0.4 });
+  N.echoSum.connect(N.echoLp).connect(N.wet);
+
+  N.windSrc = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(3.1), loop: true });
+  N.windBp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 480, Q: 0.35 });
+  N.wl1 = new OscillatorNode(ctx, { frequency: 0.11 }); N.wl1g = new GainNode(ctx, { gain: 170 });
+  N.wl2 = new OscillatorNode(ctx, { frequency: 0.043 }); N.wl2g = new GainNode(ctx, { gain: 240 });
+  N.wl1.connect(N.wl1g).connect(N.windBp.frequency);
+  N.wl2.connect(N.wl2g).connect(N.windBp.frequency);
+  N.wl1.start(); N.wl2.start();
+  N.windGust = new GainNode(ctx, { gain: 0.62 });
+  N.wl3 = new OscillatorNode(ctx, { frequency: 0.071 }); N.wl3g = new GainNode(ctx, { gain: 0.11 });
+  N.wl3.connect(N.wl3g).connect(N.windGust.gain); N.wl3.start();
+  N.windVol = new GainNode(ctx, { gain: S.wind * 0.16 });
+  N.windSrc.connect(N.windBp).connect(N.windGust).connect(N.windVol);
+  N.windSrc.start();
+
+  N.comp = new DynamicsCompressorNode(ctx, { threshold: -20, ratio: 5, attack: 0.01, release: 0.3 });
+  N.master = new GainNode(ctx, { gain: 1 });
+  N.ana = new AnalyserNode(ctx, { fftSize: 8192, smoothingTimeConstant: 0.7 });
+  N.worldLp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 16000, Q: 0.5 });
+  N.worldG = new GainNode(ctx, { gain: 1 });
+  N.sirenVol = new GainNode(ctx, { gain: S.vol });
+  N.dry.connect(N.sirenVol); N.wet.connect(N.sirenVol); N.sirenVol.connect(N.worldLp);
+  N.windVol.connect(N.worldLp);
+  N.worldLp.connect(N.worldG).connect(N.comp);
+  N.comp.connect(N.master).connect(N.ana).connect(ctx.destination);
+
+  applyDistance(); applyRotation();
+  built = true;
+}
+function applyDistance() {
+  const t = ctx.currentTime, d = S.dist;
+  const g = Math.min(1, Math.pow(80 / d, 0.85));
+  const lp = Math.min(15000, Math.max(750, 16000 * Math.pow(60 / d, 0.95)));
+  const wet = Math.min(0.85, 0.12 + (d / 3000) * 0.8);
+  N.dry.gain.setTargetAtTime(g * (1 - wet * 0.55), t, 0.15);
+  N.airLp.frequency.setTargetAtTime(lp, t, 0.15);
+  N.wet.gain.setTargetAtTime(g * wet * 1.35, t, 0.15);
+}
+function applyRotation() {
+  const t = ctx.currentTime;
+  N.rotLfo.frequency.setTargetAtTime(S.rotRpm / 60, t, 0.1);
+  N.panDelay.delayTime.setTargetAtTime(qDelay(), t, 0.3);
+}
+function simRpsNow() {
+  if (!ctx) return 0;
+  const dt = (performance.now() - S.simT) / 1000;
+  return S.simTarget + (S.simRps - S.simTarget) * Math.exp(-dt / S.simTau);
+}
+function setRpsTarget(target, tau) {
+  const t = ctx.currentTime;
+  N.rps.offset.cancelScheduledValues(t);
+  N.rps.offset.setTargetAtTime(target, t, tau);
+  const cur = simRpsNow();
+  S.simRps = cur; S.simTarget = target; S.simTau = tau; S.simT = performance.now();
+}
+function ensureAudio() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state !== "running") ctx.resume();
+  if (!built) {
+    try { build(); }
+    catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = "Audio failed: " + e.message; }
+  }
+  if (built) loadWeatherAudio();
+}
+function setVolume(v) {
+  S.vol = Math.min(1, Math.max(0, v));
+  if (built) N.sirenVol.gain.setTargetAtTime(S.vol, ctx.currentTime, 0.05);
+}
+function playClack(on) {
+  if (!ctx || !built) return;
+  const src = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.09) });
+  const f = new BiquadFilterNode(ctx, { type: "lowpass", frequency: on ? 1500 : 950, Q: 1.1 });
+  const gn = new GainNode(ctx, { gain: 0.0001 });
+  src.connect(f).connect(gn).connect(N.comp);
+  const t0 = ctx.currentTime;
+  gn.gain.setValueAtTime(0.22, t0);
+  gn.gain.exponentialRampToValueAtTime(0.001, t0 + 0.09);
+  src.start(t0); src.stop(t0 + 0.1);
+}
+
+/* ---- storm audio: Patrick's saved rain bed + thunder one-shots, always UNDER the siren ---- */
+let rainBuf = null;
+const thunderBufs = [];
+function startRain() {
+  const src = new AudioBufferSourceNode(ctx, { buffer: rainBuf, loop: true, loopStart: 0.4, loopEnd: Math.max(1, rainBuf.duration - 0.4) });
+  const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 240, Q: 0.5 });
+  const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 5200, Q: 0.4 });
+  N.rainG = new GainNode(ctx, { gain: 0.0001 });
+  src.connect(hp).connect(lp).connect(N.rainG).connect(N.worldLp);
+  src.start();
+  N.rainG.gain.setTargetAtTime(powered ? 0.09 : 0.165, ctx.currentTime, 2.0);
+  N.rainSrc = src;
+}
+async function loadWeatherAudio() {
+  if (rainBuf !== null) return;
+  rainBuf = false;
+  try {
+    const ab = await (await fetch("audio/rain.mp3")).arrayBuffer();
+    rainBuf = await ctx.decodeAudioData(ab);
+  } catch (e) { rainBuf = noiseBuf(6); }
+  startRain();
+  for (const n2 of ["thunder1.mp3", "thunder2.mp3", "thunder3.mp3"]) {
+    try {
+      const ab2 = await (await fetch("audio/" + n2)).arrayBuffer();
+      thunderBufs.push(await ctx.decodeAudioData(ab2));
+    } catch (e) {}
+  }
+}
+function playThunder(mag) {
+  if (!ctx || !built || !thunderBufs.length) return;
+  const b = thunderBufs[Math.floor(Math.random() * thunderBufs.length)];
+  const src = new AudioBufferSourceNode(ctx, { buffer: b });
+  const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 500 + mag * 1700, Q: 0.5 });
+  const gn = new GainNode(ctx, { gain: (powered ? 0.55 : 1) * (0.10 + 0.30 * mag) });
+  src.connect(lp).connect(gn).connect(N.worldLp);
+  src.start();
+}
+function applyShutterAudio() {
+  if (!built) return;
+  N.worldLp.frequency.value = 16000 * Math.pow(380 / 16000, shutterPos);
+  N.worldG.gain.value = 1 - shutterPos * 0.45;
+}
+function setRadio(on) {
+  // the CAMERA switch: it powers the wall monitor and nothing else
+  ensureAudio();
+  radioOn = on;
+  if (built) playClack(on);
+}
+function playSlam() {
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime;
+  const thump = new OscillatorNode(ctx, { frequency: 68 });
+  thump.frequency.exponentialRampToValueAtTime(38, t0 + 0.22);
+  const tg = new GainNode(ctx, { gain: 0.5 });
+  tg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+  thump.connect(tg).connect(N.comp);
+  thump.start(t0); thump.stop(t0 + 0.32);
+  const body = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.3) });
+  const blp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 750, Q: 0.7 });
+  const bg = new GainNode(ctx, { gain: 0.4 });
+  bg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
+  body.connect(blp).connect(bg).connect(N.comp);
+  body.start(t0);
+  const ring = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.7) });
+  const rbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1250, Q: 14 });
+  const rg = new GainNode(ctx, { gain: 0.14 });
+  rg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.7);
+  ring.connect(rbp).connect(rg).connect(N.comp);
+  ring.start(t0 + 0.01);
+}
+function playTick() {
+  if (!ctx || !built) return;
+  const s = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.05) });
+  const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1600, Q: 2 });
+  const gn = new GainNode(ctx, { gain: 0.07 });
+  gn.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+  s.connect(bp).connect(gn).connect(N.comp);
+  s.start(); s.stop(ctx.currentTime + 0.06);
+}
+function playSwash() {
+  if (!ctx || !built) return;
+  const src = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.6) });
+  const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 600, Q: 1.4 });
+  bp.frequency.setTargetAtTime(1500, ctx.currentTime, 0.35);
+  const gn = new GainNode(ctx, { gain: 0.05 });
+  gn.gain.setTargetAtTime(0.0001, ctx.currentTime + 0.45, 0.15);
+  src.connect(bp).connect(gn).connect(N.comp);
+  src.start(); src.stop(ctx.currentTime + 0.7);
+}
+
+/* ============================== POWER + WAKE LOCK ============================== */
+let powered = false, wakeLock = null;
+function requestWake() {
+  if (navigator.wakeLock && navigator.wakeLock.request)
+    navigator.wakeLock.request("screen").then(l => { wakeLock = l; }).catch(() => {});
+}
+function setPower(on) {
+  if (on === powered) return;
+  powered = on;
+  ensureAudio();
+  if (!built) { powered = false; return; }
+  if (on) {
+    const cold = simRpsNow() < 2;
+    setRpsTarget(S.rpsFull, cold ? S.spinTauUp : 1.0);
+    requestWake();
+    document.getElementById("hint").classList.add("gone");
+    document.getElementById("hp").classList.add("gone");
+  } else {
+    setRpsTarget(0, S.spinTauDown);
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+  playClack(on);
+  sparkT = performance.now() / 1000;
+  if (N.rainG) N.rainG.gain.setTargetAtTime(on ? 0.09 : 0.165, ctx.currentTime, on ? 0.8 : 1.5);
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    if (ctx && ctx.state !== "running") ctx.resume();
+    if (powered) requestWake();
+  }
+});
+
+/* ============================== SCENE ============================== */
+const cv = document.getElementById("scene");
+const g = cv.getContext("2d");
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let DPR = 1, W = 0, H = 0, L = null;
+let cityC = null, frameC = null, fogC = null, grainC = null, vigGrad = null;
+let litWindows = [], anchors = null;
+let rainNear = null, rainFar = null, runnels = [], strike = null, nextStrikeT = -1;
+let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
+let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, feedC = null;
+let cloudC = null, cloudLitC = null, rainPhF = 0, rainPhN = 0, fogPh = 0, cloudPh = 0, wxAudioT = -9;
+/* weather: a slow random walk through calm, building, squall, passing; k is the rain intensity it drives */
+const WX = { state: "calm", k: 0.3, target: 0.3, tState: -1, dwell: 60, gust: 0, gustT: 0, gust0: -9, gustA: 0, spatDone: true };
+const ON_TH = -14, OFF_TH = 66;
+let leverTh = OFF_TH, leverThT = OFF_TH, leverVel = 0, sparkT = -9;
+let grab = null;
+let hover = null;
+
+function rngf(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+function computeLayout() {
+  const w = innerWidth, h = innerHeight, portrait = h > w * 1.05;
+  const m = Math.min(w, h);
+  const apX = portrait ? w * 0.07 : w * 0.12;
+  const apW = portrait ? w * 0.86 : w * 0.76;
+  const apY = h * (portrait ? 0.10 : 0.09);
+  const apH = h * (portrait ? 0.46 : 0.50);
+  const sillY = apY + apH;
+  const cy = (sillY + h) / 2 + h * 0.045;
+  const arm = clamp(m * 0.105, 42, 74);
+  const knobR = clamp(m * 0.058, 20, 40);
+  // short landscape screens: keep the console label row clear of the fixed
+  // disclosure line, and keep the hint lines off the console face
+  const labelDrop = Math.max(knobR + 16, arm * 0.52);
+  const cyMax = h - 34 - labelDrop;
+  const cyMin = sillY + arm * 1.5 + 2;
+  const cyC = Math.max(Math.min(cy, cyMax), Math.min(cyMin, cyMax));
+  const room = (cyC - arm * 1.5) - sillY;
+  const hintY = room >= 46 ? sillY + Math.min((h - sillY) * 0.14, room - 44) : sillY - 46;
+  return {
+    w, h, portrait, apX, apY, apW, apH, sillY,
+    lever: { x: apX + apW * 0.845, y: cyC, arm },
+    shutter: { x: apX + apW * 0.665, y: cyC, arm: arm * 0.72 },
+    vol: { x: apX + apW * 0.135, y: cyC, r: knobR },
+    dist: { x: apX + apW * 0.275, y: cyC, r: knobR },
+    dim: { x: apX + apW * 0.40, y: cyC, r: knobR * 0.85 },
+    lamp: { x: apX + apW * 0.505, y: cyC - m * 0.038 },
+    radio: { x: apX + apW * 0.505, y: cyC + m * 0.024 },
+    wipe: { x: apX + apW * 0.578, y: cyC },
+    hintY
+  };
+}
+function lampPos() { return { x: L.apX + L.apW * 0.90, y: L.apY * 0.62 }; }
+
+/* ---------- the baked HD matte painting (drawn once per resize) ---------- */
+function softBlob(x, cx, cy, r, rgb, a, sy) {
+  const gr = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+  gr.addColorStop(0, "rgba(" + rgb + "," + a.toFixed(3) + ")");
+  gr.addColorStop(1, "rgba(" + rgb + ",0)");
+  x.save();
+  if (sy && sy !== 1) { x.translate(cx, cy); x.scale(1, sy); x.translate(-cx, -cy); }
+  x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
+  x.restore();
+}
+function noiseOver(x, w, h, alpha, mono) {
+  const n = document.createElement("canvas");
+  const nw = Math.min(512, Math.ceil(w)), nh = Math.min(512, Math.ceil(h));
+  n.width = nw; n.height = nh;
+  const nx = n.getContext("2d");
+  const img = nx.createImageData(nw, nh);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = Math.random() * 255;
+    d[i] = v; d[i + 1] = v; d[i + 2] = mono ? v : v * 0.94; d[i + 3] = 255;
+  }
+  nx.putImageData(img, 0, 0);
+  x.save();
+  x.globalAlpha = alpha;
+  for (let yy = 0; yy < h; yy += nh) for (let xx = 0; xx < w; xx += nw) x.drawImage(n, xx, yy);
+  x.restore();
+}
+
+function drawClutter(x, r, bx, by, bw, tone) {
+  // rooftop silhouettes, sparse: water tanks, stair bulkheads, antennas that have started to lean
+  x.fillStyle = tone; x.strokeStyle = tone;
+  let cx2 = bx + 3;
+  while (cx2 < bx + bw - 8) {
+    const kind = r();
+    if (kind < 0.14 && bw > 34) { // water tank on legs
+      const tw = 9 + r() * 5, th = 8 + r() * 4;
+      x.lineWidth = 1;
+      x.beginPath(); x.moveTo(cx2 + 1, by); x.lineTo(cx2 + 2, by - 4); x.moveTo(cx2 + tw - 1, by); x.lineTo(cx2 + tw - 2, by - 4); x.stroke();
+      x.fillRect(cx2, by - 4 - th, tw, th);
+      x.beginPath(); x.moveTo(cx2 - 1, by - 4 - th); x.lineTo(cx2 + tw / 2, by - 4 - th - 4); x.lineTo(cx2 + tw + 1, by - 4 - th); x.closePath(); x.fill();
+      cx2 += tw + 10 + r() * 18;
+    } else if (kind < 0.28) { // stair bulkhead
+      const tw = 7 + r() * 7, th = 5 + r() * 4;
+      x.fillRect(cx2, by - th, tw, th);
+      cx2 += tw + 8 + r() * 16;
+    } else if (kind < 0.40) { // antenna, leaning
+      const th = 8 + r() * 14, lean = (r() - 0.5) * th * 0.5;
+      x.lineWidth = 0.8;
+      x.beginPath(); x.moveTo(cx2, by); x.lineTo(cx2 + lean, by - th); x.stroke();
+      x.beginPath(); x.moveTo(cx2 + lean * 0.65 - 2.4, by - th * 0.65); x.lineTo(cx2 + lean * 0.65 + 2.4, by - th * 0.65); x.stroke();
+      cx2 += 10 + r() * 16;
+    } else cx2 += 12 + r() * 22;
+  }
+}
+
+function drawLot(x, r, bx, baseY, lw, col, ext) {
+  // a demolished lot: a low uneven mound of rubble and, sometimes, a stub of wall still standing
+  x.fillStyle = shade(col, -0.30);
+  x.beginPath();
+  x.moveTo(bx, baseY + ext);
+  const n = 5 + Math.floor(r() * 4);
+  for (let i = 0; i <= n; i++) {
+    const edge = i === 0 || i === n;
+    x.lineTo(bx + lw * (i / n), baseY - (2 + r() * 7) * (edge ? 0.3 : 1));
+  }
+  x.lineTo(bx + lw, baseY + ext);
+  x.closePath(); x.fill();
+  if (r() < 0.7) {
+    const sx = bx + lw * (0.15 + r() * 0.6), sw = 3 + r() * 5, sh = 6 + r() * 12;
+    x.fillStyle = shade(col, -0.18);
+    x.fillRect(sx, baseY - sh, sw, sh);
+    x.fillRect(sx + sw, baseY - sh * 0.45, 2, sh * 0.45);
+  }
+}
+
+function near2(li) { return li >= 3; }
+function rgbOf(col) {
+  if (col[0] === "#") { const n = parseInt(col.slice(1), 16); return (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255); }
+  return col.slice(4, -1);
+}
+
+function drawTallTower(x, r, ly, li, bx, top, bw, baseY, ext) {
+  // a dead high-rise in the far rows: blocky, a setback at the crown, its upper floors fading into the scud
+  const bh = baseY - top, rgb = rgbOf(ly.col);
+  const fg = x.createLinearGradient(0, top, 0, baseY);
+  fg.addColorStop(0, "rgba(" + rgb + ",0)");
+  fg.addColorStop(0.42, "rgba(" + rgb + ",0.9)");
+  fg.addColorStop(1, "rgba(" + rgbOf(shade(ly.col, -0.25)) + ",1)");
+  x.fillStyle = fg;
+  const sb = r() < 0.7 ? bw * (0.55 + r() * 0.25) : bw, sbH = bh * (0.12 + r() * 0.1);
+  x.fillRect(bx, top + sbH, bw, bh - sbH + ext);
+  x.fillRect(bx + (bw - sb) / 2, top, sb, sbH + 1);
+  // windows only where the tower is still solid to the eye, fading with height
+  const wa = ly.winA || 0.09;
+  for (let wy = top + bh * 0.42; wy < baseY - 6; wy += 9)
+    for (let wx = bx + 3; wx < bx + bw - 5; wx += 7)
+      if (r() < 0.5) { x.fillStyle = "rgba(120,140,170," + (wa * 0.9 * ((wy - top) / bh)).toFixed(3) + ")"; x.fillRect(wx, wy, 2.6, 3.4); }
+}
+
+function drawFarCrane(x, cx, base, aw, ah) {
+  // the same crane again, far off and small: two of them, and the eye measures the distance between
+  const top = base - ah * 0.15, jib = aw * 0.055;
+  x.strokeStyle = "rgba(14,18,26,0.7)"; x.lineWidth = 0.9; x.lineCap = "round";
+  x.beginPath(); x.moveTo(cx, base); x.lineTo(cx, top); x.stroke();
+  x.lineWidth = 0.7;
+  x.beginPath(); x.moveTo(cx - jib * 0.35, top + 2); x.lineTo(cx + jib, top + 2); x.stroke();
+  x.beginPath(); x.moveTo(cx, top - 4); x.lineTo(cx + jib * 0.95, top + 2); x.moveTo(cx, top - 4); x.lineTo(cx - jib * 0.33, top + 2); x.stroke();
+  x.lineWidth = 0.5;
+  x.beginPath(); x.moveTo(cx + jib * 0.7, top + 2); x.lineTo(cx + jib * 0.7, top + 2 + ah * 0.05); x.stroke();
+}
+
+function tint(col, d) {
+  // shift a color by d levels per channel; returns hex so shade() can take it
+  const [r0, g0, b0] = rgbOf(col).split(",").map(Number);
+  const h = v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0");
+  return "#" + h(r0 + d) + h(g0 + d) + h(b0 + d);
+}
+
+function roofProfile(r, o, bx, top, bw, bh) {
+  // the roofline as points left to right: plain, stepped back, burned open, or sheared by a collapse
+  const pts = [];
+  if (o.broken) {
+    const prof = [[0, 0], [0.38 + r() * 0.1, 0], [0.5, 0.16 + r() * 0.1], [0.62, 0.10 + r() * 0.08], [0.74, 0.30 + r() * 0.1], [0.86, 0.24 + r() * 0.08], [1, 0.40 + r() * 0.1]];
+    for (const p of prof) pts.push([bx + (o.flip ? 1 - p[0] : p[0]) * bw, top + p[1] * bh]);
+    if (o.flip) pts.reverse();
+  } else if (o.collapsed) {
+    // one side came down in chunks: whole floors gone, the rest hanging on
+    const keep = 0.35 + r() * 0.2, steps = 3;
+    pts.push([bx, top], [bx + bw * keep, top]);
+    let fx = keep;
+    for (let i = 1; i <= steps; i++) {
+      const fy = 0.18 * i + r() * 0.14, fx2 = keep + (1 - keep) * (i / steps);
+      pts.push([bx + bw * (fx + (fx2 - fx) * 0.15), top + bh * fy]);
+      pts.push([bx + bw * fx2, top + bh * (fy + (r() - 0.5) * 0.06)]);
+      fx = fx2;
+    }
+    if (o.flip) { for (const p of pts) p[0] = 2 * bx + bw - p[0]; pts.reverse(); }
+  } else if (o.setback) {
+    const sbH = bh * (0.28 + r() * 0.2), sbW = bw * (0.5 + r() * 0.25), al = r();
+    const sbX = al < 0.33 ? bx : al < 0.66 ? bx + (bw - sbW) / 2 : bx + bw - sbW;
+    pts.push([bx, top + sbH], [sbX, top + sbH], [sbX, top], [sbX + sbW, top], [sbX + sbW, top + sbH], [bx + bw, top + sbH]);
+  } else {
+    pts.push([bx, top], [bx + bw, top]);
+  }
+  return pts;
+}
+function roofAt(pts, wx) {
+  // roof height at a column: the lower endpoint of the segment above it
+  for (let i = 1; i < pts.length; i++) if (wx >= pts[i - 1][0] && wx <= pts[i][0]) return Math.max(pts[i - 1][1], pts[i][1]);
+  return pts[0][1];
+}
+
+function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
+  // one building: a facade with floors and bays, dead glass, a side face where the view allows, and whatever happened to it
+  const bh = baseY - top, aw = L.apW, eyeY = L.apH * 0.52, near = li >= 3;
+  const col = tint(ly.col, Math.round((r() - 0.5) * 8));
+  x.save();
+  if (o.lean) { x.translate(bx + bw / 2, baseY + ext); x.rotate(o.lean); x.translate(-(bx + bw / 2), -(baseY + ext)); }
+  const pts = roofProfile(r, o, bx, top, bw, bh);
+  const gx = near ? 9 : 7, gy = near ? 12 : 9, ww = near ? 3.4 : 2.6, wh = near ? 4.6 : 3.4;
+
+  // ---- side face: only in the near rows, on the side that faces the middle of the view, receding toward eye level
+  const cx = bx + bw / 2, toward = aw / 2 - cx;
+  if (near && o.side && Math.abs(toward) > aw * 0.05 && !o.lean) {
+    const sgn = toward > 0 ? 1 : -1, sw = bw * (0.14 + r() * 0.1);
+    const fx = sgn > 0 ? bx + bw : bx, f = Math.min(0.5, sw / Math.abs(toward));
+    const yTop = roofAt(pts, sgn > 0 ? bx + bw - 0.5 : bx + 0.5), xFar = fx + sgn * sw;
+    const yTopFar = yTop + (eyeY - yTop) * f, yBaseFar = baseY + ext + (eyeY - baseY - ext) * f;
+    x.fillStyle = tint(col, 9);
+    x.beginPath(); x.moveTo(fx, yTop); x.lineTo(xFar, yTopFar); x.lineTo(xFar, yBaseFar); x.lineTo(fx, baseY + ext); x.closePath(); x.fill();
+    const wa = ly.winA * 0.8;
+    for (let wy = yTop + 6; wy < baseY - 6; wy += gy) {
+      for (const u of (sw > 12 ? [0.3, 0.7] : [0.5])) {
+        if (r() < 0.85) { x.fillStyle = "rgba(120,140,170," + (wa * (0.4 + r() * 0.8)).toFixed(3) + ")"; x.fillRect(fx + sgn * sw * u - 0.8, wy + (yTopFar - yTop) * u, 1.6, 4.2); }
+      }
+    }
+  }
+
+  // ---- front face
+  const fg = x.createLinearGradient(0, top, 0, baseY);
+  fg.addColorStop(0, col); fg.addColorStop(0.18, col); fg.addColorStop(1, shade(col, -0.25));
+  x.fillStyle = fg;
+  x.beginPath(); x.moveTo(bx, baseY + ext);
+  for (const p of pts) x.lineTo(p[0], p[1]);
+  x.lineTo(bx + bw, baseY + ext); x.closePath(); x.fill();
+  x.save(); x.clip(); // everything on the facade stays inside its outline
+
+  if (li >= 2 && ly.winA > 0 && bw > 14) {
+    // floor lines and structural bays: the regularity is what makes it a building
+    x.fillStyle = "rgba(150,165,190,0.035)";
+    for (let wy = top + 3; wy < baseY; wy += gy) x.fillRect(bx, wy - 1, bw, 1);
+    x.fillStyle = "rgba(150,165,190,0.045)";
+    const bay = gx * (3 + Math.floor(r() * 2));
+    for (let px = bx + bay; px < bx + bw - 4; px += bay) x.fillRect(px - 0.5, top, 1, bh + ext);
+    // dead glass: a regular grid, large panes, or ribbon strips per floor; a few broken, a few boarded, a few gone
+    const brokenP = 0.08 + (o.decay ? 0.14 : 0), boardP = o.board ? 0.12 : 0.02, missP = 0.05;
+    const boost = clamp((1459 * 540) / (L.apW * L.apH), 1, 6), ft = o.ftype || 0;
+    const gxx = ft === 2 ? gx * 1.5 : (ft === 1 ? 6 : gx), www = ft === 2 ? ww * 1.7 : (ft === 1 ? 6 : ww), whh = ft === 2 ? wh * 1.15 : (ft === 1 ? wh * 0.85 : wh);
+    const pushSurvivor = (wx, wy) => {
+      // rare survivor windows, candidates only: the hope budget picks from them after the bake
+      if (o.lean || o.fire || o.shell || r() >= 0.006 * boost) return;
+      const md = r();
+      litWindows.push({ x: wx, y: wy, w: www + 0.2, h: whh + 0.2, a0: 0.28 + r() * 0.26, cool: r() < 0.16, mode: md < 0.72 ? 0 : (md < 0.92 ? 1 : 2), ph: r() * 6.28, sp: 0.5 + r() * 2.2 });
+    };
+    for (let wy = top + 5; wy < baseY - 6; wy += gy) {
+      const fv = 0.75 + r() * 0.5;
+      for (let wx = bx + 3; wx < bx + bw - (ft === 1 ? 3 : 5); wx += gxx) {
+        if (wy < roofAt(pts, wx + www / 2) + 3) continue;
+        // a burned-out shell: every opening is a black hole
+        if (o.shell) { if (r() < 0.85) { x.fillStyle = "rgba(0,0,0,0.40)"; x.fillRect(wx - 0.4, wy - 0.4, www + 0.8, whh + 0.8); } continue; }
+        const q = r();
+        if (q < missP * (ft === 1 ? 0.4 : 1)) continue;
+        if (q < missP + brokenP) { x.fillStyle = "rgba(0,0,0,0.34)"; x.fillRect(wx - 0.4, wy - 0.4, www + 0.8, whh + 0.8); continue; }
+        if (q < missP + brokenP + boardP) { x.fillStyle = "rgba(24,20,16,0.55)"; x.fillRect(wx - 0.3, wy - 0.3, www + 0.6, whh + 0.6); continue; }
+        const a = ly.winA * fv * (0.5 + r() * 0.8) * (ft === 1 ? 0.8 : 1);
+        x.fillStyle = "rgba(120,140,170," + a.toFixed(3) + ")"; x.fillRect(wx, wy, www, whh);
+        if (near && ft !== 1) { x.fillStyle = "rgba(170,190,220," + (a * 0.7).toFixed(3) + ")"; x.fillRect(wx, wy, www, 0.7); }
+        pushSurvivor(wx, wy);
+      }
+      if (ft === 1 && near) { x.fillStyle = "rgba(0,0,0,0.25)"; x.fillRect(bx, wy + whh, bw, 1); } // the spandrel band under a ribbon
+    }
+    // cornice: a thin catch of skylight along an intact roofline
+    if (o.cornice && !o.broken && !o.collapsed) {
+      x.strokeStyle = "rgba(150,165,190,0.09)"; x.lineWidth = 1.4;
+      x.beginPath(); x.moveTo(pts[0][0], pts[0][1] + 0.8); for (const p of pts) x.lineTo(p[0], p[1] + 0.8); x.stroke();
+    }
+  }
+  // grime: soot under the roofline, a water stain, a scorched window or two
+  if (li >= 2) {
+    if (r() < 0.6) {
+      const ns = 2 + Math.floor(r() * 3);
+      for (let i = 0; i < ns; i++) {
+        const sx = bx + 2 + r() * (bw - 5), sy0 = roofAt(pts, sx), sl = bh * (0.22 + r() * 0.4);
+        const sg = x.createLinearGradient(0, sy0, 0, sy0 + sl); sg.addColorStop(0, "rgba(0,0,0,0.32)"); sg.addColorStop(1, "rgba(0,0,0,0)");
+        x.fillStyle = sg; x.fillRect(sx, sy0, 1 + r() * 2, sl);
+      }
+    }
+    if (r() < 0.5) softBlob(x, bx + (r() < 0.5 ? 4 : bw - 4), top + bh * (0.1 + r() * 0.3), 6 + r() * 8, "0,0,0", 0.22, 2.2);
+    if (r() < 0.45 || o.shell) { const n = (o.shell ? 3 : 1) + Math.floor(r() * 2); for (let i = 0; i < n; i++) softBlob(x, bx + 6 + r() * (bw - 12), top + 4 + r() * bh * 0.6, 4 + r() * 4, "0,0,0", 0.5, 0.8); }
+  }
+  let out = null;
+  if (o.broken) {
+    // burned open: scorch above the break, the soot the rain never washed off, and what is left of the top floors
+    const fxr = bx + bw * (o.flip ? 0.28 : 0.72), fyr = roofAt(pts, fxr);
+    softBlob(x, fxr, fyr + bh * 0.06, bw * 0.34, "0,0,0", 0.45, 0.7);
+    for (let i = 0; i < 3; i++) {
+      const sx = bx + bw * (o.flip ? 0.05 + r() * 0.45 : 0.5 + r() * 0.45), sy0 = roofAt(pts, sx), sl = bh * (0.25 + r() * 0.3);
+      const sg = x.createLinearGradient(0, sy0, 0, sy0 + sl); sg.addColorStop(0, "rgba(0,0,0,0.40)"); sg.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = sg; x.fillRect(sx, sy0, 1.2 + r() * 2, sl);
+    }
+    if (o.fire) {
+      // the fire is still going somewhere inside: a dull glow behind the windows nearest the break
+      const gy2 = fyr + bh * 0.10;
+      softBlob(x, fxr, gy2, bw * 0.28, "255,120,48", 0.16, 0.9);
+      for (let i = 0; i < 4; i++) { x.fillStyle = "rgba(255,140,60," + (0.22 + r() * 0.3).toFixed(2) + ")"; x.fillRect(fxr + (r() - 0.5) * bw * 0.3, gy2 + (r() - 0.3) * bh * 0.14, ww, wh); }
+      out = { x: fxr, y: fyr - 1, fy: gy2, r: bw * 0.3 };
+    } else out = { x: fxr, y: fyr - 1, fy: fyr + bh * 0.1, r: bw * 0.25 };
+  }
+  if (o.collapsed) {
+    // the sheared face shows its floors, and everything below the break is black with soot
+    const lowSide = o.flip ? bx : bx + bw * 0.45;
+    for (let i = 0; i < 4; i++) { const sx = lowSide + r() * bw * 0.5, sy0 = roofAt(pts, sx); x.fillStyle = "rgba(150,165,190,0.10)"; x.fillRect(sx, sy0 + 1, 3 + r() * 6, 1); }
+    softBlob(x, lowSide + bw * 0.25, roofAt(pts, lowSide + bw * 0.25) + bh * 0.12, bw * 0.4, "0,0,0", 0.4, 0.7);
+  }
+  if (o.hole) {
+    // a piece of the wall is gone: dark inside, the floor slabs showing at the edges
+    const hx = bx + bw * (0.2 + r() * 0.4), hy = top + bh * (0.25 + r() * 0.35), hw = bw * (0.28 + r() * 0.2), hh = bh * (0.14 + r() * 0.14);
+    x.fillStyle = "rgba(2,3,5,0.92)"; x.beginPath();
+    const n = 8;
+    for (let i = 0; i < n; i++) { const a = (i / n) * 6.283, rr = 0.7 + r() * 0.5; x.lineTo(hx + Math.cos(a) * hw * rr, hy + Math.sin(a) * hh * rr); }
+    x.closePath(); x.fill();
+    x.strokeStyle = "rgba(150,165,190,0.14)"; x.lineWidth = 0.8; x.stroke();
+    x.fillStyle = "rgba(150,165,190,0.18)";
+    for (let sy = hy - hh * 0.5; sy < hy + hh * 0.6; sy += gy) x.fillRect(hx - hw * 0.6, sy, hw * 1.2, 1);
+    softBlob(x, hx, hy - hh * 0.9, hw * 0.9, "0,0,0", 0.35, 0.5);
+  }
+  if (o.crack) {
+    let cx3 = bx + bw * (0.3 + r() * 0.4), cy3 = roofAt(pts, cx3) - 1;
+    const cps = [[cx3, cy3]];
+    while (cy3 < top + bh * 0.62) { cy3 += 4 + r() * 6; cx3 += (r() - 0.5) * 4; cps.push([cx3, cy3]); }
+    x.strokeStyle = "rgba(0,0,0,0.6)"; x.lineWidth = 1.1; x.beginPath(); x.moveTo(cps[0][0], cps[0][1]);
+    for (const p of cps) x.lineTo(p[0], p[1]);
+    x.stroke();
+    x.strokeStyle = "rgba(120,140,170,0.10)"; x.lineWidth = 0.7; x.beginPath(); x.moveTo(cps[0][0] + 1, cps[0][1]);
+    for (const p of cps) x.lineTo(p[0] + 1, p[1]);
+    x.stroke();
+  }
+  x.restore(); // clip
+
+  // outside the outline: a mast that came down across the roof edge, rubble where a collapse spilled
+  if (o.toppled) {
+    const tx0 = r() < 0.5 ? bx + 3 : bx + bw - 3, ty0 = roofAt(pts, tx0), dir = tx0 < cx ? 1 : -1, len = 8 + r() * 12;
+    x.strokeStyle = "rgba(6,8,12,0.9)"; x.lineWidth = 0.9;
+    x.beginPath(); x.moveTo(tx0 - dir * 3, ty0 - 2); x.lineTo(tx0 + dir * len, ty0 + len * 0.7); x.stroke();
+  }
+  if (o.collapsed && near) {
+    const rx = o.flip ? bx - 4 : bx + bw * 0.4, rw = bw * 0.7;
+    x.fillStyle = shade(col, -0.2);
+    x.beginPath(); x.moveTo(rx, baseY + ext);
+    for (let i = 0; i <= 6; i++) x.lineTo(rx + rw * (i / 6), baseY - (i === 0 || i === 6 ? 1 : 3 + r() * 8));
+    x.lineTo(rx + rw, baseY + ext); x.closePath(); x.fill();
+  }
+  x.restore(); // lean
+  return out;
+}
+
+function bakeBackdrop() {
+  const aw = L.apW, ah = L.apH;
+  const SS = Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(aw * SS); c.height = Math.ceil(ah * SS);
+  const x = c.getContext("2d");
+  x.scale(SS, SS);
+  const r = rngf(1337);
+  litWindows = [];
+  anchors = { blink: [], smoke: null, smoke2: null, tower: null, dying: null };
+  const farline = ah * 0.52;
+  const ext = ah * 0.08;
+
+  // ---- sky: cold overcast with no glow at the horizon; the grid went down a long time ago ----
+  const sky = x.createLinearGradient(0, 0, 0, farline);
+  sky.addColorStop(0, "#080b11");
+  sky.addColorStop(0.40, "#0e131c");
+  sky.addColorStop(0.78, "#161d28");
+  sky.addColorStop(1, "#1d2532");
+  x.fillStyle = sky; x.fillRect(0, 0, aw, farline + 2);
+  x.fillStyle = "#0a0d13"; x.fillRect(0, farline, aw, ah - farline);
+  // one cold skylight hug at the far line so the last silhouettes have something to dissolve into
+  softBlob(x, aw * 0.45, farline, aw * 0.62, "118,138,166", 0.05, 0.30);
+
+  // overcast ceiling: soft cloud masses, nothing lighting them from below
+  for (let i = 0; i < 9; i++) {
+    const cx2 = r() * aw, cy2 = ah * (0.03 + r() * 0.17);
+    softBlob(x, cx2, cy2, aw * (0.10 + r() * 0.13), "10,13,19", 0.5 + r() * 0.3, 0.32);
+  }
+  for (let i = 0; i < 6; i++) {
+    const cx2 = r() * aw, cy2 = ah * (0.16 + r() * 0.12);
+    softBlob(x, cx2, cy2, aw * (0.07 + r() * 0.09), "8,11,16", 0.45, 0.30);
+  }
+
+  // ---- the city continues past seeing: a last row of specks at the far line ----
+  x.globalAlpha = 0.16; x.fillStyle = "#1c2432";
+  for (let fx = -6; fx < aw + 6;) { const fw2 = 6 + r() * 10, fh2 = ah * (0.02 + r() * 0.05); x.fillRect(fx, ah * 0.535 - fh2, fw2, fh2 + 4); fx += fw2 + 2 + r() * 14; }
+  x.globalAlpha = 1;
+
+  // ---- skyline layers, back to front, colder and emptier with depth; the city ends in nothing ----
+  const layers = [
+    { base: 0.545, hMin: 0.05, hMax: 0.15, wMin: 16, wMax: 34, col: "#1a2230", winA: 0, haze: null, ghost: 0.26, gapK: 2.4 },
+    { base: 0.60, hMin: 0.05, hMax: 0.22, wMin: 16, wMax: 34, col: "#161d2a", winA: 0.08, haze: "30,40,58,0.36", clut: 0, gapK: 1.15, lots: 1, tall: [aw * 0.30, aw * 0.57, aw * 0.90] },
+    { base: 0.68, hMin: 0.07, hMax: 0.26, wMin: 22, wMax: 46, col: "#111826", winA: 0.10, haze: "24,32,48,0.26", clut: 0.25, gapK: 1.2, lots: 2, tall: [aw * 0.45] },
+    { base: 0.78, hMin: 0.11, hMax: 0.30, wMin: 30, wMax: 62, col: "#0c1119", winA: 0.12, haze: "18,24,36,0.18", clut: 0.35, gapK: 1.25, lots: 2 },
+    { base: 0.90, hMin: 0.15, hMax: 0.34, wMin: 40, wMax: 84, col: "#05070c", winA: 0.13, haze: "12,16,26,0.12", clut: 0.45, gapK: 1.2, lots: 2 }
+  ];
+  const towerX = aw * 0.66;
+  let towerBaseY = ah * 0.60, towerFound = false;
+  const wounds = { broken: 4, collapsed: 3, lean: 2, crack: 2, hole: 3, toppled: 3, stack: 1, board: 8 };
+
+  layers.forEach((ly, li) => {
+    const baseY = ly.base * ah;
+    let bx = -12, lots = ly.lots || 0, tallI = 0;
+    x.globalAlpha = ly.ghost || 1;
+    while (bx < aw + 12) {
+      let bw = ly.wMin + r() * (ly.wMax - ly.wMin);
+      // the siren mast needs a mid-ground roof under it: make sure one building in this row spans it
+      if (li === 2 && !towerFound && bx + bw > towerX - 6) bx = Math.min(bx, towerX - bw * (0.35 + r() * 0.3));
+      const spansTower = li === 2 && bx - 6 < towerX && bx + bw + 6 > towerX;
+      // dead high-rises in the far rows, tall enough to lose their tops in the scud
+      if (ly.tall && tallI < ly.tall.length && bx + bw > ly.tall[tallI]) {
+        const tw = (li === 1 ? 18 : 30) + r() * 12, th = ah * (li === 1 ? 0.30 + r() * 0.10 : 0.36 + r() * 0.08);
+        drawTallTower(x, r, ly, li, bx, baseY - th, tw, baseY, ext);
+        bx += tw + 6 + r() * 12; tallI++; continue;
+      }
+      // demolition lots: nothing stands here any more
+      if (lots > 0 && r() < 0.11 && bx > 20 && bx < aw - 80 && !spansTower) {
+        const lw = ly.wMax * (0.7 + r() * 0.8);
+        if (!(li === 2 && bx - 6 < towerX && bx + lw + 6 > towerX)) { drawLot(x, r, bx, baseY, lw, ly.col, ext); bx += lw + 4; lots--; continue; }
+      }
+      let bh = (ly.hMin + r() * (ly.hMax - ly.hMin)) * ah * (r() < 0.12 && li > 0 ? 1.5 : 1);
+      const o = {};
+      // the fire: one building in this row, left of center, is still burning; the smoke rises from it
+      if (li === 3 && !anchors.smoke && bx + bw > aw * 0.38 && !spansTower) { o.broken = true; o.fire = true; o.flip = r() < 0.5; bw = Math.max(bw, 44); bh = Math.max(bh, ah * 0.20); }
+      const top = baseY - bh;
+      if (li >= 2 && !spansTower && !o.fire) {
+        if (wounds.broken > 0 && bh > ah * 0.14 && bw > 28 && r() < 0.10) { o.broken = true; o.flip = r() < 0.5; wounds.broken--; }
+        else if (near2(li) && wounds.collapsed > 0 && bh > ah * 0.14 && bw > 34 && r() < 0.10) { o.collapsed = true; o.flip = r() < 0.5; wounds.collapsed--; }
+        else if (li <= 3 && wounds.lean > 0 && bh > ah * 0.12 && bh < ah * 0.26 && r() < 0.07) { o.lean = (r() < 0.5 ? -1 : 1) * (0.035 + r() * 0.015); wounds.lean--; }
+        else if (bh > ah * 0.12 && r() < 0.30) o.setback = true;
+        if (wounds.crack > 0 && bh > ah * 0.16 && !o.lean && r() < 0.10) { o.crack = true; wounds.crack--; }
+        if (near2(li) && wounds.hole > 0 && bh > ah * 0.15 && bw > 30 && !o.collapsed && r() < 0.12) { o.hole = true; wounds.hole--; }
+        if (near2(li) && wounds.toppled > 0 && r() < 0.12) { o.toppled = true; wounds.toppled--; }
+      }
+      if (li >= 2) {
+        if (wounds.board > 0 && r() < 0.15) { o.board = true; wounds.board--; }
+        o.decay = r() < 0.4; o.cornice = r() < 0.45; o.side = r() < 0.65; o.shell = !o.fire && !o.broken && !o.collapsed && r() < 0.14;
+        const fq = r(); o.ftype = fq < 0.65 ? 0 : (fq < 0.83 ? 1 : 2);
+      }
+      const res = drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o);
+      if (res && o.fire) anchors.smoke = res;
+      // a second, thinner fire far across the city
+      if (li === 1 && !anchors.smoke2 && bx > aw * 0.74 && bh > ah * 0.08) anchors.smoke2 = { x: bx + bw * 0.5, y: top };
+      // blinking obstruction light: only one crown light still runs, and it misfires
+      if (li >= 1 && li <= 3 && bh > ah * 0.24 && anchors.blink.length < 1 && !o.lean && r() < 0.5)
+        anchors.blink.push({ x: bx + bw / 2, y: top - 2, ph: r() * 6.28, fail: true });
+      // one cold smokestack on a wide mid-row roof
+      if (wounds.stack > 0 && li === 3 && bw > 44 && !spansTower && r() < 0.25) {
+        const sx = bx + bw * (0.25 + r() * 0.5), sh2 = ah * (0.12 + r() * 0.05);
+        x.fillStyle = shade(ly.col, -0.3); x.fillRect(sx - 2.2, top - sh2, 4.4, sh2); x.fillRect(sx - 3.2, top - sh2 - 2, 6.4, 3);
+        wounds.stack--;
+      }
+      // rooftop clutter, sparse
+      if (ly.clut && !o.broken && !o.collapsed && !o.lean && !o.setback && r() < ly.clut) drawClutter(x, r, bx, top, bw, shade(ly.col, -0.35));
+      // remember the mid-ground rooftop the siren mast stands on
+      if (spansTower && !towerFound) { towerBaseY = top; towerFound = true; }
+      bx += Math.max(bw + 4 + r() * 10, (ly.wMax * (ly.gapK || 0.9)) * (0.55 + r() * 0.7));
+    }
+    if (li === 1) drawFarCrane(x, aw * 0.47, baseY, aw, ah);
+    x.globalAlpha = 1;
+    // depth haze wash over everything behind this point
+    if (ly.haze) {
+      const hz = x.createLinearGradient(0, baseY - ah * 0.3, 0, baseY + ah * 0.05);
+      hz.addColorStop(0, "rgba(" + ly.haze.split(",").slice(0, 3).join(",") + ",0)");
+      hz.addColorStop(1, "rgba(" + ly.haze + ")");
+      x.fillStyle = hz;
+      x.fillRect(0, 0, aw, baseY + ah * 0.05);
+    }
+  });
+
+  // abandoned tower crane, mid-left, its load never set down
+  const crx = aw * 0.15, crTop = ah * 0.30, crBase = ah * 0.62;
+  x.strokeStyle = "rgba(9,12,18,0.8)"; x.lineWidth = 1.6; x.lineCap = "round";
+  x.beginPath(); x.moveTo(crx, crBase); x.lineTo(crx, crTop); x.stroke();
+  x.lineWidth = 0.6;
+  for (let yy = crTop + 6; yy < crBase; yy += 7) { x.beginPath(); x.moveTo(crx - 2.2, yy); x.lineTo(crx + 2.2, yy); x.stroke(); }
+  x.lineWidth = 1.1;
+  x.beginPath(); x.moveTo(crx - aw * 0.045, crTop + 4); x.lineTo(crx + aw * 0.115, crTop + 4); x.stroke();
+  x.beginPath(); x.moveTo(crx, crTop - 8); x.lineTo(crx + aw * 0.11, crTop + 4); x.stroke();
+  x.beginPath(); x.moveTo(crx, crTop - 8); x.lineTo(crx - aw * 0.04, crTop + 4); x.stroke();
+  x.beginPath(); x.moveTo(crx, crTop - 8); x.lineTo(crx, crTop + 4); x.stroke();
+  const hkX = crx + aw * 0.08, hkLen = ah * 0.15;
+  x.lineWidth = 0.7;
+  x.beginPath(); x.moveTo(hkX, crTop + 4); x.lineTo(hkX + 1.5, crTop + 4 + hkLen); x.stroke();
+  x.fillStyle = "rgba(9,12,18,0.85)";
+  x.save(); x.translate(hkX + 1.5, crTop + 4 + hkLen); x.rotate(0.07); x.fillRect(-7, 0, 14, 4.5); x.restore();
+
+  // ---- what little is still lit on the ground: two pools, one of them under the failing streetlight ----
+  anchors.dying = { x: aw * (0.14 + r() * 0.2), y: ah * 0.86 };
+  softBlob(x, anchors.dying.x, anchors.dying.y + 5, 30, "232,150,64", 0.05, 0.5);
+  softBlob(x, aw * (0.55 + r() * 0.3), ah * (0.82 + r() * 0.1), 30 + r() * 20, "232,150,64", 0.04, 0.55);
+  // if no building burned in this bake, the smoke comes from an old boiler stack instead
+  if (!anchors.smoke) {
+    anchors.smoke = { x: aw * (0.24 + r() * 0.1), y: ah * 0.62, fy: ah * 0.64, r: 12 };
+    x.fillStyle = "#0a0e15";
+    x.fillRect(anchors.smoke.x - 3, anchors.smoke.y, 6, ah * 0.10);
+    x.fillRect(anchors.smoke.x - 5, anchors.smoke.y - 2, 10, 4);
+  }
+
+  // ---- the siren mast, standing on its mid-ground roof ----
+  const tb = towerBaseY, mastH = ah * 0.30, tt = tb - mastH;
+  anchors.tower = { x: towerX, topY: tt, baseY: tb };
+  x.strokeStyle = "#060910"; x.fillStyle = "#060910"; x.lineCap = "round";
+  x.lineWidth = 2.6;
+  x.beginPath(); x.moveTo(towerX - 9, tb); x.lineTo(towerX - 3.4, tt); x.moveTo(towerX + 9, tb); x.lineTo(towerX + 3.4, tt); x.stroke();
+  x.lineWidth = 1.1;
+  for (let i = 0; i < 8; i++) {
+    const yy = tb + (tt - tb) * (i / 8), yn = tb + (tt - tb) * ((i + 1) / 8);
+    const sp = 9 - 5.6 * (i / 8), sn = 9 - 5.6 * ((i + 1) / 8);
+    x.beginPath(); x.moveTo(towerX - sp, yy); x.lineTo(towerX + sn, yn); x.moveTo(towerX + sp, yy); x.lineTo(towerX - sn, yn); x.stroke();
+  }
+  x.lineWidth = 0.7; x.strokeStyle = "rgba(6,9,16,0.5)";
+  x.beginPath(); x.moveTo(towerX - 3.8, tb - mastH * 0.62); x.lineTo(towerX - aw * 0.045, tb + 6); x.stroke();
+  x.beginPath(); x.moveTo(towerX + 3.8, tb - mastH * 0.62); x.lineTo(towerX + aw * 0.05, tb + 4); x.stroke();
+  x.fillRect(towerX - 8, tt - 3, 16, 3.4);
+  x.fillRect(towerX - 6, tb - 7, 12, 7);
+  anchors.blink.push({ x: towerX, y: tb - mastH * 0.45, ph: 2.1 });
+
+  // ---- ground fog bed and grade ----
+  const haze2 = x.createLinearGradient(0, ah * 0.74, 0, ah);
+  haze2.addColorStop(0, "rgba(140,152,170,0)");
+  haze2.addColorStop(1, "rgba(140,152,170,0.17)");
+  x.fillStyle = haze2; x.fillRect(0, ah * 0.74, aw, ah * 0.26);
+  noiseOver(x, aw, ah, 0.04, true);
+  // final grade: ground the near city, deepen the zenith
+  const gr2 = x.createLinearGradient(0, farline, 0, ah);
+  gr2.addColorStop(0, "rgba(0,0,0,0)"); gr2.addColorStop(1, "rgba(0,0,0,0.16)");
+  x.fillStyle = gr2; x.fillRect(0, farline, aw, ah - farline);
+  const gr3 = x.createLinearGradient(0, 0, 0, ah * 0.12);
+  gr3.addColorStop(0, "rgba(0,0,0,0.16)"); gr3.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = gr3; x.fillRect(0, 0, aw, ah * 0.12);
+
+  // hope budget: a hard cap on lit windows, picked by the seed so a given viewport always shows the same survivors
+  const CAP = clamp(Math.round(14 * Math.sqrt((aw * ah) / (1459 * 540))), 6, 14);
+  if (litWindows.length > CAP) {
+    for (let i = litWindows.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      const tmp = litWindows[i]; litWindows[i] = litWindows[j]; litWindows[j] = tmp;
+    }
+    litWindows.length = CAP;
+  }
+  return c;
+}
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = c2 => clamp(Math.round(c2 * (1 + k)), 0, 255);
+  return "rgb(" + f(n >> 16) + "," + f((n >> 8) & 255) + "," + f(n & 255) + ")";
+}
+
+function buildFogTile() {
+  const c = document.createElement("canvas");
+  c.width = 1024; c.height = 320;
+  const x = c.getContext("2d");
+  const r = rngf(4242);
+  for (let i = 0; i < 46; i++)
+    softBlob(x, r() * 1024, 80 + r() * 220, 40 + r() * 110, "205,212,226", 0.035 + r() * 0.045, 0.6 + r() * 0.4);
+  for (let i = 0; i < 36; i++)
+    softBlob(x, r() * 1024, 60 + r() * 240, 10 + r() * 26, "212,218,230", 0.05 + r() * 0.04, 1);
+  return c;
+}
+
+function buildCloudStrip(lit) {
+  // low scud, one tile: torn dark bottoms with a faint skylight catch; the lit twin glows from inside for the sheet lightning
+  const c = document.createElement("canvas");
+  c.width = 1024; c.height = 240;
+  const x = c.getContext("2d");
+  const r = rngf(9191);
+  for (let i = 0; i < 34; i++) {
+    const cx = r() * 1024, cy = 40 + r() * 120, rad = 60 + r() * 120, sy = 0.35 + r() * 0.3;
+    if (lit) softBlob(x, cx, cy, rad * 0.85, "150,172,225", 0.16 + r() * 0.14, sy);
+    else { softBlob(x, cx, cy, rad, "5,7,11", 0.30 + r() * 0.25, sy); softBlob(x, cx, cy + rad * sy * 0.75, rad * 0.55, "48,60,84", 0.07, 0.22); }
+  }
+  for (let i = 0; i < 40; i++) {
+    const cx = r() * 1024, cy = 120 + r() * 100, rad = 18 + r() * 50, sy = 0.5 + r() * 0.4;
+    if (lit) softBlob(x, cx, cy, rad, "120,140,190", 0.10 + r() * 0.10, sy);
+    else softBlob(x, cx, cy, rad, "7,9,14", 0.22 + r() * 0.2, sy);
+  }
+  return c;
+}
+
+/* ---------- the bunker interior (baked) ---------- */
+function buildFrame() {
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(L.w * DPR); c.height = Math.ceil(L.h * DPR);
+  const x = c.getContext("2d");
+  x.scale(DPR, DPR);
+  const { w, h, apX, apY, apW, apH, sillY } = L;
+  const r = rngf(9001);
+  const la = lampPos();
+
+  // poured concrete wall
+  const wall = x.createLinearGradient(0, 0, 0, h);
+  wall.addColorStop(0, "#131110");
+  wall.addColorStop(0.55, "#0d0b0a");
+  wall.addColorStop(1, "#080706");
+  x.fillStyle = wall; x.fillRect(0, 0, w, h);
+  noiseOver(x, w, h, 0.05, true);
+  // formwork seams and tie holes
+  x.strokeStyle = "rgba(0,0,0,0.30)"; x.lineWidth = 1;
+  for (let yy = 40; yy < h; yy += 96) { x.beginPath(); x.moveTo(0, yy); x.lineTo(w, yy); x.stroke(); }
+  x.strokeStyle = "rgba(255,255,255,0.025)";
+  for (let yy = 41; yy < h; yy += 96) { x.beginPath(); x.moveTo(0, yy); x.lineTo(w, yy); x.stroke(); }
+  x.fillStyle = "rgba(0,0,0,0.28)";
+  for (let yy = 68; yy < h; yy += 96)
+    for (let xx = 56; xx < w; xx += 170) { x.beginPath(); x.arc(xx + (yy % 192 ? 40 : 0), yy, 2.4, 0, 7); x.fill(); }
+  // damp stains in the low corners
+  softBlob(x, w * 0.04, h * 0.9, w * 0.09, "0,0,0", 0.22, 1.4);
+  softBlob(x, w * 0.97, h * 0.86, w * 0.07, "0,0,0", 0.18, 1.5);
+  // ceiling shadow
+  const ceil = x.createLinearGradient(0, 0, 0, h * 0.14);
+  ceil.addColorStop(0, "rgba(0,0,0,0.5)"); ceil.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = ceil; x.fillRect(0, 0, w, h * 0.14);
+
+  // window opening
+  x.clearRect(apX, apY, apW, apH);
+
+  // angled concrete reveals: the slit is deep; light from the upper-right catches the left face and the sill
+  const rv = 16;
+  let gr = x.createLinearGradient(apX, 0, apX + rv, 0); // left reveal, lit
+  gr.addColorStop(0, "rgba(210,170,120,0.16)"); gr.addColorStop(1, "rgba(120,95,66,0.03)");
+  x.fillStyle = gr;
+  x.beginPath(); x.moveTo(apX, apY); x.lineTo(apX + rv, apY + rv * 0.6); x.lineTo(apX + rv, apY + apH - rv * 0.6); x.lineTo(apX, apY + apH); x.closePath(); x.fill();
+  gr = x.createLinearGradient(apX + apW - rv, 0, apX + apW, 0); // right reveal, shadowed
+  gr.addColorStop(0, "rgba(0,0,0,0.30)"); gr.addColorStop(1, "rgba(0,0,0,0.62)");
+  x.fillStyle = gr;
+  x.beginPath(); x.moveTo(apX + apW, apY); x.lineTo(apX + apW - rv, apY + rv * 0.6); x.lineTo(apX + apW - rv, apY + apH - rv * 0.6); x.lineTo(apX + apW, apY + apH); x.closePath(); x.fill();
+  gr = x.createLinearGradient(0, apY, 0, apY + rv); // head, dark
+  gr.addColorStop(0, "rgba(0,0,0,0.66)"); gr.addColorStop(1, "rgba(0,0,0,0.26)");
+  x.fillStyle = gr;
+  x.beginPath(); x.moveTo(apX, apY); x.lineTo(apX + apW, apY); x.lineTo(apX + apW - rv, apY + rv * 0.6); x.lineTo(apX + rv, apY + rv * 0.6); x.closePath(); x.fill();
+  gr = x.createLinearGradient(0, apY + apH - rv, 0, apY + apH); // sill face, lit
+  gr.addColorStop(0, "rgba(190,150,104,0.05)"); gr.addColorStop(1, "rgba(214,172,120,0.14)");
+  x.fillStyle = gr;
+  x.beginPath(); x.moveTo(apX, apY + apH); x.lineTo(apX + rv, apY + apH - rv * 0.6); x.lineTo(apX + apW - rv, apY + apH - rv * 0.6); x.lineTo(apX + apW, apY + apH); x.closePath(); x.fill();
+  // atmosphere falloff just inside the glass
+  let sh = x.createLinearGradient(0, apY, 0, apY + 34);
+  sh.addColorStop(0, "rgba(2,3,5,0.5)"); sh.addColorStop(1, "rgba(2,3,5,0)");
+  x.fillStyle = sh; x.fillRect(apX + rv, apY + rv * 0.6, apW - rv * 2, 34);
+
+  // center mullion
+  const mx = apX + apW / 2;
+  x.fillStyle = "#0b0a09"; x.fillRect(mx - 4.5, apY, 9, apH);
+  x.fillStyle = "rgba(226,178,120,0.07)"; x.fillRect(mx + 3, apY, 1.3, apH);
+  x.fillStyle = "rgba(0,0,0,0.5)"; x.fillRect(mx - 4.5, apY, 1.3, apH);
+
+  // glass: dust, two faint streaks, and the lamp's reflection floating in it
+  x.save();
+  x.beginPath(); x.rect(apX, apY, apW, apH); x.clip();
+  for (let i = 0; i < 14; i++) {
+    x.fillStyle = "rgba(200,200,190," + (0.03 + r() * 0.04).toFixed(3) + ")";
+    x.beginPath(); x.arc(apX + r() * apW, apY + r() * apH, 0.6 + r() * 0.9, 0, 7); x.fill();
+  }
+  x.restore();
+
+  // worn steel sill edge
+  x.fillStyle = "#171310"; x.fillRect(apX - 10, sillY + 2, apW + 20, 15);
+  const se = x.createLinearGradient(0, sillY + 2, 0, sillY + 17);
+  se.addColorStop(0, "rgba(226,178,120,0.16)"); se.addColorStop(0.25, "rgba(226,178,120,0.03)"); se.addColorStop(1, "rgba(0,0,0,0.4)");
+  x.fillStyle = se; x.fillRect(apX - 10, sillY + 2, apW + 20, 15);
+  x.strokeStyle = "rgba(255,220,170,0.10)"; x.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const sx2 = apX + r() * apW;
+    x.beginPath(); x.moveTo(sx2, sillY + 4 + r() * 4); x.lineTo(sx2 + 6 + r() * 18, sillY + 4 + r() * 8); x.stroke();
+  }
+
+  // console: brushed steel panel
+  const p = L, lx = p.lever.x, py = p.lever.y;
+  const px0 = p.vol.x - p.vol.r * 2.2, px1 = lx + p.lever.arm * 1.3;
+  const py0 = py - p.lever.arm * 1.5, py1 = Math.min(h - 26, py + p.lever.arm * 1.15);
+  const pg = x.createLinearGradient(0, py0, 0, py1);
+  pg.addColorStop(0, "#1a1613"); pg.addColorStop(0.12, "#141110"); pg.addColorStop(1, "#0c0a09");
+  x.fillStyle = pg;
+  roundRect(x, px0, py0, px1 - px0, py1 - py0, 10); x.fill();
+  x.save();
+  roundRect(x, px0, py0, px1 - px0, py1 - py0, 10); x.clip();
+  x.strokeStyle = "rgba(255,255,255,0.016)"; x.lineWidth = 1;
+  for (let yy = py0 + 3; yy < py1; yy += 2.5) { x.beginPath(); x.moveTo(px0, yy); x.lineTo(px1, yy); x.stroke(); }
+  x.strokeStyle = "rgba(255,235,200,0.05)";
+  x.beginPath(); x.moveTo(px0 + 22 + r() * 40, py0 + 8); x.lineTo(px0 + 60 + r() * 80, py1 - 12); x.stroke();
+  x.restore();
+  x.strokeStyle = "rgba(240,200,150,0.10)"; x.lineWidth = 1.4;
+  x.beginPath(); x.moveTo(px0 + 8, py0 + 1); x.lineTo(px1 - 8, py0 + 1); x.stroke();
+  x.strokeStyle = "#241d16"; x.lineWidth = 1.4;
+  roundRect(x, px0, py0, px1 - px0, py1 - py0, 10); x.stroke();
+  for (const [sx2, sy2] of [[px0 + 10, py0 + 10], [px1 - 10, py0 + 10], [px0 + 10, py1 - 10], [px1 - 10, py1 - 10], [(px0 + px1) / 2, py0 + 10]]) {
+    x.fillStyle = "#241e17"; x.beginPath(); x.arc(sx2, sy2, 2.6, 0, 7); x.fill();
+    x.fillStyle = "rgba(255,225,180,0.22)"; x.beginPath(); x.arc(sx2 - 0.7, sy2 - 0.7, 0.9, 0, 7); x.fill();
+  }
+  x.fillStyle = "#8a7f6d"; x.textAlign = "center"; x.font = "600 " + (p.portrait ? 7.5 : 9) + "px 'Segoe UI', sans-serif";
+  try { x.letterSpacing = p.portrait ? "1px" : "2px"; } catch (e) {}
+  const labelY = py + Math.max(p.vol.r + 16, p.lever.arm * 0.52);
+  for (const [txt, lx2] of [["VOLUME", p.vol.x], ["DISTANCE", p.dist.x], ["LAMP", p.dim.x], ["CAMERA", p.radio.x], ["WIPE", p.wipe.x], ["SHUTTER", p.shutter.x], ["BREAKER", lx]]) {
+    x.save(); x.globalAlpha = 0.8; x.translate(lx2, labelY); x.rotate((r() - 0.5) * 0.02); x.fillText(txt, 0, 0); x.restore();
+  }
+
+  // ---- shelter props ----
+  // ceiling conduit with a seep stain
+  x.strokeStyle = "#1c1712"; x.lineWidth = 3;
+  x.beginPath(); x.moveTo(0, h * 0.045); x.lineTo(w, h * 0.05); x.stroke();
+  x.strokeStyle = "rgba(255,220,170,0.04)"; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(0, h * 0.045 - 1.5); x.lineTo(w, h * 0.05 - 1.5); x.stroke();
+  softBlob(x, w * 0.31, h * 0.055, 26, "0,0,0", 0.3, 2.4);
+  // stress cracks running from the window corners
+  function crack(cx4, cy4, dx4, dy4) {
+    x.strokeStyle = "rgba(0,0,0,0.4)"; x.lineWidth = 1.1; x.beginPath(); x.moveTo(cx4, cy4);
+    let px4 = cx4, py4 = cy4;
+    for (let i = 0; i < 4; i++) { px4 += dx4 * (8 + r() * 12); py4 += dy4 * (6 + r() * 10) + (r() - 0.5) * 8; x.lineTo(px4, py4); }
+    x.stroke();
+  }
+  crack(apX - 2, apY - 2, -1, -1);
+  crack(apX + apW + 2, apY + apH + 6, 1, 1);
+  if (apX > 70) {
+    // PA speaker box on the left wall, wired from the ceiling
+    const spx = apX * 0.5 - 19, spy = h * 0.28;
+    x.strokeStyle = "#1c1712"; x.lineWidth = 2.4;
+    x.beginPath(); x.moveTo(spx + 19, h * 0.05); x.lineTo(spx + 19, spy); x.stroke();
+    x.fillStyle = "#0f0d0b"; roundRect(x, spx, spy, 38, 52, 4); x.fill();
+    x.strokeStyle = "#221c15"; x.lineWidth = 1.6; roundRect(x, spx, spy, 38, 52, 4); x.stroke();
+    x.strokeStyle = "rgba(0,0,0,0.6)"; x.lineWidth = 2.6;
+    for (let i = 1; i <= 5; i++) { x.beginPath(); x.moveTo(spx + 6, spy + i * 7.6); x.lineTo(spx + 32, spy + i * 7.6); x.stroke(); }
+    x.fillStyle = "rgba(140,210,150,0.45)"; x.beginPath(); x.arc(spx + 30, spy + 46, 1.7, 0, 7); x.fill();
+    // pinned notices, curling
+    for (let i = 0; i < 3; i++) {
+      const nx = apX * 0.5 - 28 + i * 16 + r() * 6, ny = h * 0.50 + i * 40 + r() * 9;
+      x.save(); x.translate(nx, ny); x.rotate((r() - 0.5) * 0.22);
+      x.fillStyle = "rgba(158,150,132," + (0.36 - i * 0.06).toFixed(2) + ")";
+      x.fillRect(0, 0, 24, 32);
+      x.strokeStyle = "rgba(0,0,0,0.35)"; x.lineWidth = 1;
+      for (let ln = 0; ln < 5; ln++) { x.beginPath(); x.moveTo(3, 8 + ln * 5); x.lineTo(20 - r() * 5, 8 + ln * 5); x.stroke(); }
+      if (i === 1) { x.fillStyle = "rgba(160,60,40,0.4)"; x.fillRect(13, 20, 8, 8); }
+      x.fillStyle = "rgba(255,255,255,0.06)";
+      x.beginPath(); x.moveTo(24, 32); x.lineTo(17, 32); x.lineTo(24, 24); x.closePath(); x.fill();
+      x.fillStyle = "#2c2f37"; x.beginPath(); x.arc(12, 2.4, 1.5, 0, 7); x.fill();
+      x.restore();
+    }
+    // wall calendar, right wall: every survived day crossed off in red
+    x.save();
+    const now2 = new Date();
+    const MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+    const dInM = new Date(now2.getFullYear(), now2.getMonth() + 1, 0).getDate();
+    const firstDow = new Date(now2.getFullYear(), now2.getMonth(), 1).getDay();
+    const today2 = now2.getDate();
+    const calW = Math.min((w - apX - apW) * 0.82, 118), calH = calW * 1.22;
+    const calX = apX + apW + ((w - apX - apW) - calW) / 2, calY = h * 0.40;
+    x.translate(calX + calW / 2, calY + calH / 2); x.rotate(-0.014); x.translate(-(calX + calW / 2), -(calY + calH / 2));
+    x.fillStyle = "rgba(0,0,0,0.4)"; x.fillRect(calX + 3, calY + 4, calW, calH);
+    x.fillStyle = "rgba(99,90,73,0.94)"; x.fillRect(calX, calY, calW, calH);
+    const pg2 = x.createLinearGradient(calX, calY, calX + calW * 0.6, calY + calH);
+    pg2.addColorStop(0, "rgba(0,0,0,0.08)"); pg2.addColorStop(0.55, "rgba(0,0,0,0.24)"); pg2.addColorStop(1, "rgba(0,0,0,0.42)");
+    x.fillStyle = pg2; x.fillRect(calX, calY, calW, calH);
+    x.fillStyle = "rgba(60,52,38,0.5)"; x.fillRect(calX, calY, calW, 3);
+    x.fillStyle = "#2c2f37"; x.beginPath(); x.arc(calX + calW / 2, calY - 3, 1.8, 0, 7); x.fill();
+    try { x.letterSpacing = "1px"; } catch (e) {}
+    x.fillStyle = "#3a332a"; x.textAlign = "center";
+    x.font = "700 " + Math.round(calW * 0.095) + "px 'Segoe UI', sans-serif";
+    x.fillText(MONTHS[now2.getMonth()], calX + calW / 2, calY + calW * 0.14);
+    x.font = "600 " + Math.round(calW * 0.055) + "px 'Segoe UI', sans-serif";
+    x.fillStyle = "rgba(58,51,42,0.7)";
+    x.fillText(String(now2.getFullYear()), calX + calW / 2, calY + calW * 0.21);
+    const gx0 = calX + 5, gy0 = calY + calW * 0.26;
+    const cellW = (calW - 10) / 7, rows2 = Math.ceil((firstDow + dInM) / 7);
+    const cellH = (calH - calW * 0.26 - 6) / Math.max(5, rows2);
+    x.strokeStyle = "rgba(0,0,0,0.22)"; x.lineWidth = 0.7;
+    for (let i = 0; i <= 7; i++) { x.beginPath(); x.moveTo(gx0 + i * cellW, gy0); x.lineTo(gx0 + i * cellW, gy0 + rows2 * cellH); x.stroke(); }
+    for (let i = 0; i <= rows2; i++) { x.beginPath(); x.moveTo(gx0, gy0 + i * cellH); x.lineTo(gx0 + 7 * cellW, gy0 + i * cellH); x.stroke(); }
+    x.textAlign = "left";
+    x.font = "600 " + Math.max(5, Math.round(cellW * 0.36)) + "px 'Segoe UI', sans-serif";
+    for (let d = 1; d <= dInM; d++) {
+      const idx = firstDow + d - 1, cx5 = gx0 + (idx % 7) * cellW, cy5 = gy0 + Math.floor(idx / 7) * cellH;
+      x.fillStyle = "rgba(40,35,28,0.7)";
+      x.fillText(String(d), cx5 + 1.5, cy5 + cellH * 0.42);
+      if (d < today2) {
+        x.strokeStyle = "rgba(122,32,26," + (0.5 + r() * 0.22).toFixed(2) + ")";
+        x.lineWidth = 1.7;
+        const j = () => (r() - 0.5) * 2.4;
+        x.beginPath(); x.moveTo(cx5 + 2 + j(), cy5 + 2 + j()); x.lineTo(cx5 + cellW - 2 + j(), cy5 + cellH - 2 + j()); x.stroke();
+        x.beginPath(); x.moveTo(cx5 + cellW - 2 + j(), cy5 + 2 + j()); x.lineTo(cx5 + 2 + j(), cy5 + cellH - 2 + j()); x.stroke();
+      }
+    }
+    for (let s5 = 0; s5 < 6; s5++) {
+      const sx5 = calX + r() * calW, sy5 = calY + r() * calH, sr5 = 4 + r() * 11;
+      const sg5 = x.createRadialGradient(sx5, sy5, 0, sx5, sy5, sr5);
+      sg5.addColorStop(0, "rgba(52,42,26,0.13)"); sg5.addColorStop(1, "rgba(52,42,26,0)");
+      x.fillStyle = sg5; x.beginPath(); x.arc(sx5, sy5, sr5, 0, 7); x.fill();
+    }
+    const dg5 = x.createRadialGradient(calX + calW, calY + calH, 0, calX + calW, calY + calH, calW * 0.6);
+    dg5.addColorStop(0, "rgba(34,27,17,0.42)"); dg5.addColorStop(1, "rgba(34,27,17,0)");
+    x.fillStyle = dg5; x.fillRect(calX, calY, calW, calH);
+    x.fillStyle = "rgba(14,11,7,0.55)";
+    x.beginPath(); x.moveTo(calX + calW, calY + calH); x.lineTo(calX + calW - 8, calY + calH); x.lineTo(calX + calW, calY + calH - 10); x.closePath(); x.fill();
+    x.restore();
+    // supply crates, dark corner
+    x.fillStyle = "#0b0908"; x.fillRect(w * 0.015, h * 0.84, 66, h * 0.16);
+    x.fillStyle = "#0d0b09"; x.fillRect(w * 0.03, h * 0.765, 54, h * 0.078);
+    x.strokeStyle = "rgba(255,235,200,0.05)"; x.lineWidth = 1.2;
+    x.beginPath(); x.moveTo(w * 0.015, h * 0.84); x.lineTo(w * 0.015 + 66, h * 0.84); x.stroke();
+    x.beginPath(); x.moveTo(w * 0.03, h * 0.765); x.lineTo(w * 0.03 + 54, h * 0.765); x.stroke();
+    x.strokeStyle = "rgba(150,140,120,0.12)"; x.lineWidth = 1.4;
+    x.beginPath(); x.moveTo(w * 0.045, h * 0.795); x.lineTo(w * 0.045 + 26, h * 0.795); x.stroke();
+    x.beginPath(); x.moveTo(w * 0.028, h * 0.88); x.lineTo(w * 0.028 + 34, h * 0.88); x.stroke();
+  }
+  // the keeper's lamp fixture: conduit, hood, cage
+  x.strokeStyle = "#242019"; x.lineWidth = 2.6;
+  x.beginPath(); x.moveTo(la.x, 0); x.lineTo(la.x, la.y - 12); x.stroke();
+  x.fillStyle = "#1f1913";
+  x.beginPath(); x.arc(la.x, la.y - 7, 9.5, Math.PI, 0); x.fill();
+  x.strokeStyle = "rgba(255,214,150,0.35)"; x.lineWidth = 0.9;
+  x.beginPath(); x.arc(la.x, la.y - 4, 6.5, 0.35, Math.PI - 0.35); x.stroke();
+  x.beginPath(); x.moveTo(la.x - 6, la.y - 5); x.lineTo(la.x - 2.5, la.y + 2); x.moveTo(la.x + 6, la.y - 5); x.lineTo(la.x + 2.5, la.y + 2); x.stroke();
+  return c;
+}
+function roundRect(x, a, b, w2, h2, r2) {
+  x.beginPath();
+  x.moveTo(a + r2, b);
+  x.arcTo(a + w2, b, a + w2, b + h2, r2);
+  x.arcTo(a + w2, b + h2, a, b + h2, r2);
+  x.arcTo(a, b + h2, a, b, r2);
+  x.arcTo(a, b, a + w2, b, r2);
+  x.closePath();
+}
+
+function buildRainLayer(n, lenMin, lenMax, alMin, alMax, count) {
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(L.apW * 1.5); c.height = Math.ceil(L.apH * 1.25);
+  const x = c.getContext("2d");
+  const r = rngf(7000 + n);
+  x.lineCap = "round";
+  for (let i = 0; i < count; i++) {
+    const sx = r() * c.width, sy2 = r() * c.height, ln = lenMin + r() * (lenMax - lenMin);
+    x.strokeStyle = "rgba(178,198,224," + (alMin + r() * (alMax - alMin)).toFixed(3) + ")";
+    x.lineWidth = 0.8 + r() * 0.7;
+    x.beginPath(); x.moveTo(sx, sy2); x.lineTo(sx - ln * 0.14, sy2 + ln); x.stroke();
+  }
+  return c;
+}
+
+function buildGrain() {
+  const c = document.createElement("canvas");
+  c.width = L.w + 160; c.height = L.h + 160;
+  const x = c.getContext("2d");
+  const img = x.createImageData(c.width, c.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 90 + Math.random() * 130;
+    d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  if (W < 10 || H < 10) { setTimeout(resize, 300); return; }
+  document.getElementById("rot").classList.toggle("show", H > W && Math.min(W, H) < 620);
+  cv.width = Math.ceil(W * DPR); cv.height = Math.ceil(H * DPR);
+  L = computeLayout();
+  cityC = bakeBackdrop();
+  frameC = buildFrame();
+  fogC = buildFogTile();
+  cloudC = buildCloudStrip(false); cloudLitC = buildCloudStrip(true);
+  rainNear = buildRainLayer(1, 20, 36, 0.09, 0.19, 255);
+  rainFar = buildRainLayer(2, 10, 18, 0.05, 0.10, 225);
+  runnels = [];
+  droplets = [];
+  for (let i = 0; i < 70; i++) droplets.push({ x: Math.random() * L.apW, y: Math.random() * L.apH, r: 0.5 + Math.random() * 0.7, a: 0.04 + Math.random() * 0.06 });
+  grainC = buildGrain();
+  feedC = buildFeed();
+  vigGrad = g.createRadialGradient(W * 0.5, H * 0.46, Math.min(W, H) * 0.42, W * 0.5, H * 0.46, Math.max(W, H) * 0.78);
+  vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+  vigGrad.addColorStop(1, "rgba(0,0,0,0.46)");
+  document.getElementById("hint").style.top = L.hintY + "px";
+  document.getElementById("hp").style.top = (L.hintY + 26) + "px";
+}
+let rsT = null;
+addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(resize, 140); });
+
+/* ---------- per-frame ---------- */
+const tdBuf = new Uint8Array(2048);
+function ampLevel() {
+  if (!N.ana) return 0;
+  N.ana.getByteTimeDomainData(tdBuf);
+  let rms = 0;
+  for (let i = 0; i < tdBuf.length; i++) { const v = (tdBuf[i] - 128) / 128; rms += v * v; }
+  return Math.min(1, Math.sqrt(rms / tdBuf.length) * 5);
+}
+let hornAngle = -Math.PI / 2, hornVel = 0;
+function hornYaw() { return hornAngle; }
+
+function drawCity(t, amp, dt, flashA) {
+  const { apX, apY, apW, apH } = L;
+  g.save();
+  g.beginPath(); g.rect(apX, apY, apW, apH); g.clip();
+  g.translate(apX, apY);
+  g.drawImage(cityC, 0, 0, apW, apH);
+  // everything that drifts takes its pace from the weather
+  fogPh += dt * (0.7 + 0.6 * WX.k + 0.6 * WX.gust);
+  cloudPh += dt * (0.6 + 1.2 * WX.k + 0.8 * WX.gust);
+  rainPhF += dt * 300 * (0.75 + 0.45 * WX.k + 0.4 * WX.gust);
+  rainPhN += dt * 540 * (0.75 + 0.45 * WX.k + 0.5 * WX.gust);
+
+  // lightning: a cold lift of the matte, a colder wash, and now and then a bolt far off behind the scud
+  if (flashA > 0.004) {
+    g.save(); g.globalCompositeOperation = "screen"; g.globalAlpha = Math.min(1, flashA * 0.5);
+    g.drawImage(cityC, 0, 0, apW, apH); g.restore();
+    g.fillStyle = "rgba(170,192,255," + (flashA * 0.55).toFixed(3) + ")";
+    g.fillRect(0, 0, apW, apH);
+    const bt = strike ? t - strike.t0 - strike.boltT : -1;
+    if (strike && strike.bolt && bt >= 0 && bt < 0.11) {
+      g.save();
+      g.strokeStyle = "rgba(225,235,255,0.45)"; g.lineWidth = 1.2; g.lineJoin = "round";
+      g.shadowColor = "rgba(150,180,255,0.8)"; g.shadowBlur = 16;
+      g.beginPath();
+      g.moveTo(strike.pts[0][0] * apW, strike.pts[0][1] * apH);
+      for (const p of strike.pts) g.lineTo(p[0] * apW, p[1] * apH);
+      g.stroke();
+      g.lineWidth = 0.8; g.globalAlpha = 0.7;
+      g.beginPath();
+      g.moveTo(strike.br[0][0] * apW, strike.br[0][1] * apH);
+      for (const p of strike.br) g.lineTo(p[0] * apW, p[1] * apH);
+      g.stroke();
+      g.restore();
+    }
+  }
+  // low scud under the overcast: slow and torn, lit from inside when the sheet lightning goes
+  if (cloudC) {
+    const cw = apW * 1.5, chh = apH * 0.36, cy0 = apH * 0.08;
+    const oc = RM ? 200 : (cloudPh * 4) % cw;
+    g.globalAlpha = 0.42;
+    g.drawImage(cloudC, -oc, cy0, cw, chh); g.drawImage(cloudC, cw - oc, cy0, cw, chh);
+    const la = strike ? Math.min(1, flashA * (strike.sheet ? 8 : 4)) : 0;
+    if (la > 0.01) { g.globalAlpha = 0.75 * la; g.drawImage(cloudLitC, -oc, cy0, cw, chh); g.drawImage(cloudLitC, cw - oc, cy0, cw, chh); }
+    g.globalAlpha = 1;
+  }
+
+  // siren head on the mast: horn bell + rotor housing on a trunnion yoke
+  const tw2 = anchors.tower, tx = tw2.x, tt = tw2.topY;
+  const yaw = hornYaw(), sy = Math.sin(yaw), cy2 = Math.cos(yaw);
+  const s = clamp(apH * 0.022, 5.5, 11);
+  const hcx = tx, hcy = tt - s * 1.05;
+  const lenH = s * 2.7, mouthR = s * 0.78, throatR = s * 0.32;
+  const mx2 = hcx + sy * lenH;
+  const mrx = Math.max(mouthR * 0.14, mouthR * Math.abs(cy2));
+  const lit = 0.72 + 0.28 * Math.max(0, cy2);
+  g.strokeStyle = "#05070c"; g.lineWidth = 2.2; g.lineCap = "round";
+  g.beginPath(); g.moveTo(tx - 6, tt); g.lineTo(hcx, hcy + s * 0.55); g.moveTo(tx + 6, tt); g.lineTo(hcx, hcy + s * 0.55); g.stroke();
+  const hornG = g.createLinearGradient(0, hcy - mouthR, 0, hcy + mouthR);
+  hornG.addColorStop(0, "rgb(" + Math.round(52 * lit) + "," + Math.round(58 * lit) + "," + Math.round(70 * lit) + ")");
+  hornG.addColorStop(0.45, "rgb(" + Math.round(26 * lit) + "," + Math.round(30 * lit) + "," + Math.round(38 * lit) + ")");
+  hornG.addColorStop(1, "rgb(" + Math.round(10 * lit) + "," + Math.round(12 * lit) + "," + Math.round(16 * lit) + ")");
+  const paintHorn = () => {
+    g.fillStyle = hornG; g.strokeStyle = "#04060a"; g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(hcx, hcy - throatR);
+    g.quadraticCurveTo(hcx + sy * lenH * 0.55, hcy - throatR - (mouthR - throatR) * 0.25, mx2, hcy - mouthR);
+    g.lineTo(mx2, hcy + mouthR);
+    g.quadraticCurveTo(hcx + sy * lenH * 0.55, hcy + throatR + (mouthR - throatR) * 0.25, hcx, hcy + throatR);
+    g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.ellipse(mx2, hcy, mrx, mouthR, 0, 0, 7);
+    if (cy2 > 0.12) {
+      g.fillStyle = "#020304"; g.fill();
+      const mg2 = g.createRadialGradient(mx2, hcy, 0, mx2, hcy, Math.max(1.5, mrx));
+      const ga2 = (powered ? 0.10 + 0.45 * amp : 0.03) * cy2 * cy2;
+      mg2.addColorStop(0, "rgba(255,190,120," + ga2.toFixed(3) + ")");
+      mg2.addColorStop(1, "rgba(255,190,120,0)");
+      g.fillStyle = mg2; g.fill();
+    } else { g.fillStyle = hornG; g.fill(); g.fillStyle = "rgba(4,6,10,0.35)"; g.fill(); }
+    g.strokeStyle = "rgba(190,200,220," + (0.14 + 0.20 * Math.abs(sy)).toFixed(2) + ")"; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(mx2, hcy, mrx, mouthR, 0, -1.2, 1.2); g.stroke();
+  };
+  const paintHousing = () => {
+    const hsG = g.createLinearGradient(0, hcy - s * 0.62, 0, hcy + s * 0.62);
+    hsG.addColorStop(0, "#3a4150"); hsG.addColorStop(0.5, "#181c24"); hsG.addColorStop(1, "#0a0c11");
+    g.fillStyle = hsG; g.strokeStyle = "#04060a"; g.lineWidth = 1;
+    roundRect(g, hcx - s * 0.55, hcy - s * 0.62, s * 1.1, s * 1.24, 3); g.fill(); g.stroke();
+    g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = 0.9;
+    for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(hcx - s * 0.38, hcy + i * s * 0.28); g.lineTo(hcx + s * 0.38, hcy + i * s * 0.28); g.stroke(); }
+  };
+  // when the horn points at the shelter its bell is nearer than the rotor box; never let the box cut it off
+  if (cy2 > 0) { paintHousing(); paintHorn(); }
+  else { paintHorn(); paintHousing(); }
+  const pulse = 0.5 + 0.5 * Math.sin(t * 5.0);
+  const by3 = hcy - s * 1.75;
+  g.strokeStyle = "#05070c"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(hcx, hcy - s * 0.62); g.lineTo(hcx, by3 + 5); g.stroke();
+  g.fillStyle = "#0a0c11"; g.fillRect(hcx - 2.2, by3 + 1, 4.4, 5);
+  g.fillStyle = powered ? "rgba(255,64,42," + (0.35 + 0.6 * pulse).toFixed(2) + ")" : "rgba(255,64,42,0.14)";
+  g.beginPath(); g.arc(hcx, by3, 3.6, 0, 7); g.fill();
+  if (powered) {
+    const bg = g.createRadialGradient(hcx, by3, 0, hcx, by3, 15);
+    bg.addColorStop(0, "rgba(255,64,42," + (0.24 * pulse).toFixed(2) + ")");
+    bg.addColorStop(1, "rgba(255,64,42,0)");
+    g.fillStyle = bg; g.beginPath(); g.arc(hcx, by3, 15, 0, 7); g.fill();
+  }
+
+  // obstruction lights blinking out of phase
+  for (const b of anchors.blink) {
+    let on = Math.sin(t * 4.19 + b.ph) > 0.55;
+    // the last crown light misfires: it drops beats and goes dark for stretches
+    if (b.fail) on = on && Math.sin(t * 0.23 + b.ph) > -0.35 && Math.sin(t * 1.31 + b.ph * 2) > -0.6;
+    g.fillStyle = "rgba(255,70,46," + (on ? 0.75 : 0.06) + ")";
+    g.beginPath(); g.arc(b.x, b.y, 1.5, 0, 7); g.fill();
+    if (on) {
+      const bg2 = g.createRadialGradient(b.x, b.y, 0, b.x, b.y, 5.5);
+      bg2.addColorStop(0, "rgba(255,70,46,0.28)"); bg2.addColorStop(1, "rgba(255,70,46,0)");
+      g.fillStyle = bg2; g.beginPath(); g.arc(b.x, b.y, 5.5, 0, 7); g.fill();
+    }
+  }
+
+  // smoke from the building that burned and never got put out: it is still going somewhere inside
+  {
+    const st = anchors.smoke, lean = RM ? 0.6 : Math.min(1.3, 0.3 + 0.6 * WX.k + 0.6 * WX.gust);
+    const ps = clamp(apH / 540, 0.45, 1); // sized for a desktop window; phones get it in proportion
+    const fl = RM ? 0.5 : 0.5 + 0.5 * Math.sin(t * 7.3) * Math.sin(t * 3.1 + 0.4) * Math.sin(t * 0.9);
+    softBlob(g, st.x, st.fy, st.r * (1 + 0.15 * fl), "255,118,46", 0.06 + 0.07 * fl, 0.9);
+    softBlob(g, st.x, st.y + 1, 14 * ps, "255,120,50", 0.08 + 0.06 * fl, 0.5);
+    softBlob(g, st.x, st.y + 1, 4.5 * ps, "255,175,105", 0.2 + 0.15 * fl, 0.6);
+    const N2 = 18;
+    for (let i = 0; i < N2; i++) {
+      const k = RM ? i / N2 : ((t / 22) + i / N2) % 1;
+      const rise = 1 - Math.pow(1 - k, 1.6);
+      const px2 = st.x + Math.sin(k * 4 + i * 2.1) * 3 * ps + k * k * apW * 0.08 * (0.5 + lean) * (0.7 + (i % 3) * 0.25);
+      const py2 = st.y - rise * apH * 0.32;
+      const a = 0.20 * (1 - 0.3 * WX.k) * (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88);
+      const warm = Math.max(0, 1 - k * 3);
+      const col = Math.round(150 + 30 * warm) + "," + Math.round(148 - 8 * warm) + "," + Math.round(158 - 34 * warm);
+      if (a > 0.003) softBlob(g, px2, py2, (8 + k * 34) * ps, col, a, 0.8 + 0.2 * k);
+    }
+    // a second, thinner column far across the city: it is not the only fire
+    const s2 = anchors.smoke2;
+    if (s2) for (let i = 0; i < 8; i++) {
+      const k = RM ? i / 8 : ((t / 26) + i / 8) % 1;
+      const a = 0.07 * (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
+      if (a > 0.003) softBlob(g, s2.x + k * k * apW * 0.03 * (0.5 + lean), s2.y - (1 - Math.pow(1 - k, 1.5)) * apH * 0.13, (3 + k * 11) * ps, "140,142,150", a, 0.9);
+    }
+  }
+
+  // fog band one (behind the survivors' windows)
+  const fw = apW * 1.6, fh = apH * 0.34;
+  const o1 = RM ? 0 : (fogPh * 7) % fw;
+  g.globalAlpha = 0.15;
+  g.drawImage(fogC, -o1, apH * 0.48, fw, fh);
+  g.drawImage(fogC, fw - o1, apH * 0.48, fw, fh);
+
+  // far rain sheet
+  // sheet lean: calm rain falls near straight, a gust drives it sideways
+  const rk = WX.k, rg = RM ? 0 : WX.gust, rsh = 0.03 + 0.10 * rk + 0.22 * rg;
+  if (rainFar) {
+    const chF = rainFar.height, oyF = RM ? 0 : rainPhF % chF, rwF = rainFar.width;
+    g.save(); g.transform(1, 0, -rsh * 0.7, 1, rsh * 0.7 * apH * 0.5, 0);
+    g.globalAlpha = Math.min(0.8, 0.55 * (0.55 + 0.75 * rk));
+    g.drawImage(rainFar, -(rwF - apW) / 2, oyF - chF); g.drawImage(rainFar, -(rwF - apW) / 2, oyF);
+    g.restore();
+  }
+
+  // lit windows with bloom
+  g.globalAlpha = 1;
+  for (const wn of litWindows) {
+    let a = wn.a0;
+    if (wn.mode === 1) a *= 0.7 + 0.3 * Math.sin(t * wn.sp + wn.ph);
+    else if (wn.mode === 2) a *= Math.sin(t * wn.sp * 2.4 + wn.ph) > 0.35 ? 1 : 0.08;
+    const col = wn.cool ? "150,190,255" : "255,186,110";
+    const cxw = wn.x + wn.w / 2, cyw = wn.y + wn.h / 2;
+    softBlob(g, cxw, cyw, wn.w * 2.3, col, a * 0.09, 1);
+    g.fillStyle = "rgba(" + col + "," + a.toFixed(3) + ")";
+    g.fillRect(wn.x, wn.y, wn.w, wn.h);
+  }
+
+  // the one streetlight that is losing its fight
+  const dl = anchors.dying;
+  const buzz = Math.sin(t * 13 + Math.sin(t * 3.7) * 4) > -0.3 ? 1 : 0.12;
+  softBlob(g, dl.x, dl.y, 26, "255,158,64", 0.10 * buzz, 0.55);
+  g.fillStyle = "rgba(255,190,120," + (0.5 * buzz).toFixed(2) + ")";
+  g.fillRect(dl.x - 1.2, dl.y - 1.2, 2.4, 2.4);
+
+  // fog band two (in front)
+  const o2 = RM ? 140 : (fogPh * 13) % fw;
+  g.globalAlpha = 0.22;
+  g.drawImage(fogC, -o2, apH * 0.62, fw, fh);
+  g.drawImage(fogC, fw - o2, apH * 0.62, fw, fh);
+  // near wisps along the bottom
+  const o3 = RM ? 300 : (fogPh * 24) % fw;
+  g.globalAlpha = 0.17;
+  g.drawImage(fogC, -o3, apH * 0.80, fw, fh * 0.8);
+  g.drawImage(fogC, fw - o3, apH * 0.80, fw, fh * 0.8);
+  // near rain sheet
+  if (rainNear) {
+    const chN = rainNear.height, oyN = RM ? 60 : rainPhN % chN, rwN = rainNear.width;
+    g.save(); g.transform(1, 0, -rsh, 1, rsh * apH * 0.5, 0);
+    g.globalAlpha = Math.min(1, 0.8 * (0.5 + 0.75 * rk));
+    g.drawImage(rainNear, -(rwN - apW) / 2, oyN - chN); g.drawImage(rainNear, -(rwN - apW) / 2, oyN);
+    g.restore();
+  }
+  g.globalAlpha = 1;
+
+  // horn sweep brushing the fog when it faces this shelter
+  const face = Math.max(0, cy2);
+  const sweepA = 0.13 * face * face * face * amp;
+  if (sweepA > 0.004) {
+    const sg = g.createRadialGradient(tx, apH * 0.62, 0, tx, apH * 0.62, apW * 0.30);
+    sg.addColorStop(0, "rgba(255,170,90," + sweepA.toFixed(3) + ")");
+    sg.addColorStop(1, "rgba(255,170,90,0)");
+    g.fillStyle = sg; g.beginPath(); g.arc(tx, apH * 0.62, apW * 0.30, 0, 7); g.fill();
+  }
+
+  // steel blast shutter descending outside the glass
+  if (shutterPos > 0.002) {
+    const hgt = shutterPos * apH;
+    const shG = g.createLinearGradient(0, 0, 0, hgt);
+    shG.addColorStop(0, "#16181d"); shG.addColorStop(1, "#0b0c10");
+    g.fillStyle = shG; g.fillRect(0, 0, apW, hgt);
+    g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1.2;
+    for (let sy3 = hgt % 13; sy3 < hgt - 4; sy3 += 13) { g.beginPath(); g.moveTo(0, sy3); g.lineTo(apW, sy3); g.stroke(); }
+    g.strokeStyle = "rgba(255,255,255,0.03)";
+    for (let sy3 = (hgt % 13) + 1.2; sy3 < hgt - 4; sy3 += 13) { g.beginPath(); g.moveTo(0, sy3); g.lineTo(apW, sy3); g.stroke(); }
+    g.fillStyle = "#1e2128"; g.fillRect(0, hgt - 6, apW, 6);
+    g.fillStyle = "rgba(255,220,170,0.10)"; g.fillRect(0, hgt - 6, apW, 1.2);
+  }
+
+  // rain on the glass: only where the shutter is not covering it
+  const shEdge = shutterPos * apH;
+  const glassOpen = shutterPos < 0.3;
+  if (glassOpen && droplets.length < 90 && Math.random() < 0.02 + 0.07 * WX.k)
+    droplets.push({ x: Math.random() * apW, y: Math.random() * apH, r: 0.5 + Math.random() * 0.7, a: 0.04 + Math.random() * 0.06 });
+  // a gust at squall strength throws a spatter across the glass all at once
+  if (!RM && glassOpen && !WX.spatDone && WX.gust > 0.55 * WX.gustA && WX.k > 0.45) {
+    WX.spatDone = true;
+    const n3 = 6 + Math.floor(WX.gust * 14), x0 = Math.random() * apW * 0.7;
+    for (let i = 0; i < n3 && droplets.length < 110; i++)
+      droplets.push({ x: x0 + Math.random() * apW * 0.3, y: Math.random() * apH, r: 0.6 + Math.random() * 0.9, a: 0.06 + Math.random() * 0.07 });
+  }
+  if (!RM && glassOpen && runnels.length < 14 && Math.random() < 0.03 + 0.12 * WX.k)
+    runnels.push({ x: Math.random() * apW, y: Math.random() * apH * 0.2, sp: 15 + Math.random() * 30, ph: Math.random() * 6.28, ln: 16 + Math.random() * 42 });
+  const wk = (t - wipeT) / 1.1;
+  const bandX = wk >= 0 && wk <= 1.15 ? wk * (apW + 90) - 45 : null;
+  if (bandX !== null) {
+    droplets = droplets.filter(d3 => d3.x > bandX);
+    runnels = runnels.filter(d3 => d3.x > bandX);
+  }
+  g.save();
+  g.beginPath(); g.rect(0, shEdge, apW, apH - shEdge); g.clip();
+  if (bandX !== null) {
+    const wg2 = g.createLinearGradient(bandX - 40, 0, bandX + 10, 0);
+    wg2.addColorStop(0, "rgba(210,225,240,0)");
+    wg2.addColorStop(0.8, "rgba(210,225,240,0.10)");
+    wg2.addColorStop(1, "rgba(230,240,250,0.20)");
+    g.fillStyle = wg2; g.fillRect(bandX - 40, 0, 50, apH);
+  }
+  for (const d3 of droplets) {
+    g.fillStyle = "rgba(200,215,235," + d3.a.toFixed(3) + ")";
+    g.beginPath(); g.arc(d3.x, d3.y, d3.r, 0, 7); g.fill();
+  }
+  for (const rn of runnels) {
+    if (!RM) {
+      rn.y += rn.sp * dt * (0.7 + 0.5 * Math.sin(t * 2.4 + rn.ph));
+      rn.x += Math.sin(t * 1.7 + rn.ph) * 0.12;
+      if (rn.y - rn.ln > apH) { if (Math.random() < 0.7 - 0.55 * WX.k) rn.dead = true; else { rn.y = -4; rn.x = Math.random() * apW; rn.sp = 15 + Math.random() * 30; } }
+    }
+    const tg2 = g.createLinearGradient(0, rn.y - rn.ln, 0, rn.y);
+    tg2.addColorStop(0, "rgba(190,210,235,0)");
+    tg2.addColorStop(1, "rgba(190,210,235,0.15)");
+    g.strokeStyle = tg2; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(rn.x, rn.y - rn.ln); g.lineTo(rn.x, rn.y); g.stroke();
+    g.fillStyle = "rgba(235,245,255,0.42)";
+    g.beginPath(); g.arc(rn.x, rn.y, 1.3, 0, 7); g.fill();
+  }
+  if (runnels.some(rn => rn.dead)) runnels = runnels.filter(rn => !rn.dead);
+  g.restore();
+  g.restore();
+}
+
+function drawLever(t) {
+  const { x, y, arm } = L.lever;
+  const a = leverTh * Math.PI / 180;
+  const dirX = Math.sin(a), dirY = -Math.cos(a);
+  const hx = x + dirX * arm, hy = y + dirY * arm;
+  const hot = hover === "lever" || (grab && grab.kind === "lever");
+
+  // slate base plate, bolted to the panel
+  const bw2 = arm * 0.94, bh2 = arm * 1.62, bx2 = x - bw2 / 2, by2 = y - arm * 1.28;
+  const bg2 = g.createLinearGradient(0, by2, 0, by2 + bh2);
+  bg2.addColorStop(0, "#1a1c21"); bg2.addColorStop(1, "#0e0f13");
+  g.fillStyle = bg2; roundRect(g, bx2, by2, bw2, bh2, 7); g.fill();
+  g.strokeStyle = "#26292f"; g.lineWidth = 1.6; roundRect(g, bx2, by2, bw2, bh2, 7); g.stroke();
+  g.strokeStyle = "rgba(255,220,170,0.07)"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(bx2 + 6, by2 + 2); g.lineTo(bx2 + bw2 - 6, by2 + 2); g.stroke();
+  for (const [cx3, cy3] of [[bx2 + 7, by2 + 7], [bx2 + bw2 - 7, by2 + 7], [bx2 + 7, by2 + bh2 - 7], [bx2 + bw2 - 7, by2 + bh2 - 7]]) {
+    g.fillStyle = "#2c2f37"; g.beginPath(); g.arc(cx3, cy3, 2.4, 0, 7); g.fill();
+    g.fillStyle = "rgba(255,225,180,0.25)"; g.beginPath(); g.arc(cx3 - 0.7, cy3 - 0.7, 0.8, 0, 7); g.fill();
+  }
+
+  // brass jaw contacts at the top of the throw
+  const ja = ON_TH * Math.PI / 180;
+  const jx = x + Math.sin(ja) * arm * 0.94, jy = y - Math.cos(ja) * arm * 0.94;
+  const jpx = Math.cos(ja), jpy = Math.sin(ja);
+  g.strokeStyle = "#8f7440"; g.lineWidth = 4.6; g.lineCap = "round";
+  g.beginPath(); g.moveTo(jx + jpx * 6.5, jy + jpy * 6.5); g.lineTo(jx + jpx * 6.5 + Math.sin(ja) * 10, jy + jpy * 6.5 - Math.cos(ja) * 10); g.stroke();
+  g.beginPath(); g.moveTo(jx - jpx * 6.5, jy - jpy * 6.5); g.lineTo(jx - jpx * 6.5 + Math.sin(ja) * 10, jy - jpy * 6.5 - Math.cos(ja) * 10); g.stroke();
+  // lower park stop
+  const oa = OFF_TH * Math.PI / 180;
+  g.fillStyle = "#101216";
+  g.beginPath(); g.arc(x + Math.sin(oa) * arm * 0.94, y - Math.cos(oa) * arm * 0.94, 4.2, 0, 7); g.fill();
+
+  // copper blade
+  g.strokeStyle = "#241408"; g.lineWidth = 9.5; g.lineCap = "round";
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + dirX * arm * 0.9, y + dirY * arm * 0.9); g.stroke();
+  g.strokeStyle = hot ? "#a4643a" : "#8f5630"; g.lineWidth = 6.5;
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + dirX * arm * 0.9, y + dirY * arm * 0.9); g.stroke();
+  g.strokeStyle = "rgba(255,200,150,0.35)"; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(x + dirX * arm * 0.14, y + dirY * arm * 0.14); g.lineTo(x + dirX * arm * 0.8, y + dirY * arm * 0.8); g.stroke();
+
+  // pivot bracket
+  g.fillStyle = "#2a2d34"; g.beginPath(); g.arc(x, y, 8.5, 0, 7); g.fill();
+  g.strokeStyle = "#3a3e47"; g.lineWidth = 1.6; g.beginPath(); g.arc(x, y, 8.5, 0, 7); g.stroke();
+  g.fillStyle = "#0c0d10"; g.beginPath(); g.arc(x, y, 3.4, 0, 7); g.fill();
+  g.fillStyle = "rgba(255,235,205,0.3)"; g.beginPath(); g.arc(x - 1.1, y - 1.1, 1.1, 0, 7); g.fill();
+
+  // whole-hand crossbar grip, perpendicular to the blade
+  const pxr = Math.cos(a), pyr = Math.sin(a), gl = arm * 0.36;
+  if (hot) { g.shadowColor = "rgba(255,170,90,0.5)"; g.shadowBlur = 14; }
+  g.strokeStyle = "#1c0f06"; g.lineWidth = 15.5; g.lineCap = "round";
+  g.beginPath(); g.moveTo(hx - pxr * gl, hy - pyr * gl); g.lineTo(hx + pxr * gl, hy + pyr * gl); g.stroke();
+  g.strokeStyle = hot ? "#8a4a2e" : "#733d25"; g.lineWidth = 12;
+  g.beginPath(); g.moveTo(hx - pxr * gl, hy - pyr * gl); g.lineTo(hx + pxr * gl, hy + pyr * gl); g.stroke();
+  g.shadowBlur = 0;
+  g.strokeStyle = "rgba(255,215,170,0.22)"; g.lineWidth = 2.6;
+  g.beginPath(); g.moveTo(hx - pxr * gl * 0.84, hy - pyr * gl * 0.84 - 3); g.lineTo(hx + pxr * gl * 0.84, hy + pyr * gl * 0.84 - 3); g.stroke();
+  g.strokeStyle = "rgba(20,10,4,0.5)"; g.lineWidth = 1.4;
+  for (let i = -2; i <= 2; i++) {
+    const rxx = hx + pxr * gl * (i / 2.6), ryy = hy + pyr * gl * (i / 2.6);
+    g.beginPath(); g.moveTo(rxx - dirX * 5.5, ryy - dirY * 5.5); g.lineTo(rxx + dirX * 5.5, ryy + dirY * 5.5); g.stroke();
+  }
+
+  // arc flash at the jaws on make and break
+  const dtc = t - sparkT;
+  if (dtc >= 0 && dtc < 0.14) {
+    const k = 1 - dtc / 0.14;
+    g.fillStyle = "rgba(210,230,255," + (0.8 * k).toFixed(2) + ")";
+    g.beginPath(); g.arc(jx, jy, 3 + 5 * k, 0, 7); g.fill();
+    g.strokeStyle = "rgba(180,210,255," + (0.7 * k).toFixed(2) + ")"; g.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      const an2 = i * 2.1 + t * 40;
+      g.beginPath(); g.moveTo(jx, jy); g.lineTo(jx + Math.cos(an2) * (6 + 8 * k), jy + Math.sin(an2) * (6 + 8 * k)); g.stroke();
+    }
+  }
+}
+
+function drawKnobAt(c, frac, key) {
+  const { x, y, r } = c;
+  const hot = hover === key || (grab && grab.kind === key);
+  g.strokeStyle = "#3a404c"; g.lineWidth = 1.8;
+  for (let i = 0; i <= 10; i++) {
+    const a = (-135 + 27 * i) * Math.PI / 180;
+    g.beginPath();
+    g.moveTo(x + Math.sin(a) * (r + 3), y - Math.cos(a) * (r + 3));
+    g.lineTo(x + Math.sin(a) * (r + 6), y - Math.cos(a) * (r + 6));
+    g.stroke();
+  }
+  const kg = g.createRadialGradient(x - r * 0.3, y - r * 0.35, 0, x, y, r);
+  kg.addColorStop(0, "#333945"); kg.addColorStop(0.7, "#1d2129"); kg.addColorStop(1, "#14161c");
+  g.fillStyle = kg; g.strokeStyle = "#0a0b0e"; g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
+  const a = (-135 + 270 * clamp(frac, 0, 1)) * Math.PI / 180;
+  if (hot) { g.shadowColor = "rgba(255,150,80,0.9)"; g.shadowBlur = 8; }
+  g.strokeStyle = "#ffb27a"; g.lineWidth = 3; g.lineCap = "round";
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.sin(a) * (r - 6), y - Math.cos(a) * (r - 6)); g.stroke();
+  g.shadowBlur = 0;
+}
+function drawShutterLever() {
+  const { x, y, arm } = L.shutter;
+  const th = -14 + 80 * shutterPos;
+  const a = th * Math.PI / 180;
+  const dirX = Math.sin(a), dirY = -Math.cos(a);
+  const hx = x + dirX * arm, hy = y + dirY * arm;
+  const hot = hover === "shutter" || (grab && grab.kind === "shutter");
+  const bw2 = arm * 0.8, bh2 = arm * 1.4, bx2 = x - bw2 / 2, by2 = y - arm * 1.16;
+  const bg2 = g.createLinearGradient(0, by2, 0, by2 + bh2);
+  bg2.addColorStop(0, "#191b20"); bg2.addColorStop(1, "#0e0f13");
+  g.fillStyle = bg2; roundRect(g, bx2, by2, bw2, bh2, 6); g.fill();
+  g.strokeStyle = "#26292f"; g.lineWidth = 1.4; roundRect(g, bx2, by2, bw2, bh2, 6); g.stroke();
+  g.strokeStyle = "#101216"; g.lineWidth = 8;
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + dirX * arm * 0.88, y + dirY * arm * 0.88); g.stroke();
+  g.strokeStyle = "#3c424d"; g.lineWidth = 5.5;
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + dirX * arm * 0.88, y + dirY * arm * 0.88); g.stroke();
+  g.fillStyle = "#22242b"; g.beginPath(); g.arc(x, y, 6.5, 0, 7); g.fill();
+  g.fillStyle = "#0c0d10"; g.beginPath(); g.arc(x, y, 2.6, 0, 7); g.fill();
+  const pxr = Math.cos(a), pyr = Math.sin(a), gl = arm * 0.3;
+  if (hot) { g.shadowColor = "rgba(255,170,90,0.5)"; g.shadowBlur = 12; }
+  g.strokeStyle = "#15171b"; g.lineWidth = 13; g.lineCap = "round";
+  g.beginPath(); g.moveTo(hx - pxr * gl, hy - pyr * gl); g.lineTo(hx + pxr * gl, hy + pyr * gl); g.stroke();
+  g.strokeStyle = hot ? "#7d8797" : "#697180"; g.lineWidth = 10;
+  g.beginPath(); g.moveTo(hx - pxr * gl, hy - pyr * gl); g.lineTo(hx + pxr * gl, hy + pyr * gl); g.stroke();
+  g.shadowBlur = 0;
+  g.strokeStyle = "rgba(255,255,255,0.16)"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(hx - pxr * gl * 0.8, hy - pyr * gl * 0.8 - 2.4); g.lineTo(hx + pxr * gl * 0.8, hy + pyr * gl * 0.8 - 2.4); g.stroke();
+}
+function drawRadio(t) {
+  const { x, y } = L.radio;
+  const hot = hover === "radio" || (grab && grab.kind === "radio");
+  const rg3 = g.createLinearGradient(0, y - 15, 0, y + 15);
+  rg3.addColorStop(0, "#1b181c"); rg3.addColorStop(1, "#0f0d11");
+  g.fillStyle = rg3; roundRect(g, x - 21, y - 15, 42, 30, 5); g.fill();
+  g.strokeStyle = hot ? "#3d4048" : "#26292f"; g.lineWidth = 1.4; roundRect(g, x - 21, y - 15, 42, 30, 5); g.stroke();
+  g.strokeStyle = "rgba(0,0,0,0.55)"; g.lineWidth = 1.6;
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(x - 16, y - 9 + i * 4); g.lineTo(x - 6, y - 9 + i * 4); g.stroke(); }
+  // tuning dial with a live needle when the set is on
+  g.fillStyle = "#0a0a0c"; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.fill();
+  g.strokeStyle = "#33363e"; g.lineWidth = 1; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.stroke();
+  const na = radioOn ? -0.9 + 0.5 * Math.sin(t * 0.43) + 0.06 * Math.sin(t * 5.1) : -1.3;
+  g.strokeStyle = radioOn ? "#e8b97a" : "#5a5248"; g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(x + 10, y - 5); g.lineTo(x + 10 + Math.cos(na) * 5, y - 5 + Math.sin(na) * 5); g.stroke();
+  const up = radioOn;
+  g.strokeStyle = "#0a0b0d"; g.lineWidth = 5.5;
+  g.beginPath(); g.moveTo(x - 11, y + 6); g.lineTo(x - 11, up ? y - 2 : y + 13); g.stroke();
+  g.strokeStyle = hot ? "#c5a373" : "#a8865c"; g.lineWidth = 3.8;
+  g.beginPath(); g.moveTo(x - 11, y + 6); g.lineTo(x - 11, up ? y - 2 : y + 13); g.stroke();
+  g.fillStyle = "#1c1e24"; g.beginPath(); g.arc(x - 11, y + 6, 2.8, 0, 7); g.fill();
+  g.fillStyle = radioOn ? "rgba(140,220,150,0.9)" : "rgba(60,80,64,0.5)";
+  g.beginPath(); g.arc(x + 10, y + 8, 1.9, 0, 7); g.fill();
+  if (radioOn) {
+    const rg2 = g.createRadialGradient(x + 10, y + 8, 0, x + 10, y + 8, 7);
+    rg2.addColorStop(0, "rgba(140,220,150,0.35)"); rg2.addColorStop(1, "rgba(140,220,150,0)");
+    g.fillStyle = rg2; g.beginPath(); g.arc(x + 10, y + 8, 7, 0, 7); g.fill();
+  }
+}
+function drawWipe(t) {
+  const { x, y } = L.wipe;
+  const hot = hover === "wipe" || (grab && grab.kind === "wipe");
+  const pressed = t - wipeT < 0.18;
+  g.fillStyle = "#1a1c21"; g.beginPath(); g.arc(x, y, 11, 0, 7); g.fill();
+  g.strokeStyle = "#2b2e35"; g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, 11, 0, 7); g.stroke();
+  const dg = g.createRadialGradient(x - 2.5, y - 3 + (pressed ? 1 : 0), 0, x, y, 8);
+  dg.addColorStop(0, pressed ? "#a34e2c" : (hot ? "#cd6a3c" : "#b95f38"));
+  dg.addColorStop(1, pressed ? "#5e2a16" : "#743a1f");
+  g.fillStyle = dg; g.beginPath(); g.arc(x, y + (pressed ? 1 : 0), 7.6, 0, 7); g.fill();
+  g.fillStyle = "rgba(255,230,200," + (pressed ? 0.12 : 0.28) + ")";
+  g.beginPath(); g.arc(x - 2.2, y - 2.6 + (pressed ? 1 : 0), 2.4, 0, 7); g.fill();
+}
+
+function drawLampAndGlow(t, amp) {
+  // interior brightness first, so glowing instruments stay bright on top of it
+  if (lampDim < 0.995) {
+    const dk = (1 - lampDim) * 0.62;
+    g.beginPath();
+    g.rect(0, 0, L.w, L.h);
+    g.rect(L.apX, L.apY, L.apW, L.apH);
+    g.fillStyle = "rgba(2,2,3," + dk.toFixed(3) + ")";
+    g.fill("evenodd");
+  }
+  const { x, y } = L.lamp;
+  const glow = amp;
+  g.fillStyle = "rgb(" + Math.round(58 + glow * 197) + "," + Math.round(35 + glow * 105) + "," + Math.round(19 + glow * 40) + ")";
+  g.strokeStyle = "#4a3020"; g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); g.stroke();
+  if (glow > 0.02) {
+    const lg = g.createRadialGradient(x, y, 0, x, y, 26);
+    lg.addColorStop(0, "rgba(255,150,70," + (glow * 0.5).toFixed(2) + ")");
+    lg.addColorStop(1, "rgba(255,150,70,0)");
+    g.fillStyle = lg; g.beginPath(); g.arc(x, y, 26, 0, 7); g.fill();
+  }
+  // keeper's lamp: a soft ceiling glow, and the LAMP knob raises or lowers the whole room
+  const la = lampPos();
+  const fl = (RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim;
+  softBlob(g, la.x, la.y, Math.min(L.w, L.h) * 0.30, "226,168,104", 0.09 * fl, 1);
+  g.fillStyle = "rgba(255,214,150," + Math.min(1, 0.75 * fl + 0.08).toFixed(2) + ")";
+  g.beginPath(); g.arc(la.x, la.y - 3, 2.6, 0, 7); g.fill();
+}
+function drawAlarm(t, amp) {
+  // caged red alarm bulb above the window; breathes with the siren
+  const ax = L.apX + L.apW * 0.08, ay = L.apY * 0.62;
+  const p = powered ? 0.35 + 0.65 * Math.min(1, amp * 1.4) : 0;
+  const pulse = 0.7 + 0.3 * Math.sin(t * 3.1);
+  g.fillStyle = "#1c1712"; g.fillRect(ax - 8, ay + 5, 16, 4);
+  if (p > 0.01) {
+    const gl = g.createRadialGradient(ax, ay, 0, ax, ay, 58);
+    gl.addColorStop(0, "rgba(255,58,38," + (0.13 * p * pulse).toFixed(3) + ")");
+    gl.addColorStop(1, "rgba(255,58,38,0)");
+    g.fillStyle = gl; g.beginPath(); g.arc(ax, ay, 58, 0, 7); g.fill();
+  }
+  const br = p * pulse;
+  g.fillStyle = "rgb(" + Math.round(52 + 190 * br) + "," + Math.round(16 + 40 * br) + "," + Math.round(14 + 26 * br) + ")";
+  g.beginPath(); g.arc(ax, ay + 5, 7, Math.PI, 0); g.closePath(); g.fill();
+  if (br > 0.05) {
+    g.fillStyle = "rgba(255,190,170," + (0.35 * br).toFixed(2) + ")";
+    g.beginPath(); g.arc(ax - 2, ay + 1.5, 1.6, 0, 7); g.fill();
+  }
+  g.strokeStyle = "#15100c"; g.lineWidth = 1.1;
+  g.beginPath(); g.arc(ax, ay + 5, 7.6, Math.PI, 0); g.stroke();
+  g.beginPath(); g.moveTo(ax - 5.4, ay + 0.5); g.lineTo(ax + 5.4, ay + 0.5); g.stroke();
+  g.beginPath(); g.moveTo(ax - 3.4, ay - 2.2); g.lineTo(ax + 3.4, ay - 2.2); g.stroke();
+}
+function buildFeed() {
+  const c = document.createElement("canvas");
+  c.width = 150; c.height = 110;
+  const x = c.getContext("2d");
+  // entrance camera, zoomed close on the door of a vast concrete building
+  const wall = x.createLinearGradient(0, 0, 0, 110);
+  wall.addColorStop(0, "#0f0f0f"); wall.addColorStop(0.5, "#0c0c0c"); wall.addColorStop(1, "#070707");
+  x.fillStyle = wall; x.fillRect(0, 0, 150, 110);
+  x.strokeStyle = "rgba(0,0,0,0.45)"; x.lineWidth = 1; // massive block joints imply the building keeps going
+  for (const jy of [14, 40, 66, 92]) { x.beginPath(); x.moveTo(0, jy); x.lineTo(150, jy); x.stroke(); }
+  for (const jx of [22, 128]) { x.beginPath(); x.moveTo(jx, 0); x.lineTo(jx, 110); x.stroke(); }
+  x.strokeStyle = "rgba(255,255,255,0.03)";
+  for (const jy of [15, 41, 67, 93]) { x.beginPath(); x.moveTo(0, jy); x.lineTo(150, jy); x.stroke(); }
+  // recessed doorway, dead center, filling the frame
+  x.fillStyle = "#050505"; x.fillRect(50, 20, 50, 80); // recess shadow
+  const rec = x.createLinearGradient(50, 0, 58, 0);
+  rec.addColorStop(0, "rgba(255,255,255,0.09)"); rec.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = rec; x.fillRect(50, 20, 8, 80);
+  x.fillStyle = "#010101"; x.fillRect(56, 24, 38, 74); // the door
+  x.strokeStyle = "#454545"; x.lineWidth = 1.6; x.strokeRect(56, 24, 38, 74);
+  x.strokeStyle = "rgba(60,60,60,0.5)"; x.lineWidth = 1; // door panels
+  x.beginPath(); x.moveTo(68, 28); x.lineTo(68, 94); x.moveTo(82, 28); x.lineTo(82, 94); x.stroke();
+  x.fillStyle = "rgba(150,150,150,0.22)"; // handle, hinges
+  x.fillRect(88, 60, 2.6, 6);
+  for (const hy of [32, 58, 84]) x.fillRect(56.5, hy, 2, 4);
+  x.fillStyle = "rgba(190,190,190,0.14)"; x.fillRect(66, 12, 18, 6); // number plate above, unreadable
+  x.fillStyle = "rgba(0,0,0,0.4)"; x.fillRect(68, 13.5, 3, 3); x.fillRect(74, 13.5, 3, 3); x.fillRect(80, 13.5, 3, 3);
+  // single caged lamp above the door, its light crawling down the recess
+  softBlob(x, 75, 8, 22, "230,230,230", 0.32, 0.7);
+  x.fillStyle = "#a8a8a8"; x.fillRect(71, 4, 8, 5);
+  x.strokeStyle = "rgba(0,0,0,0.5)"; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(75, 0); x.lineTo(75, 4); x.stroke();
+  const fall = x.createLinearGradient(0, 20, 0, 70);
+  fall.addColorStop(0, "rgba(220,220,220,0.08)"); fall.addColorStop(1, "rgba(220,220,220,0)");
+  x.fillStyle = fall; x.fillRect(52, 20, 46, 50);
+  // wet threshold catching the lamp
+  x.fillStyle = "#060606"; x.fillRect(0, 100, 150, 10);
+  softBlob(x, 75, 103, 24, "200,200,200", 0.08, 0.30);
+  x.strokeStyle = "rgba(190,190,190,0.13)"; x.lineWidth = 1; // baked rain
+  for (let i = 0; i < 12; i++) {
+    const rx3 = Math.random() * 150, ry3 = Math.random() * 100;
+    x.beginPath(); x.moveTo(rx3, ry3); x.lineTo(rx3 - 2, ry3 + 9); x.stroke();
+  }
+  const vg = x.createRadialGradient(75, 55, 18, 75, 55, 100);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.72)");
+  x.fillStyle = vg; x.fillRect(0, 0, 150, 110);
+  return c;
+}
+function crtRect() {
+  const mg = L.w - (L.apX + L.apW);
+  const wC = Math.min(mg * 0.86, 170), hC = wC * 0.8;
+  return { x: L.apX + L.apW + (mg - wC) / 2, y: L.h * 0.13, w: wC, h: hC };
+}
+function drawCRT(t) {
+  if (L.apX <= 70) return;
+  const c = crtRect();
+  g.strokeStyle = "#241f19"; g.lineWidth = 2.6;
+  g.beginPath(); g.moveTo(c.x + c.w / 2, 0); g.lineTo(c.x + c.w / 2, c.y - 4); g.stroke();
+  const bz = g.createLinearGradient(0, c.y, 0, c.y + c.h);
+  bz.addColorStop(0, "#211d18"); bz.addColorStop(1, "#131110");
+  g.fillStyle = bz; roundRect(g, c.x - 7, c.y - 7, c.w + 14, c.h + 14, 8); g.fill();
+  g.strokeStyle = "#2e2822"; g.lineWidth = 1.6; roundRect(g, c.x - 7, c.y - 7, c.w + 14, c.h + 14, 8); g.stroke();
+  g.fillStyle = "#050506"; roundRect(g, c.x, c.y, c.w, c.h, 5); g.fill();
+  if (!radioOn) {
+    g.fillStyle = "rgba(200,60,40,0.55)";
+    g.beginPath(); g.arc(c.x + c.w - 8, c.y + c.h - 8, 2, 0, 7); g.fill();
+    return;
+  }
+  g.save();
+  roundRect(g, c.x, c.y, c.w, c.h, 5); g.clip();
+  const flick = 0.72 + 0.16 * Math.sin(t * 11.3) * Math.sin(t * 2.9) + 0.08 * Math.random();
+  g.globalAlpha = flick;
+  g.drawImage(feedC, c.x, c.y, c.w, c.h);
+  g.globalAlpha = 1;
+  g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = 1; // live rain specks
+  for (let i = 0; i < 5; i++) {
+    const rx3 = c.x + Math.random() * c.w, ry3 = c.y + Math.random() * c.h * 0.9;
+    g.beginPath(); g.moveTo(rx3, ry3); g.lineTo(rx3 - 1.5, ry3 + 6); g.stroke();
+  }
+  if (grainC) {
+    g.globalAlpha = 0.24; g.drawImage(grainC, Math.random() * 120, Math.random() * 120, 300, 220, c.x, c.y, c.w, c.h);
+    g.globalAlpha = 0.14; g.drawImage(grainC, Math.random() * 300, Math.random() * 300, 150, 110, c.x, c.y, c.w, c.h);
+    g.globalAlpha = 1;
+  }
+  g.fillStyle = "rgba(0,0,0,0.24)"; // scanlines
+  for (let sy4 = c.y + (t * 14 % 3); sy4 < c.y + c.h; sy4 += 3) g.fillRect(c.x, sy4, c.w, 1.1);
+  const roll = c.y + ((t * 16) % (c.h * 1.6)) - c.h * 0.3; // slow vertical roll bar
+  const rl = g.createLinearGradient(0, roll, 0, roll + 16);
+  rl.addColorStop(0, "rgba(255,255,255,0)"); rl.addColorStop(0.5, "rgba(255,255,255,0.05)"); rl.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = rl; g.fillRect(c.x, roll, c.w, 16);
+  g.restore();
+  softBlob(g, c.x + c.w / 2, c.y + c.h / 2, c.w * 0.75, "180,195,210", 0.05, 0.8);
+}
+
+/* ---------- lever + knob interaction ---------- */
+function leverHandlePos() {
+  const a = leverTh * Math.PI / 180;
+  return { x: L.lever.x + Math.sin(a) * L.lever.arm, y: L.lever.y - Math.cos(a) * L.lever.arm };
+}
+function hitTest(px, py) {
+  if (!L) return null; // pointer events can arrive before the first layout on a hidden tab
+  const hp = leverHandlePos();
+  if (Math.hypot(px - hp.x, py - hp.y) < Math.max(30, L.lever.arm * 0.55)) return "lever";
+  if (Math.hypot(px - L.lever.x, py - L.lever.y) < L.lever.arm * 1.05) return "lever";
+  if (Math.hypot(px - L.shutter.x, py - L.shutter.y) < L.shutter.arm * 1.1) return "shutter";
+  for (const k of ["vol", "dist", "dim"]) if (Math.hypot(px - L[k].x, py - L[k].y) < L[k].r + 16) return k;
+  if (Math.abs(px - L.radio.x) < 23 && Math.abs(py - L.radio.y) < 17) return "radio";
+  if (Math.hypot(px - L.wipe.x, py - L.wipe.y) < 14) return "wipe";
+  return null;
+}
+cv.addEventListener("pointerdown", e => {
+  const k = hitTest(e.clientX, e.clientY);
+  if (!k) return;
+  cv.setPointerCapture(e.pointerId);
+  const v0 = k === "vol" ? S.vol : k === "dist" ? S.dist : k === "dim" ? lampDim : 0;
+  grab = { kind: k, x0: e.clientX, y0: e.clientY, v0, th0: leverTh, moved: 0 };
+  document.body.classList.add("grabbing");
+  ensureAudio();
+});
+cv.addEventListener("pointermove", e => {
+  if (!grab) {
+    const k = hitTest(e.clientX, e.clientY);
+    if (k !== hover) { hover = k; cv.classList.toggle("hand", !!k); }
+    return;
+  }
+  const dy = e.clientY - grab.y0;
+  grab.moved = Math.max(grab.moved, Math.abs(dy), Math.abs(e.clientX - grab.x0));
+  if ((grab.kind === "vol" || grab.kind === "dist" || grab.kind === "dim") && grab.moved < 5) return;
+  if (grab.kind === "lever") leverTh = clamp(grab.th0 + dy * 0.85, ON_TH, OFF_TH);
+  else if (grab.kind === "vol") setVolume(grab.v0 - dy / 160);
+  else if (grab.kind === "dist") { S.dist = clamp(grab.v0 - dy * 2650 / 160, 150, 2800); if (built) applyDistance(); }
+  else if (grab.kind === "dim") lampDim = clamp(grab.v0 - dy * 0.85 / 160, 0.15, 1);
+});
+function endGrab(e) {
+  if (!grab) return;
+  if (grab.kind === "lever") {
+    let on;
+    if (grab.moved < 7) on = !powered;
+    else on = leverTh < (ON_TH + OFF_TH) / 2;
+    setPower(on);
+    leverThT = on ? ON_TH : OFF_TH;
+  } else if (grab.kind === "shutter" && grab.moved < 12) {
+    shutterTarget = shutterTarget > 0.5 ? 0 : 1;
+    playClack(shutterTarget > 0.5);
+  } else if (grab.kind === "radio" && grab.moved < 7) {
+    setRadio(!radioOn);
+  } else if (grab.kind === "wipe" && grab.moved < 7) {
+    wipeT = performance.now() / 1000;
+    playSwash();
+  } else if ((grab.kind === "vol" || grab.kind === "dist" || grab.kind === "dim") && grab.moved < 12) {
+    // a tap steps the knob: right side up, left side down
+    const up = grab.x0 > L[grab.kind].x;
+    if (grab.kind === "vol") setVolume(S.vol + (up ? 0.05 : -0.05));
+    else if (grab.kind === "dist") { S.dist = clamp(S.dist + (up ? 150 : -150), 150, 2800); if (built) applyDistance(); }
+    else lampDim = clamp(lampDim + (up ? 0.1 : -0.1), 0.15, 1);
+    playTick();
+  }
+  grab = null;
+  document.body.classList.remove("grabbing");
+  if (ctx && ctx.state !== "running") ctx.resume();
+}
+cv.addEventListener("pointerup", endGrab);
+cv.addEventListener("pointercancel", endGrab);
+cv.addEventListener("wheel", e => {
+  const k = hitTest(e.clientX, e.clientY);
+  if (k !== "vol" && k !== "dist" && k !== "dim") return;
+  e.preventDefault();
+  const up = e.deltaY < 0;
+  if (k === "vol") setVolume(S.vol + (up ? 0.05 : -0.05));
+  else if (k === "dist") { S.dist = clamp(S.dist + (up ? 100 : -100), 150, 2800); if (built) applyDistance(); }
+  else lampDim = clamp(lampDim + (up ? 0.06 : -0.06), 0.15, 1);
+}, { passive: false });
+cv.addEventListener("dblclick", e => {
+  const k = hitTest(e.clientX, e.clientY);
+  if (k === "vol") setVolume(0.85);
+  else if (k === "dist") { S.dist = 450; if (built) applyDistance(); }
+  else if (k === "dim") lampDim = 1;
+});
+
+/* ---------- weather engine: nothing changes fast enough to catch it changing ---------- */
+function stepWeather(t, dt) {
+  if (WX.tState < 0) WX.tState = t;
+  if (t - WX.tState > WX.dwell) {
+    WX.tState = t;
+    if (WX.state === "calm") { WX.state = "building"; WX.target = 0.65 + Math.random() * 0.35; WX.dwell = 40 + Math.random() * 40; }
+    else if (WX.state === "building") { WX.state = "squall"; WX.dwell = 45 + Math.random() * 75; }
+    else if (WX.state === "squall") { WX.state = "passing"; WX.target = 0.2 + Math.random() * 0.2; WX.dwell = 50 + Math.random() * 50; }
+    else { WX.state = "calm"; WX.target = 0.12 + Math.random() * 0.2; WX.dwell = 80 + Math.random() * 120; }
+  }
+  const tgt = WX.state === "squall" ? WX.target * (0.9 + 0.1 * Math.sin(t * 0.21)) : WX.target;
+  WX.k += (tgt - WX.k) * Math.min(1, dt / (WX.state === "building" ? 18 : 26));
+  // gusts: short pushes that come more often and harder as the squall builds
+  if (t > WX.gustT) { WX.gustT = t + 4 + Math.random() * (16 - 10 * WX.k); WX.gustA = (0.3 + Math.random() * 0.7) * WX.k; WX.gust0 = t; WX.spatDone = false; }
+  const gk = (t - WX.gust0) / 3.5;
+  WX.gust = gk < 1 ? WX.gustA * Math.sin(gk * Math.PI) : 0;
+  return WX.k;
+}
+function newStrike(t, force) {
+  // mostly soft sheet flashes inside the cloud; now and then a bolt; rarely a double strike
+  const mag = 0.35 + Math.random() * 0.65, kind = force === undefined ? Math.random() : force;
+  const pts = []; let bx0 = 0.1 + Math.random() * 0.8, by0 = 0.02;
+  for (let i = 0; i < 12; i++) { pts.push([bx0, by0]); bx0 += (Math.random() - 0.5) * 0.045; by0 += 0.03 + Math.random() * 0.025; }
+  // one short branch off the trunk
+  const bi = 3 + Math.floor(Math.random() * 5), br = [pts[bi]];
+  let bbx = pts[bi][0], bby = pts[bi][1];
+  const bdx = (Math.random() < 0.5 ? -1 : 1) * 0.02;
+  for (let i = 0; i < 3; i++) { bbx += bdx + (Math.random() - 0.5) * 0.02; bby += 0.025 + Math.random() * 0.02; br.push([bbx, bby]); }
+  let fl, bolt = false, boltT = 0;
+  if (kind < 0.70) fl = Math.random() < 0.5 ? [[0, 0.18, 0.17]] : [[0, 0.16, 0.15], [0.24, 0.14, 0.12]];
+  else if (kind < 0.88) { fl = [[0, 0.10, 0.22], [0.16, 0.10, 0.20], [0.34, 0.10, 0.16]]; bolt = true; }
+  else { const g2 = 0.7 + Math.random() * 0.4; fl = [[0, 0.12, 0.18], [0.16, 0.10, 0.14], [g2, 0.12, 0.20], [g2 + 0.15, 0.10, 0.15]]; bolt = Math.random() < 0.5; boltT = g2; }
+  strike = { t0: t, mag, delay: 0.8 + (1 - mag) * 3.4, bolt, boltT, fl, pts, br, played: false, sheet: kind < 0.70 };
+}
+
+/* ---------- main loop, capped near 30 fps ---------- */
+let lastDraw = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (!L) return;
+  if (now - lastDraw < 31) return;
+  const dt = Math.min(0.1, (now - lastDraw) / 1000);
+  lastDraw = now;
+  const t = now / 1000;
+  const amp = ampLevel();
+
+  if (!grab || grab.kind !== "lever") {
+    leverVel += (leverThT - leverTh) * dt * 160;
+    leverVel *= Math.exp(-dt * 10);
+    leverTh = clamp(leverTh + leverVel * dt, ON_TH, OFF_TH);
+  }
+  // the rotator motor only turns while the siren is powered; it winds up and coasts down
+  const hvT = powered ? 2 * Math.PI * S.rotRpm / 60 : 0;
+  hornVel += (hvT - hornVel) * Math.min(1, dt / (powered ? 2.2 : 3.6));
+  hornAngle += hornVel * dt;
+  // the audio sweep tracks the horn you SEE: loudest and brightest exactly when it faces you
+  if (built) {
+    const face = Math.cos(hornAngle), tA = ctx.currentTime;
+    N.dir.gain.setTargetAtTime(0.55 + 0.45 * face, tA, 0.05);
+    N.rotLp.frequency.setTargetAtTime(2600 + 1700 * face, tA, 0.05);
+    N.dop.delayTime.setTargetAtTime(0.012 + 0.0044 * face, tA, 0.06);
+    N.pan.pan.setTargetAtTime(0.6 * Math.sin(hornAngle), tA, 0.06);
+  }
+
+  // heavy steel shutter travel: fast drop, hard slam
+  const sd = shutterTarget - shutterPos;
+  if (Math.abs(sd) > 0.0005) {
+    shutterPos = clamp(shutterPos + Math.sign(sd) * dt * (sd > 0 ? 1.05 : 0.7), 0, 1);
+    shutterMoving = true;
+    if (built) applyShutterAudio();
+  } else if (shutterMoving) {
+    shutterMoving = false;
+    if (shutterTarget > 0.5) { playSlam(); shakeT = t; } else playClack(false);
+  }
+
+  // weather: the squall engine paces the rain, the fog, the smoke, and the rain bed (gain only, the recording is untouched)
+  const wk = stepWeather(t, dt);
+  if (built && N.rainG && t - wxAudioT > 0.5) {
+    wxAudioT = t;
+    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk), ctx.currentTime, 1.5);
+    if (N.windVol) N.windVol.gain.setTargetAtTime(S.wind * 0.16 * (0.75 + 0.5 * wk), ctx.currentTime, 2.0);
+  }
+  // storm scheduler: flash first, thunder arrives late by distance, siren stays hero; squalls bring strikes closer together
+  let flashA = 0;
+  if (nextStrikeT < 0) nextStrikeT = t + 12 + Math.random() * 18;
+  if (!strike && t >= nextStrikeT) newStrike(t);
+  if (strike) {
+    const st = t - strike.t0;
+    for (const f of strike.fl) { const d2 = st - f[0]; if (d2 >= 0 && d2 < f[1]) flashA = Math.max(flashA, f[2] * (1 - d2 / f[1])); }
+    flashA *= strike.mag * (RM ? 0.4 : 1);
+    if (!strike.played && st >= strike.delay) { playThunder(strike.mag); strike.played = true; }
+    if (st > strike.delay + 1.2) { strike = null; nextStrikeT = t + (20 + Math.random() * 50) * (1.15 - 0.5 * wk); }
+  }
+
+  let shX = 0, shY = 0;
+  if (t - shakeT < 0.32) {
+    const kk = (1 - (t - shakeT) / 0.32) * 6;
+    shX = (Math.random() * 2 - 1) * kk; shY = (Math.random() * 2 - 1) * kk;
+  }
+  g.setTransform(DPR, 0, 0, DPR, shX * DPR, shY * DPR);
+  g.fillStyle = "#060708"; g.fillRect(-8, -8, W + 16, H + 16);
+  drawCity(t, amp, dt, flashA);
+  g.drawImage(frameC, 0, 0, W, H);
+  if (flashA > 0.01) { g.fillStyle = "rgba(180,200,255," + (flashA * 0.10).toFixed(3) + ")"; g.fillRect(0, 0, W, H); }
+  drawKnobAt(L.vol, S.vol, "vol");
+  drawKnobAt(L.dist, (S.dist - 150) / 2650, "dist");
+  drawKnobAt(L.dim, (lampDim - 0.15) / 0.85, "dim");
+  drawShutterLever();
+  drawRadio(t);
+  drawWipe(t);
+  drawLever(t);
+  drawLampAndGlow(t, amp);
+  drawAlarm(t, amp);
+  drawCRT(t);
+  g.fillStyle = vigGrad; g.fillRect(0, 0, W, H);
+  if (grainC) {
+    const ox = RM ? 60 : Math.floor(Math.random() * 160), oy = RM ? 60 : Math.floor(Math.random() * 160);
+    g.globalAlpha = 0.05;
+    g.drawImage(grainC, -ox, -oy);
+    g.globalAlpha = 1;
+  }
+}
+resize();
+requestAnimationFrame(frame);
+
+window.__sirens = {
+  S, get N() { return N; }, get ctx() { return ctx; }, get powered() { return powered; },
+  get layout() { return L; }, get anchors() { return anchors; }, leverHandlePos, simRpsNow,
+  get shutterPos() { return shutterPos; }, get radioOn() { return radioOn; },
+  get lampDim() { return lampDim; }, get dropletCount() { return droplets.length; },
+  get wx() { return WX; }, get strike() { return strike; },
+  strikeNow(kind) { if (!strike) newStrike(performance.now() / 1000, kind); },
+  setWeather(k) { WX.k = k; WX.target = k; WX.state = k > 0.6 ? "squall" : "calm"; WX.tState = performance.now() / 1000; WX.dwell = 900; }
+};
+</script>
+<img src="https://chronoverify.com/v1/px?site=sirenfall&amp;p=/" alt="" width="1" height="1" style="position:absolute;left:-9999px" aria-hidden="true" loading="eager" decoding="async">
+</body>
+</html>

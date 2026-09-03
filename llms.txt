@@ -1,0 +1,26 @@
+# SIRENFALL
+
+> Free browser ambience experience at https://sirenfall.live/. A shelter scene overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in the browser with Web Audio. Free, no signup, works in any modern browser; phones need landscape orientation.
+
+SIRENFALL is a single-page interactive scene, not a game with a score or an ending. Pulling the breaker lever powers a siren tower seen through the shelter window; the siren tone is generated in real time by Web Audio oscillators running in the browser, not played from an audio file. Rain and thunder carry on in the scene, and a shutter and a CRT monitor are additional interactive controls.
+
+## What a visitor or agent can do here
+- Pull the breaker lever to power the siren on and off
+- Hear a civil-defense siren generated live by Web Audio in the browser, not a recording
+- Watch rain, lightning, and a city skyline through the shelter window
+- Operate a shutter and a CRT monitor as scene controls
+- Use the whole experience free, with no signup and no install
+
+## Key facts
+- URL: https://sirenfall.live/
+- Price: Free. No signup, no account, no download.
+- Requirements: a modern browser with JavaScript and Web Audio enabled
+- Layout: landscape orientation on phones; a rotate prompt appears in portrait
+- Siren tone: two tones a minor third apart, 515 Hz and 618 Hz, generated in real time by Web Audio, with a horn that sweeps once every 15 seconds. It is synthesized live in the browser, not played from a recording.
+- Rain and thunder: recorded audio files played under the scene, not synthesis.
+
+- Author: Beeswaxpat (https://github.com/beeswaxpat)
+- Source code: https://github.com/beeswaxpat/sirenfall (MIT; audio licenses documented in the repo)
+
+## Machine-readable
+- [Sitemap](https://sirenfall.live/sitemap.xml)
