@@ -1,4 +1,4 @@
-# SIRENFALL - free browser ambience experience
+# SIRENFALL - browser siren scene
 # https://sirenfall.live/
 
 # Default: allow all search crawlers
