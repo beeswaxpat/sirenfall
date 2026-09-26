@@ -679,12 +679,12 @@ let pwrLvl = 1, roomDark = 0; // the shelter's power: 1 is normal, it stutters a
   STORY.card = STORY.knock || Math.random() < 0.25; // the message sometimes comes with no knock after it
   // a knock visit: knock, about twenty seconds of nothing, the broadcast, then the door is open
   if (STORY.fast) { STORY.knockAt = 8; STORY.cardAt = 1e9; }
-  else if (STORY.knock) { STORY.knockAt = 110 + Math.random() * 60; STORY.cardAt = 1e9; }
-  else { STORY.cardAt = 120 + Math.random() * 120; } // the broadcast alone; the door stays shut
-  // one visit in ten the power fails for good, never in the first five minutes; in a knock visit, only after the door is open
+  else if (STORY.knock) { STORY.knockAt = 40 + Math.random() * 30; STORY.cardAt = 1e9; } // most visits are short: the knock comes early
+  else { STORY.cardAt = 50 + Math.random() * 50; } // the broadcast alone; the door stays shut
+  // one visit in ten the power fails for good, never in the first two minutes; in a knock visit, only after the door is open
   STORY.fastDark = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]dark\b/.test(location.search);
   STORY.blackout = STORY.fastDark || Math.random() < 0.1;
-  STORY.boAt = STORY.fastDark ? 15 : 300 + Math.random() * 180;
+  STORY.boAt = STORY.fastDark ? 15 : 120 + Math.random() * 90;
 }
 // the lamp's last seconds: level by time, then the bulb pops at BO_POP
 const BO_PAT = [[0, 1], [0.12, 0.3], [0.2, 1], [0.5, 0.12], [0.58, 0.9], [0.9, 0.4], [1.0, 1], [1.35, 0.06], [1.5, 0.75], [1.62, 0.18], [1.8, 0.85], [2.05, 0.25]], BO_POP = 2.2;
@@ -2353,7 +2353,7 @@ function stepStory(t, dt) {
   // 3. when the broadcast ends the camera comes back; after a knock, the door is open
   if (st.knocked >= 0 && !st.doorOpen && st.cardT >= 0 && t - st.cardT >= CARD_LEN - 0.3) st.doorOpen = true;
   // the blackout: in a knock visit it waits until the door has been seen open
-  if (st.doorOpen && st.openClk < 0) { st.openClk = st.clk; st.boAt = Math.max(st.boAt, st.clk + (st.fast ? 8 : 25 + Math.random() * 20)); }
+  if (st.doorOpen && st.openClk < 0) { st.openClk = st.clk; st.boAt = Math.max(st.boAt, st.clk + (st.fast ? 8 : 20 + Math.random() * 15)); }
   if (st.blackout && st.boT < 0 && st.clk >= st.boAt && (!st.knock || st.doorOpen || st.darkForce) && !(st.cardT >= 0 && t - st.cardT < CARD_LEN + 2)) {
     st.boT = t; playBrownout();
   }

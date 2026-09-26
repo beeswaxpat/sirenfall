@@ -10,7 +10,7 @@ The siren is synthesized live in your browser. It is not a recording.
 
 ## The siren
 
-- Two port rings chopped at 103 revolutions per second make a 5:6 dual tone, 515 and 618 Hz. The minor third was picked for air raid sirens by the UK Home Office in 1940 for its psychological effect.
+- Two port rings chopped at 103 revolutions per second make a 5:6 dual tone, 515 and 618 Hz. That's a minor third, the same 5:6 ratio British air raid sirens used in the Second World War: one rotor with 10 ports, the other with 12.
 - The horn rotates at 4 RPM. Loudness, brightness, Doppler delay, and stereo position follow the horn angle you see on the tower.
 - Spin-up growl and the long coast-down fall out of the same rotor physics. Nothing is sampled.
 - Distance runs 150 m to 2.8 km with air absorption and city echo.
