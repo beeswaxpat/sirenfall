@@ -376,7 +376,7 @@ function ensureAudio() {
     try { build(); }
     catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = "Audio failed: " + e.message; }
   }
-  if (built) loadWeatherAudio();
+  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; }
 }
 function setVolume(v) {
   S.vol = Math.min(1, Math.max(0, v));
@@ -484,6 +484,125 @@ function playSwash() {
   src.start(); src.stop(ctx.currentTime + 0.7);
 }
 
+/* ---- the door: knocks, the monitor's speaker; interior sounds, never muffled by the shutter ---- */
+function interiorOut(pan) {
+  const p2 = new StereoPannerNode(ctx, { pan });
+  p2.connect(N.comp);
+  return p2;
+}
+let knockIR = null, knockNB = null;
+function playKnock() {
+  // three slow knuckle knocks on the steel shelter door, close, behind you and to the left
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime + 0.05, sr = ctx.sampleRate;
+  if (!knockIR) {
+    const n = Math.floor(sr * 0.3); // a small concrete room: a third of a second of noise falling away
+    knockIR = ctx.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) { const d = knockIR.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * 0.16)); }
+    knockNB = ctx.createBuffer(1, Math.floor(sr * 0.2), sr);
+    const d2 = knockNB.getChannelData(0); for (let i = 0; i < d2.length; i++) d2[i] = Math.random() * 2 - 1;
+  }
+  const out = interiorOut(-0.35);
+  const bus = new GainNode(ctx, { gain: 1 }), top = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 4200, Q: 0.5 });
+  bus.connect(top).connect(out);
+  const room = new ConvolverNode(ctx, { buffer: knockIR }), rlp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 1800, Q: 0.5 }), rg = new GainNode(ctx, { gain: 0.18 });
+  bus.connect(room).connect(rlp).connect(rg).connect(out);
+  const env = (node, at, peak, dec) => {
+    node.gain.setValueAtTime(0.0001, at);
+    node.gain.exponentialRampToValueAtTime(peak, at + 0.002);
+    node.gain.exponentialRampToValueAtTime(0.0005, at + dec);
+  };
+  const noise = (at, type, f, q, peak, dec) => {
+    const src = new AudioBufferSourceNode(ctx, { buffer: knockNB }), fl = new BiquadFilterNode(ctx, { type, frequency: f, Q: q }), gn = new GainNode(ctx, { gain: 0.0001 });
+    env(gn, at, peak, dec); src.connect(fl).connect(gn).connect(bus); src.start(at); src.stop(at + dec + 0.02);
+  };
+  const knock = (at, v) => {
+    noise(at, "bandpass", 190, 1.1, 2.2 * v, 0.09);   // the door's dull body
+    noise(at, "bandpass", 520, 1.4, 0.8 * v, 0.05);   // the knuckle's bite
+    noise(at, "highpass", 2000, 0.7, 0.10 * v, 0.012); // skin on steel
+    noise(at, "bandpass", 1150, 9, 0.9 * v, 0.1);     // the steel ticks, and it's gone
+    const th = new OscillatorNode(ctx, { frequency: 95 }), tg = new GainNode(ctx, { gain: 0.0001 }); // weight behind it
+    th.frequency.setValueAtTime(95, at); th.frequency.exponentialRampToValueAtTime(62, at + 0.05);
+    env(tg, at, 0.35 * v, 0.1); th.connect(tg).connect(bus); th.start(at); th.stop(at + 0.12);
+  };
+  knock(t0, 0.62); knock(t0 + 0.46, 0.6); knock(t0 + 0.9, 0.66); // quicker, harder, about as loud as the shutter slam
+}
+function playStaticBurst(delay, dur, gain) {
+  // the monitor's little speaker: a hiss of snow between pictures
+  if (!ctx || !built) return;
+  const at = ctx.currentTime + delay;
+  const src = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(dur + 0.05) });
+  const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 900, Q: 0.5 });
+  const gn = new GainNode(ctx, { gain: 0.0001 });
+  gn.gain.setValueAtTime(gain, at); gn.gain.setValueAtTime(gain, at + dur - 0.04); gn.gain.linearRampToValueAtTime(0.0001, at + dur);
+  src.connect(hp).connect(gn).connect(interiorOut(0.45));
+  src.start(at); src.stop(at + dur + 0.05);
+}
+const ATTN_GAP = 0.8;
+const ATTN_GAIN = 0.095; // about 5 dB under the siren overall, yet ~8 dB above it in its own range, so it cuts through without piercing
+function playAttention(delay) {
+  // a broadcast attention tone of our own: two held tones a whole step apart, pitched well below the real alert
+  // (never its 853/960 Hz pair) and under the siren, heard through the monitor's small, gritty speaker
+  if (!ctx || !built) return;
+  const at = ctx.currentTime + delay, dur = 3.2;
+  const sum = new GainNode(ctx, { gain: 1 });
+  const grit = new WaveShaperNode(ctx, { curve: shaperCurve(v => Math.tanh(v * 2.2) / Math.tanh(2.2)), oversample: "2x" });
+  const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 180, Q: 0.7 });
+  const box = new BiquadFilterNode(ctx, { type: "peaking", frequency: 1100, Q: 1.2, gain: 4 }); // the little speaker's honk
+  const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 2600, Q: 0.7 });
+  const gn = new GainNode(ctx, { gain: 0.0001 });
+  sum.connect(grit).connect(hp).connect(box).connect(lp).connect(gn).connect(interiorOut(0.45));
+  for (const f of [392, 440]) {
+    const o = new OscillatorNode(ctx, { type: "sine", frequency: f }), og = new GainNode(ctx, { gain: 0.5 });
+    o.connect(og).connect(sum); o.start(at); o.stop(at + dur * 2 + ATTN_GAP + 0.1);
+  }
+  for (const r0 of [at, at + dur + ATTN_GAP]) { // it rings twice
+    gn.gain.setValueAtTime(0.0001, r0);
+    gn.gain.linearRampToValueAtTime(ATTN_GAIN, r0 + 0.06);
+    gn.gain.setValueAtTime(ATTN_GAIN, r0 + dur - 0.12);
+    gn.gain.linearRampToValueAtTime(0.0001, r0 + dur);
+  }
+}
+
+function playBrownout() {
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime + 0.02, out = interiorOut(0.35);
+  const hum = new OscillatorNode(ctx, { type: "sawtooth", frequency: 120 });
+  const hbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 480, Q: 1.2 });
+  const hg = new GainNode(ctx, { gain: 0.0001 });
+  hum.connect(hbp).connect(hg).connect(out);
+  for (const [tt, lv] of BO_PAT) hg.gain.setTargetAtTime(0.025 + 0.1 * (1 - lv), t0 + tt, 0.015); // it buzzes hardest when the light sags
+  hg.gain.setValueAtTime(0.0001, t0 + BO_POP);
+  hum.start(t0); hum.stop(t0 + BO_POP + 0.05);
+  const nb = noiseBuf(0.3);
+  const burst = (at, f, type, peak, dec) => {
+    const src = new AudioBufferSourceNode(ctx, { buffer: nb }), fl = new BiquadFilterNode(ctx, { type, frequency: f, Q: 0.7 }), gn = new GainNode(ctx, { gain: 0.0001 });
+    gn.gain.setValueAtTime(peak, at); gn.gain.exponentialRampToValueAtTime(0.0005, at + dec);
+    src.connect(fl).connect(gn).connect(out); src.start(at); src.stop(at + dec + 0.02);
+  };
+  for (const [tt, lv] of BO_PAT) if (lv < 0.45) burst(t0 + tt, 2400, "highpass", 0.08, 0.05); // an arc at each sag
+  const at = t0 + BO_POP;
+  burst(at, 2800, "highpass", 0.3, 0.035); // the bulb pops
+  const tk = new OscillatorNode(ctx, { frequency: 3400 }), tkg = new GainNode(ctx, { gain: 0.0001 });
+  tkg.gain.setValueAtTime(0.05, at); tkg.gain.exponentialRampToValueAtTime(0.0005, at + 0.14);
+  tk.connect(tkg).connect(out); tk.start(at); tk.stop(at + 0.16);
+  const th = new OscillatorNode(ctx, { frequency: 72 }), thg = new GainNode(ctx, { gain: 0.0001 }); // the relay drops out behind the panel
+  th.frequency.setValueAtTime(72, at + 0.06); th.frequency.exponentialRampToValueAtTime(40, at + 0.24);
+  thg.gain.setValueAtTime(0.0001, at + 0.06); thg.gain.exponentialRampToValueAtTime(0.35, at + 0.065); thg.gain.exponentialRampToValueAtTime(0.0005, at + 0.26);
+  th.connect(thg).connect(N.comp); th.start(at + 0.06); th.stop(at + 0.3);
+  burst(at + 0.06, 500, "lowpass", 0.28, 0.1);
+}
+function killPower(t) {
+  // everything inside dies, and the siren with it: no signal leaves the shelter now
+  STORY.deadT = t;
+  STORY.deadCrt = radioOn || (STORY.cardT >= 0 && t - STORY.cardT < CARD_LEN);
+  if (powered) {
+    powered = false;
+    if (built) setRpsTarget(0, S.spinTauDown);
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+}
+
 /* ============================== POWER + WAKE LOCK ============================== */
 let powered = false, wakeLock = null, powerPinged = false, idleT = null;
 function requestWake() {
@@ -491,6 +610,7 @@ function requestWake() {
     navigator.wakeLock.request("screen").then(l => { wakeLock = l; }).catch(() => {});
 }
 function setPower(on) {
+  if (STORY.deadT >= 0) { if (built) playClack(on); return; } // dead: the lever throws, nothing answers
   if (on === powered) return;
   powered = on;
   ensureAudio();
@@ -510,6 +630,23 @@ function setPower(on) {
   sparkT = performance.now() / 1000;
   if (N.rainG) N.rainG.gain.setTargetAtTime(on ? 0.09 : 0.165, ctx.currentTime, on ? 0.8 : 1.5);
 }
+/* dwell: how long people stay, counted only while the page is in front; one cookieless ping per mark, never from a local test */
+{
+  const MARKS = [1, 2, 3, 4, 5, 10, 15, 30, 60, 90, 120, 180]; // minutes; 180 means three hours or more
+  let seen = 0, last = performance.now(), next = 0;
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (!local) setInterval(() => {
+    const now = performance.now(), d = Math.min(10000, now - last);
+    last = now;
+    if (document.visibilityState !== "visible") return;
+    seen += d;
+    while (next < MARKS.length && seen >= MARKS[next] * 60000) {
+      const px = document.querySelector('img[src*="/v1/px?site=sirenfall"]'); // the page-count pixel at the foot of the page
+      if (px) new Image().src = px.src.split("?")[0] + "?site=sirenfall&p=/dwell/" + MARKS[next] + "&r=" + Date.now();
+      next++;
+    }
+  }, 5000);
+}
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     if (ctx && ctx.state !== "running") ctx.resume();
@@ -526,10 +663,33 @@ let cityC = null, frameC = null, fogC = null, grainC = null, vigGrad = null;
 let litWindows = [], anchors = null;
 let rainNear = null, rainFar = null, runnels = [], strike = null, nextStrikeT = -1;
 let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
-let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, feedC = null;
+let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, feedC = null, feedOpenC = null;
 let cloudC = null, cloudLitC = null, rainPhF = 0, rainPhN = 0, fogPh = 0, cloudPh = 0, wxAudioT = -9;
 /* weather: a slow random walk through calm, building, squall, passing; k is the rain intensity it drives */
 const WX = { state: "calm", k: 0.3, target: 0.3, tState: -1, dwell: 60, gust: 0, gustT: 0, gust0: -9, gustA: 0, spatDone: true };
+/* the door: some visits, a message on the monitor, then someone knocks; the clock only runs while you're here */
+const STORY = { clk: -1, card: false, knock: false, fast: false, cardAt: 0, knockAt: 0, cardT: -1, knocked: -1, seen: 0, wasOn: false, doorOpen: false, glitchAt: -1, glitchT: -9,
+  blackout: false, fastDark: false, darkForce: false, boAt: 0, boT: -1, deadT: -1, deadCrt: false, openClk: -1 };
+let pwrLvl = 1, roomDark = 0; // the shelter's power: 1 is normal, it stutters as it fails, 0 is gone for good
+{
+  let last = "0";
+  try { last = localStorage.getItem("sf.knock") || "0"; localStorage.setItem("sf.knock", "0"); } catch (e) {}
+  STORY.fast = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]door\b/.test(location.search);
+  STORY.knock = STORY.fast || (last !== "1" && Math.random() < 0.5); // one visit in three, never two in a row
+  STORY.card = STORY.knock || Math.random() < 0.25; // the message sometimes comes with no knock after it
+  // a knock visit: knock, about twenty seconds of nothing, the broadcast, then the door is open
+  if (STORY.fast) { STORY.knockAt = 8; STORY.cardAt = 1e9; }
+  else if (STORY.knock) { STORY.knockAt = 110 + Math.random() * 60; STORY.cardAt = 1e9; }
+  else { STORY.cardAt = 120 + Math.random() * 120; } // the broadcast alone; the door stays shut
+  // one visit in ten the power fails for good, never in the first five minutes; in a knock visit, only after the door is open
+  STORY.fastDark = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]dark\b/.test(location.search);
+  STORY.blackout = STORY.fastDark || Math.random() < 0.1;
+  STORY.boAt = STORY.fastDark ? 15 : 300 + Math.random() * 180;
+}
+// the lamp's last seconds: level by time, then the bulb pops at BO_POP
+const BO_PAT = [[0, 1], [0.12, 0.3], [0.2, 1], [0.5, 0.12], [0.58, 0.9], [0.9, 0.4], [1.0, 1], [1.35, 0.06], [1.5, 0.75], [1.62, 0.18], [1.8, 0.85], [2.05, 0.25]], BO_POP = 2.2;
+function boLevel(tt) { let v = 1; for (const [a, b] of BO_PAT) if (tt >= a) v = b; return v; }
+const CARD_LEN = 9; // two rings of the alarm (3.2 s, a breath, 3.2 s), then the words linger before the camera comes back
 const ON_TH = -14, OFF_TH = 66;
 let leverTh = OFF_TH, leverThT = OFF_TH, leverVel = 0, sparkT = -9;
 let grab = null;
@@ -548,7 +708,7 @@ function computeLayout() {
   const sillY = apY + apH;
   const cy = (sillY + h) / 2 + h * 0.045;
   const arm = clamp(m * 0.105, 42, 74);
-  const knobR = clamp(m * 0.058, 20, 40);
+  const knobR = Math.min(clamp(m * 0.058, 20, 40), apW * 0.05); // upright tablets: the knobs keep a gap between them
   // short landscape screens: keep the console label row clear of the fixed
   // disclosure line, and keep the hint lines off the console face
   const labelDrop = Math.max(knobR + 16, arm * 0.52);
@@ -570,7 +730,7 @@ function computeLayout() {
     hintY
   };
 }
-function lampPos() { return { x: L.apX + L.apW * 0.90, y: L.apY * 0.62 }; }
+function lampPos() { const u = clamp(L.h / 720 * 2.2, 1.2, 3); return { x: L.apX + L.apW * 0.90, y: Math.max(L.apY * 0.62, 18 * u + 16), u }; }
 
 /* ---------- the baked HD matte painting (drawn once per resize) ---------- */
 function softBlob(x, cx, cy, r, rgb, a, sy) {
@@ -1197,7 +1357,7 @@ function buildFrame() {
   // console: brushed steel panel
   const p = L, lx = p.lever.x, py = p.lever.y;
   const px0 = p.vol.x - p.vol.r * 2.2, px1 = lx + p.lever.arm * 1.3;
-  const py0 = py - p.lever.arm * 1.5, py1 = Math.min(h - 26, py + p.lever.arm * 1.15);
+  const py0 = Math.max(py - p.lever.arm * 1.5, p.sillY + 19), py1 = Math.min(h - 26, py + p.lever.arm * 1.15); // never up into the sill
   const pg = x.createLinearGradient(0, py0, 0, py1);
   pg.addColorStop(0, "#1a1613"); pg.addColorStop(0.12, "#141110"); pg.addColorStop(1, "#0c0a09");
   x.fillStyle = pg;
@@ -1217,12 +1377,28 @@ function buildFrame() {
     x.fillStyle = "#241e17"; x.beginPath(); x.arc(sx2, sy2, 2.6, 0, 7); x.fill();
     x.fillStyle = "rgba(255,225,180,0.22)"; x.beginPath(); x.arc(sx2 - 0.7, sy2 - 0.7, 0.9, 0, 7); x.fill();
   }
-  x.fillStyle = "#8a7f6d"; x.textAlign = "center"; x.font = "600 " + (p.portrait ? 7.5 : 9) + "px 'Segoe UI', sans-serif";
-  try { x.letterSpacing = p.portrait ? "1px" : "2px"; } catch (e) {}
+  x.fillStyle = "#8a7f6d"; x.textAlign = "center";
   const labelY = py + Math.max(p.vol.r + 16, p.lever.arm * 0.52);
-  for (const [txt, lx2] of [["VOLUME", p.vol.x], ["DISTANCE", p.dist.x], ["LAMP", p.dim.x], ["CAMERA", p.radio.x], ["WIPE", p.wipe.x], ["SHUTTER", p.shutter.x], ["BREAKER", lx]]) {
-    x.save(); x.globalAlpha = 0.8; x.translate(lx2, labelY); x.rotate((r() - 0.5) * 0.02); x.fillText(txt, 0, 0); x.restore();
+  const LABS = [["VOLUME", p.vol.x], ["DISTANCE", p.dist.x], ["LAMP", p.dim.x], ["CAMERA", p.radio.x], ["WIPE", p.wipe.x], ["SHUTTER", p.shutter.x], ["BREAKER", lx]];
+  let fpx = p.portrait ? 7.5 : 9, lsp = p.portrait ? 1 : 2, lws = [];
+  for (let pass = 0; pass < 14; pass++) { // narrow screens: less letter spacing first, then a smaller size
+    try { x.letterSpacing = "0px"; } catch (e) {}
+    x.font = "600 " + fpx + "px 'Segoe UI', sans-serif";
+    lws = LABS.map(([t]) => x.measureText(t).width + lsp * t.length);
+    let worst = 99;
+    for (let i = 0; i + 1 < LABS.length; i++) worst = Math.min(worst, (LABS[i + 1][1] - lws[i + 1] / 2) - (LABS[i][1] + lws[i] / 2));
+    if (worst >= 6) break;
+    if (lsp > 0.6) lsp -= 0.5; else if (fpx > 7) fpx -= 0.5; else break;
   }
+  const lxs = LABS.map(l => l[1]);
+  for (let it = 0; it < 4; it++) for (let i = 0; i + 1 < lxs.length; i++) {
+    const gap = (lxs[i + 1] - lws[i + 1] / 2) - (lxs[i] + lws[i] / 2);
+    if (gap < 6) { lxs[i] -= (6 - gap) / 2; lxs[i + 1] += (6 - gap) / 2; }
+  }
+  try { x.letterSpacing = lsp + "px"; } catch (e) {}
+  LABS.forEach(([txt], i) => {
+    x.save(); x.globalAlpha = 0.8; x.translate(lxs[i], labelY); x.rotate((r() - 0.5) * 0.02); x.fillText(txt, 0, 0); x.restore();
+  });
 
   // ---- shelter props ----
   // ceiling conduit with a seep stain
@@ -1330,14 +1506,21 @@ function buildFrame() {
     x.beginPath(); x.moveTo(w * 0.045, h * 0.795); x.lineTo(w * 0.045 + 26, h * 0.795); x.stroke();
     x.beginPath(); x.moveTo(w * 0.028, h * 0.88); x.lineTo(w * 0.028 + 34, h * 0.88); x.stroke();
   }
-  // the keeper's lamp fixture: conduit, hood, cage
-  x.strokeStyle = "#242019"; x.lineWidth = 2.6;
-  x.beginPath(); x.moveTo(la.x, 0); x.lineTo(la.x, la.y - 12); x.stroke();
-  x.fillStyle = "#1f1913";
-  x.beginPath(); x.arc(la.x, la.y - 7, 9.5, Math.PI, 0); x.fill();
-  x.strokeStyle = "rgba(255,214,150,0.35)"; x.lineWidth = 0.9;
-  x.beginPath(); x.arc(la.x, la.y - 4, 6.5, 0.35, Math.PI - 0.35); x.stroke();
-  x.beginPath(); x.moveTo(la.x - 6, la.y - 5); x.lineTo(la.x - 2.5, la.y + 2); x.moveTo(la.x + 6, la.y - 5); x.lineTo(la.x + 2.5, la.y + 2); x.stroke();
+  // the keeper's lamp fixture: conduit, canopy, enamel hood; the bulb and its cage are drawn live, in front
+  const u = la.u;
+  x.strokeStyle = "#242019"; x.lineWidth = 1.2 + u;
+  x.beginPath(); x.moveTo(la.x, 0); x.lineTo(la.x, la.y - 16 * u); x.stroke();
+  x.fillStyle = "#1a1510"; x.fillRect(la.x - 2.4 * u, la.y - 19 * u, 4.8 * u, 3.6 * u);
+  const hood = x.createLinearGradient(la.x - 12 * u, 0, la.x + 12 * u, 0);
+  hood.addColorStop(0, "#14100c"); hood.addColorStop(0.42, "#2c2319"); hood.addColorStop(1, "#100d0a");
+  x.fillStyle = hood;
+  x.beginPath(); x.moveTo(la.x - 3 * u, la.y - 16.5 * u); x.lineTo(la.x + 3 * u, la.y - 16.5 * u);
+  x.quadraticCurveTo(la.x + 5 * u, la.y - 11 * u, la.x + 12 * u, la.y - 6 * u);
+  x.lineTo(la.x - 12 * u, la.y - 6 * u);
+  x.quadraticCurveTo(la.x - 5 * u, la.y - 11 * u, la.x - 3 * u, la.y - 16.5 * u);
+  x.closePath(); x.fill();
+  x.strokeStyle = "rgba(255,214,150,0.10)"; x.lineWidth = 1; // a worn highlight along the dome
+  x.beginPath(); x.moveTo(la.x - 1.5 * u, la.y - 16 * u); x.quadraticCurveTo(la.x - 4 * u, la.y - 11 * u, la.x - 9.5 * u, la.y - 7 * u); x.stroke();
   return c;
 }
 function roundRect(x, a, b, w2, h2, r2) {
@@ -1396,7 +1579,8 @@ function resize() {
   droplets = [];
   for (let i = 0; i < 70; i++) droplets.push({ x: Math.random() * L.apW, y: Math.random() * L.apH, r: 0.5 + Math.random() * 0.7, a: 0.04 + Math.random() * 0.06 });
   grainC = buildGrain();
-  feedC = buildFeed();
+  feedC = buildFeed(false);
+  feedOpenC = buildFeed(true);
   vigGrad = g.createRadialGradient(W * 0.5, H * 0.46, Math.min(W, H) * 0.42, W * 0.5, H * 0.46, Math.max(W, H) * 0.78);
   vigGrad.addColorStop(0, "rgba(0,0,0,0)");
   vigGrad.addColorStop(1, "rgba(0,0,0,0.46)");
@@ -1837,7 +2021,8 @@ function drawRadio(t) {
   // tuning dial with a live needle when the set is on
   g.fillStyle = "#0a0a0c"; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.fill();
   g.strokeStyle = "#33363e"; g.lineWidth = 1; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.stroke();
-  const na = radioOn ? -0.9 + 0.5 * Math.sin(t * 0.43) + 0.06 * Math.sin(t * 5.1) : -1.3;
+  const live = radioOn && pwrLvl > 0.5;
+  const na = live ? -0.9 + 0.5 * Math.sin(t * 0.43) + 0.06 * Math.sin(t * 5.1) : -1.3;
   g.strokeStyle = radioOn ? "#e8b97a" : "#5a5248"; g.lineWidth = 1.2;
   g.beginPath(); g.moveTo(x + 10, y - 5); g.lineTo(x + 10 + Math.cos(na) * 5, y - 5 + Math.sin(na) * 5); g.stroke();
   const up = radioOn;
@@ -1846,9 +2031,9 @@ function drawRadio(t) {
   g.strokeStyle = hot ? "#c5a373" : "#a8865c"; g.lineWidth = 3.8;
   g.beginPath(); g.moveTo(x - 11, y + 6); g.lineTo(x - 11, up ? y - 2 : y + 13); g.stroke();
   g.fillStyle = "#1c1e24"; g.beginPath(); g.arc(x - 11, y + 6, 2.8, 0, 7); g.fill();
-  g.fillStyle = radioOn ? "rgba(140,220,150,0.9)" : "rgba(60,80,64,0.5)";
+  g.fillStyle = live ? "rgba(140,220,150,0.9)" : "rgba(60,80,64,0.5)";
   g.beginPath(); g.arc(x + 10, y + 8, 1.9, 0, 7); g.fill();
-  if (radioOn) {
+  if (live) {
     const rg2 = g.createRadialGradient(x + 10, y + 8, 0, x + 10, y + 8, 7);
     rg2.addColorStop(0, "rgba(140,220,150,0.35)"); rg2.addColorStop(1, "rgba(140,220,150,0)");
     g.fillStyle = rg2; g.beginPath(); g.arc(x + 10, y + 8, 7, 0, 7); g.fill();
@@ -1868,18 +2053,23 @@ function drawWipe(t) {
   g.beginPath(); g.arc(x - 2.2, y - 2.6 + (pressed ? 1 : 0), 2.4, 0, 7); g.fill();
 }
 
-function drawLampAndGlow(t, amp) {
+function drawLampAndGlow(t, amp, flashA) {
   // interior brightness first, so glowing instruments stay bright on top of it
-  if (lampDim < 0.995) {
-    const dk = (1 - lampDim) * 0.62;
+  const deadK = STORY.deadT >= 0 ? Math.min(1, (t - STORY.deadT) / 0.25) : 0;
+  let dk = (1 - lampDim * Math.min(1, pwrLvl)) * 0.62 + deadK * 0.24;
+  if (deadK > 0) dk = Math.max(0.12, dk - (flashA || 0) * 3.2 * deadK); // in the dark, each flash shows you the room
+  roomDark = dk;
+  const shade = () => {
+    if (dk <= 0.005) return;
     g.beginPath();
     g.rect(0, 0, L.w, L.h);
     g.rect(L.apX, L.apY, L.apW, L.apH);
     g.fillStyle = "rgba(2,2,3," + dk.toFixed(3) + ")";
     g.fill("evenodd");
-  }
+  };
+  if (!deadK) shade(); // with power, the lamps glow on top of the room; without it they sink into the dark with everything else
   const { x, y } = L.lamp;
-  const glow = amp;
+  const glow = Math.min(1, amp * pwrLvl);
   g.fillStyle = "rgb(" + Math.round(58 + glow * 197) + "," + Math.round(35 + glow * 105) + "," + Math.round(19 + glow * 40) + ")";
   g.strokeStyle = "#4a3020"; g.lineWidth = 2;
   g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); g.stroke();
@@ -1890,16 +2080,30 @@ function drawLampAndGlow(t, amp) {
     g.fillStyle = lg; g.beginPath(); g.arc(x, y, 26, 0, 7); g.fill();
   }
   // keeper's lamp: a soft ceiling glow, and the LAMP knob raises or lowers the whole room
-  const la = lampPos();
-  const fl = (RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim;
+  const la = lampPos(), u = la.u;
+  const fl = (RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim * pwrLvl;
   softBlob(g, la.x, la.y, Math.min(L.w, L.h) * 0.30, "226,168,104", 0.09 * fl, 1);
-  g.fillStyle = "rgba(255,214,150," + Math.min(1, 0.75 * fl + 0.08).toFixed(2) + ")";
-  g.beginPath(); g.arc(la.x, la.y - 3, 2.6, 0, 7); g.fill();
+  softBlob(g, la.x, la.y - 1 * u, 26 * u, "255,190,120", 0.16 * fl, 0.85); // the hot pool around the fixture
+  g.fillStyle = "rgba(255,196,128," + (0.32 * fl).toFixed(3) + ")"; // the hood's mouth, lit from inside
+  g.beginPath(); g.ellipse(la.x, la.y - 6 * u, 11.6 * u, 2 * u, 0, 0, Math.PI); g.fill();
+  const by = la.y - 1.5 * u, ba = STORY.deadT >= 0 ? 0 : Math.min(1, 0.8 * fl + 0.1);
+  if (STORY.deadT >= 0) { g.fillStyle = "rgba(48,44,40,0.55)"; g.beginPath(); g.arc(la.x, by, 3 * u, 0, 7); g.fill(); } // a dead bulb
+  const bulb = g.createRadialGradient(la.x, by, 0, la.x, by, 5 * u);
+  bulb.addColorStop(0, "rgba(255,246,222," + ba.toFixed(3) + ")");
+  bulb.addColorStop(0.45, "rgba(255,212,150," + (ba * 0.85).toFixed(3) + ")");
+  bulb.addColorStop(1, "rgba(255,170,100,0)");
+  g.fillStyle = bulb; g.beginPath(); g.arc(la.x, by, 5 * u, 0, 7); g.fill();
+  g.strokeStyle = "rgba(34,27,20,0.92)"; g.lineWidth = Math.max(1, 0.45 * u); // cage wires
+  g.beginPath();
+  for (const dx of [-9, -3.4, 3.4, 9]) { g.moveTo(la.x + dx * u, la.y - 6 * u); g.quadraticCurveTo(la.x + dx * 0.9 * u, la.y + 3 * u, la.x, la.y + 5.5 * u); }
+  g.stroke();
+  g.beginPath(); g.ellipse(la.x, la.y - 0.5 * u, 8.2 * u, 1.6 * u, 0, 0, 7); g.stroke();
+  if (deadK) shade();
 }
 function drawAlarm(t, amp) {
   // caged red alarm bulb above the window; breathes with the siren
   const ax = L.apX + L.apW * 0.08, ay = L.apY * 0.62;
-  const p = powered ? 0.35 + 0.65 * Math.min(1, amp * 1.4) : 0;
+  const p = powered ? (0.35 + 0.65 * Math.min(1, amp * 1.4)) * Math.min(1, pwrLvl) : 0;
   const pulse = 0.7 + 0.3 * Math.sin(t * 3.1);
   g.fillStyle = "#1c1712"; g.fillRect(ax - 8, ay + 5, 16, 4);
   if (p > 0.01) {
@@ -1919,8 +2123,9 @@ function drawAlarm(t, amp) {
   g.beginPath(); g.arc(ax, ay + 5, 7.6, Math.PI, 0); g.stroke();
   g.beginPath(); g.moveTo(ax - 5.4, ay + 0.5); g.lineTo(ax + 5.4, ay + 0.5); g.stroke();
   g.beginPath(); g.moveTo(ax - 3.4, ay - 2.2); g.lineTo(ax + 3.4, ay - 2.2); g.stroke();
+  if (STORY.deadT >= 0) { g.fillStyle = "rgba(2,2,3," + roomDark.toFixed(3) + ")"; g.beginPath(); g.arc(ax, ay + 3, 16, 0, 7); g.fill(); }
 }
-function buildFeed() {
+function buildFeed(open) {
   const c = document.createElement("canvas");
   c.width = 150; c.height = 110;
   const x = c.getContext("2d");
@@ -1938,13 +2143,52 @@ function buildFeed() {
   const rec = x.createLinearGradient(50, 0, 58, 0);
   rec.addColorStop(0, "rgba(255,255,255,0.09)"); rec.addColorStop(1, "rgba(255,255,255,0)");
   x.fillStyle = rec; x.fillRect(50, 20, 8, 80);
-  x.fillStyle = "#010101"; x.fillRect(56, 24, 38, 74); // the door
-  x.strokeStyle = "#454545"; x.lineWidth = 1.6; x.strokeRect(56, 24, 38, 74);
-  x.strokeStyle = "rgba(60,60,60,0.5)"; x.lineWidth = 1; // door panels
-  x.beginPath(); x.moveTo(68, 28); x.lineTo(68, 94); x.moveTo(82, 28); x.lineTo(82, 94); x.stroke();
-  x.fillStyle = "rgba(150,150,150,0.22)"; // handle, hinges
-  x.fillRect(88, 60, 2.6, 6);
-  for (const hy of [32, 58, 84]) x.fillRect(56.5, hy, 2, 4);
+  if (!open) {
+    x.fillStyle = "#010101"; x.fillRect(56, 24, 38, 74); // the door
+    x.strokeStyle = "#454545"; x.lineWidth = 1.6; x.strokeRect(56, 24, 38, 74);
+    x.strokeStyle = "rgba(60,60,60,0.5)"; x.lineWidth = 1; // door panels
+    x.beginPath(); x.moveTo(68, 28); x.lineTo(68, 94); x.moveTo(82, 28); x.lineTo(82, 94); x.stroke();
+    x.fillStyle = "rgba(150,150,150,0.22)"; // handle, hinges
+    x.fillRect(88, 60, 2.6, 6);
+    for (const hy of [32, 58, 84]) x.fillRect(56.5, hy, 2, 4);
+  } else {
+    // open onto nothing: the leaf has swung in on its hinges and the doorway is a hole
+    const gr = rngf(4242); // the same grime every time
+    x.fillStyle = "#000"; x.fillRect(56, 24, 38, 74);
+    const sill = x.createLinearGradient(0, 98, 0, 76); // the lamp crosses the sill onto the floor inside, then the dark takes it
+    sill.addColorStop(0, "rgba(200,200,200,0.26)"); sill.addColorStop(1, "rgba(200,200,200,0)");
+    x.fillStyle = sill; x.beginPath(); x.moveTo(71, 98); x.lineTo(93, 98); x.lineTo(87, 76); x.lineTo(77, 76); x.closePath(); x.fill();
+    x.fillStyle = "rgba(0,0,0,0.85)"; // rubble and a fallen something, dark in the light
+    for (const [rx, ry, rw, rh] of [[78, 93, 4, 2], [84, 90, 2.5, 1.5], [88, 95, 3, 1.5], [75, 87, 1.5, 1.2], [81, 84, 6, 1.2]]) x.fillRect(rx, ry, rw, rh);
+    x.fillStyle = "rgba(200,200,200,0.07)"; x.fillRect(92, 26, 2, 72); // the far jamb catches a little
+    // the leaf, face-on to the lamp: dented, streaked, never clean
+    x.save();
+    x.beginPath(); x.moveTo(56, 24); x.lineTo(72.5, 33.5); x.lineTo(73, 61); x.lineTo(72.4, 88); x.lineTo(56, 98); x.closePath();
+    const leaf = x.createLinearGradient(0, 24, 0, 98);
+    leaf.addColorStop(0, "#7c7c7c"); leaf.addColorStop(0.35, "#555"); leaf.addColorStop(1, "#1c1c1c");
+    x.fillStyle = leaf; x.fill();
+    x.clip();
+    for (let i = 0; i < 9; i++) { // rust and water streaks running down from the top
+      const sx = 57 + gr() * 15, sy = 28 + gr() * 20, len = 18 + gr() * 50;
+      const st2 = x.createLinearGradient(0, sy, 0, sy + len);
+      st2.addColorStop(0, "rgba(0,0,0," + (0.18 + gr() * 0.25).toFixed(2) + ")"); st2.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = st2; x.fillRect(sx, sy, 0.8 + gr() * 1.4, len);
+    }
+    for (let i = 0; i < 5; i++) { // dents that hold shadow
+      x.fillStyle = "rgba(0,0,0," + (0.25 + gr() * 0.25).toFixed(2) + ")";
+      x.beginPath(); x.ellipse(58 + gr() * 13, 36 + gr() * 50, 1.2 + gr() * 1.6, 0.8 + gr() * 1.4, gr() * 3, 0, 7); x.fill();
+    }
+    x.strokeStyle = "rgba(190,190,190,0.16)"; x.lineWidth = 0.6; // scratches through the paint
+    for (let i = 0; i < 6; i++) { const ax = 57 + gr() * 13, ay = 34 + gr() * 50; x.beginPath(); x.moveTo(ax, ay); x.lineTo(ax + 2 + gr() * 4, ay + (gr() - 0.5) * 5); x.stroke(); }
+    const kick = x.createLinearGradient(0, 80, 0, 98); // the bottom, black with grime where boots have kicked it
+    kick.addColorStop(0, "rgba(0,0,0,0)"); kick.addColorStop(1, "rgba(0,0,0,0.55)");
+    x.fillStyle = kick; x.fillRect(56, 80, 18, 18);
+    x.restore();
+    x.strokeStyle = "rgba(200,200,200,0.45)"; x.lineWidth = 1; // the leaf's edge, bent out of true
+    x.beginPath(); x.moveTo(72.5, 33.5); x.lineTo(73, 61); x.lineTo(72.4, 88); x.stroke();
+    x.fillStyle = "rgba(10,10,10,0.85)"; x.fillRect(68, 58, 2.4, 6); // its handle, on the wrong side of the door now
+    x.strokeStyle = "#3f3f3f"; x.lineWidth = 1.6; x.strokeRect(56, 24, 38, 74);
+  }
   x.fillStyle = "rgba(190,190,190,0.14)"; x.fillRect(66, 12, 18, 6); // number plate above, unreadable
   x.fillStyle = "rgba(0,0,0,0.4)"; x.fillRect(68, 13.5, 3, 3); x.fillRect(74, 13.5, 3, 3); x.fillRect(80, 13.5, 3, 3);
   // single caged lamp above the door, its light crawling down the recess
@@ -1969,39 +2213,51 @@ function buildFeed() {
   return c;
 }
 function crtRect() {
+  if (L.portrait) { // upright tablet: no side wall, so it hangs on the wall between the window and the console
+    const band = (L.lever.y - L.lever.arm * 1.5) - (L.sillY + 17);
+    const hC = Math.min(band * 0.78, 136), wC = hC / 0.8;
+    return { x: L.apX + L.apW - wC - 14, y: L.sillY + 17 + (band - hC) / 2, w: wC, h: hC, wall: true };
+  }
   const mg = L.w - (L.apX + L.apW);
   const wC = Math.min(mg * 0.86, 170), hC = wC * 0.8;
   return { x: L.apX + L.apW + (mg - wC) / 2, y: L.h * 0.13, w: wC, h: hC };
 }
+function crtShown() { return L.portrait ? crtRect().h >= 60 : L.apX > 70; }
 function drawCRT(t) {
-  if (L.apX <= 70) return;
+  if (!crtShown()) return;
   const c = crtRect();
   g.strokeStyle = "#241f19"; g.lineWidth = 2.6;
-  g.beginPath(); g.moveTo(c.x + c.w / 2, 0); g.lineTo(c.x + c.w / 2, c.y - 4); g.stroke();
+  if (!c.wall) { g.beginPath(); g.moveTo(c.x + c.w / 2, 0); g.lineTo(c.x + c.w / 2, c.y - 4); g.stroke(); } // hung from the ceiling
   const bz = g.createLinearGradient(0, c.y, 0, c.y + c.h);
   bz.addColorStop(0, "#211d18"); bz.addColorStop(1, "#131110");
   g.fillStyle = bz; roundRect(g, c.x - 7, c.y - 7, c.w + 14, c.h + 14, 8); g.fill();
   g.strokeStyle = "#2e2822"; g.lineWidth = 1.6; roundRect(g, c.x - 7, c.y - 7, c.w + 14, c.h + 14, 8); g.stroke();
   g.fillStyle = "#050506"; roundRect(g, c.x, c.y, c.w, c.h, 5); g.fill();
-  if (!radioOn) {
-    g.fillStyle = "rgba(200,60,40,0.55)";
+  if (STORY.deadT >= 0) { drawDeadCRT(c, t - STORY.deadT); return; }
+  const ct = STORY.cardT >= 0 ? t - STORY.cardT : 99, inCard = ct < CARD_LEN;
+  if (!radioOn && !inCard) {
+    g.fillStyle = "rgba(200,60,40," + (0.55 * Math.min(1, pwrLvl)).toFixed(3) + ")";
     g.beginPath(); g.arc(c.x + c.w - 8, c.y + c.h - 8, 2, 0, 7); g.fill();
     return;
   }
   g.save();
   roundRect(g, c.x, c.y, c.w, c.h, 5); g.clip();
-  const flick = 0.72 + 0.16 * Math.sin(t * 11.3) * Math.sin(t * 2.9) + 0.08 * Math.random();
-  g.globalAlpha = flick;
-  g.drawImage(feedC, c.x, c.y, c.w, c.h);
-  g.globalAlpha = 1;
-  g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = 1; // live rain specks
-  for (let i = 0; i < 5; i++) {
-    const rx3 = c.x + Math.random() * c.w, ry3 = c.y + Math.random() * c.h * 0.9;
-    g.beginPath(); g.moveTo(rx3, ry3); g.lineTo(rx3 - 1.5, ry3 + 6); g.stroke();
+  const flick = 0.86 + 0.08 * Math.sin(t * 11.3) * Math.sin(t * 2.9) + 0.05 * Math.random();
+  if (inCard && ct > CARD_LEN - 0.3) drawSnow(c);
+  else if (inCard) drawCard(c, ct, flick);
+  else {
+    g.globalAlpha = flick;
+    g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, c.y, c.w, c.h);
+    g.globalAlpha = 1;
+    g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = 1; // live rain specks
+    for (let i = 0; i < 5; i++) {
+      const rx3 = c.x + Math.random() * c.w, ry3 = c.y + Math.random() * c.h * 0.9;
+      g.beginPath(); g.moveTo(rx3, ry3); g.lineTo(rx3 - 1.5, ry3 + 6); g.stroke();
+    }
   }
   if (grainC) {
-    g.globalAlpha = 0.24; g.drawImage(grainC, Math.random() * 120, Math.random() * 120, 300, 220, c.x, c.y, c.w, c.h);
-    g.globalAlpha = 0.14; g.drawImage(grainC, Math.random() * 300, Math.random() * 300, 150, 110, c.x, c.y, c.w, c.h);
+    g.globalAlpha = inCard ? 0.12 : 0.13; g.drawImage(grainC, Math.random() * 120, Math.random() * 120, 300, 220, c.x, c.y, c.w, c.h);
+    g.globalAlpha = 0.07; g.drawImage(grainC, Math.random() * 300, Math.random() * 300, 150, 110, c.x, c.y, c.w, c.h);
     g.globalAlpha = 1;
   }
   g.fillStyle = "rgba(0,0,0,0.24)"; // scanlines
@@ -2010,8 +2266,103 @@ function drawCRT(t) {
   const rl = g.createLinearGradient(0, roll, 0, roll + 16);
   rl.addColorStop(0, "rgba(255,255,255,0)"); rl.addColorStop(0.5, "rgba(255,255,255,0.05)"); rl.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = rl; g.fillRect(c.x, roll, c.w, 16);
+  if (pwrLvl < 1) { g.fillStyle = "rgba(0,0,0," + (1 - pwrLvl).toFixed(3) + ")"; g.fillRect(c.x, c.y, c.w, c.h); }
   g.restore();
-  softBlob(g, c.x + c.w / 2, c.y + c.h / 2, c.w * 0.75, "180,195,210", 0.05, 0.8);
+  softBlob(g, c.x + c.w / 2, c.y + c.h / 2, c.w * 0.75, "180,195,210", 0.05 * Math.min(1, pwrLvl), 0.8);
+}
+function drawDeadCRT(c, d) {
+  g.fillStyle = "rgba(2,2,3," + roomDark.toFixed(3) + ")"; // the set sinks into the dark room with everything else
+  roundRect(g, c.x - 8, c.y - 8, c.w + 16, c.h + 16, 8); g.fill();
+  if (!STORY.deadCrt || d > 1.4) return;
+  const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+  g.save();
+  roundRect(g, c.x, c.y, c.w, c.h, 5); g.clip();
+  if (d < 0.2) { // the picture squashes into a bright line
+    const k = 1 - d / 0.2, hh = Math.max(2, c.h * k);
+    g.globalAlpha = 0.85; g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
+    g.globalAlpha = 1; g.fillStyle = "rgba(230,236,255," + (0.5 * (1 - k)).toFixed(3) + ")"; g.fillRect(c.x, cy - hh / 2, c.w, hh);
+  } else if (d < 0.5) { // the line draws in to a point
+    const ww = Math.max(3, c.w * (1 - (d - 0.2) / 0.3));
+    g.fillStyle = "rgba(230,236,255,0.9)"; g.fillRect(cx - ww / 2, cy - 1, ww, 2);
+  } else { // the point fades
+    const a = Math.max(0, 1 - (d - 0.5) / 0.9);
+    softBlob(g, cx, cy, 7, "230,236,255", 0.7 * a, 1);
+    g.fillStyle = "rgba(240,244,255," + (0.9 * a).toFixed(3) + ")"; g.beginPath(); g.arc(cx, cy, 1.4, 0, 7); g.fill();
+  }
+  g.restore();
+}
+
+function drawSnow(c) {
+  g.fillStyle = "#2e2e2e"; g.fillRect(c.x, c.y, c.w, c.h);
+  if (grainC) {
+    g.globalAlpha = 0.95; g.drawImage(grainC, Math.random() * 200, Math.random() * 200, c.w * 0.45, c.h * 0.45, c.x, c.y, c.w, c.h);
+    g.globalAlpha = 0.55; g.drawImage(grainC, Math.random() * 200, Math.random() * 200, c.w, c.h, c.x, c.y, c.w, c.h);
+    g.globalAlpha = 1;
+  }
+  for (let i = 0; i < 3; i++) {
+    g.fillStyle = "rgba(255,255,255," + (0.05 + Math.random() * 0.12).toFixed(2) + ")";
+    g.fillRect(c.x, c.y + Math.random() * c.h, c.w, 1 + Math.random() * 4);
+  }
+}
+function drawCard(c, ct, flick) {
+  // the broadcast slate: big plain words filling the screen, nobody signs it
+  g.fillStyle = "#07080a"; g.fillRect(c.x, c.y, c.w, c.h);
+  g.save();
+  g.globalAlpha = 0.9 + 0.1 * flick;
+  g.textAlign = "center"; g.textBaseline = "middle";
+  const ink = "rgb(240,237,228)";
+  const fit = (txt, wt, maxW, maxPx, y) => {
+    try { g.letterSpacing = "1px"; } catch (e) {}
+    g.font = wt + " " + maxPx.toFixed(1) + "px 'Segoe UI', system-ui, sans-serif";
+    const mw = g.measureText(txt).width;
+    if (mw > maxW) g.font = wt + " " + (maxPx * maxW / mw).toFixed(1) + "px 'Segoe UI', system-ui, sans-serif";
+    g.shadowColor = "rgba(240,237,228,0.55)"; g.shadowBlur = 6; g.fillStyle = ink;
+    g.fillText(txt, c.x + c.w / 2, y);
+    return Math.min(maxPx, maxPx * maxW / mw);
+  };
+  fit("STAY INSIDE", 800, c.w * 0.88, c.h * 0.24, c.y + c.h * 0.27);
+  g.shadowBlur = 0; g.fillStyle = "rgba(240,237,228,0.45)";
+  g.fillRect(c.x + c.w * 0.18, c.y + c.h * 0.445, c.w * 0.64, Math.max(1, c.h * 0.012));
+  const px2 = fit("DO NOT OPEN", 700, c.w * 0.82, c.h * 0.17, c.y + c.h * 0.60);
+  fit("THE DOOR", 700, c.w * 0.82, px2, c.y + c.h * 0.79); // same size as the line above it
+  try { g.letterSpacing = "0px"; } catch (e) {}
+  g.restore();
+}
+function stepStory(t, dt) {
+  // runs only while the page is in front; a hidden tab stops the clock
+  const st = STORY;
+  if (st.clk < 0) return;
+  st.clk += dt;
+  const thunderNear = strike && (strike.played ? t - strike.t0 - strike.delay < 4 : strike.delay - (t - strike.t0) < 2.5);
+  // 1. the knock, never on top of a shutter slam or thunder
+  if (st.knock && st.knocked < 0 && st.clk >= st.knockAt) {
+    if (!built || shutterMoving || thunderNear) st.knockAt = st.clk + 3;
+    else {
+      st.knocked = t; playKnock();
+      st.cardAt = st.clk + 20 + (st.fast ? 0 : Math.random() * 4);
+      try { localStorage.setItem("sf.knock", "1"); } catch (e) {}
+    }
+  }
+  // 2. the broadcast: the monitor turns itself on if it has to, and the words are there with the first buzz
+  if (st.card && st.cardT < 0 && st.deadT < 0 && st.clk >= st.cardAt) {
+    if (!crtShown()) { st.card = false; if (st.knocked >= 0) st.doorOpen = true; } // no monitor on this screen
+    else if (thunderNear || shutterMoving) st.cardAt = st.clk + 2;
+    else { st.cardT = t; radioOn = true; playAttention(0); playStaticBurst(CARD_LEN - 0.3, 0.3, 0.03); }
+  }
+  if (st.cardT >= 0 && t - st.cardT < CARD_LEN && nextStrikeT < t + 3) nextStrikeT = t + 3; // no new lightning while it's up
+  // 3. when the broadcast ends the camera comes back; after a knock, the door is open
+  if (st.knocked >= 0 && !st.doorOpen && st.cardT >= 0 && t - st.cardT >= CARD_LEN - 0.3) st.doorOpen = true;
+  // the blackout: in a knock visit it waits until the door has been seen open
+  if (st.doorOpen && st.openClk < 0) { st.openClk = st.clk; st.boAt = Math.max(st.boAt, st.clk + (st.fast ? 8 : 25 + Math.random() * 20)); }
+  if (st.blackout && st.boT < 0 && st.clk >= st.boAt && (!st.knock || st.doorOpen || st.darkForce) && !(st.cardT >= 0 && t - st.cardT < CARD_LEN + 2)) {
+    st.boT = t; playBrownout();
+  }
+  if (st.boT >= 0) {
+    const tt = t - st.boT;
+    if (tt < BO_POP) pwrLvl = RM ? 1 - tt / BO_POP : boLevel(tt);
+    else pwrLvl = tt < BO_POP + 0.07 && !RM ? 1.6 : 0; // the bulb flares as it pops
+    if (tt >= BO_POP && st.deadT < 0) killPower(t);
+  }
 }
 
 /* ---------- lever + knob interaction ---------- */
@@ -2023,13 +2374,19 @@ function hitTest(px, py) {
   if (!L) return null; // pointer events can arrive before the first layout on a hidden tab
   const hp = leverHandlePos();
   if (Math.hypot(px - hp.x, py - hp.y) < Math.max(30, L.lever.arm * 0.55)) return "lever";
-  if (Math.hypot(px - L.lever.x, py - L.lever.y) < L.lever.arm * 1.05) return "lever";
-  if (Math.hypot(px - L.shutter.x, py - L.shutter.y) < L.shutter.arm * 1.1) return "shutter";
-  for (const k of ["vol", "dist", "dim"]) if (Math.hypot(px - L[k].x, py - L[k].y) < L[k].r + 16) return k;
-  if (Math.abs(px - L.radio.x) < 23 && Math.abs(py - L.radio.y) < 17) return "radio";
-  if (Math.hypot(px - L.wipe.x, py - L.wipe.y) < 14) return "wipe";
-  const cr = crtRect();
-  if (px >= cr.x && px <= cr.x + cr.w && py >= cr.y && py <= cr.y + cr.h) return "crt";
+  // everything else: the nearest control whose zone you're inside, so a neighbour's zone never steals the tap
+  let best = null, bestD = 1e9;
+  const zone = (k, d) => { if (d < 1 && d < bestD) { best = k; bestD = d; } };
+  zone("lever", Math.hypot(px - L.lever.x, py - L.lever.y) / (L.lever.arm * 1.05));
+  zone("shutter", Math.hypot(px - L.shutter.x, py - L.shutter.y) / (L.shutter.arm * 1.1));
+  for (const k of ["vol", "dist", "dim"]) zone(k, Math.hypot(px - L[k].x, py - L[k].y) / (L[k].r + 16));
+  zone("radio", Math.max(Math.abs(px - L.radio.x) / 23, Math.abs(py - L.radio.y) / 17));
+  zone("wipe", Math.hypot(px - L.wipe.x, py - L.wipe.y) / 14);
+  if (best) return best;
+  if (crtShown()) {
+    const cr = crtRect();
+    if (px >= cr.x && px <= cr.x + cr.w && py >= cr.y && py <= cr.y + cr.h) return "crt";
+  }
   return null;
 }
 cv.addEventListener("pointerdown", e => {
@@ -2250,6 +2607,8 @@ function frame(now) {
     if (st > strike.delay + 1.2) { strike = null; nextStrikeT = t + (20 + Math.random() * 50) * (1.15 - 0.5 * wk); }
   }
 
+  stepStory(t, dt);
+
   let shX = 0, shY = 0;
   if (t - shakeT < 0.32) {
     const kk = (1 - (t - shakeT) / 0.32) * 6;
@@ -2267,7 +2626,7 @@ function frame(now) {
   drawRadio(t);
   drawWipe(t);
   drawLever(t);
-  drawLampAndGlow(t, amp);
+  drawLampAndGlow(t, amp, flashA);
   drawAlarm(t, amp);
   drawCRT(t);
   g.fillStyle = vigGrad; g.fillRect(0, 0, W, H);
@@ -2292,7 +2651,15 @@ window.__sirens = {
   get layout() { return L; }, get anchors() { return anchors; }, leverHandlePos, simRpsNow,
   get shutterPos() { return shutterPos; }, get radioOn() { return radioOn; },
   get lampDim() { return lampDim; }, get dropletCount() { return droplets.length; },
-  get wx() { return WX; }, get strike() { return strike; },
+  get wx() { return WX; }, get strike() { return strike; }, get story() { return STORY; },
+  storyNow(what) {
+    if (STORY.clk < 0) STORY.clk = 0;
+    if (what === "card") { STORY.card = true; STORY.cardT = -1; STORY.cardAt = STORY.clk; }
+    else if (what === "knock") { STORY.knock = true; STORY.card = true; STORY.knocked = -1; STORY.knockAt = STORY.clk; STORY.cardAt = 1e9; }
+    else if (what === "open") STORY.doorOpen = true;
+    else if (what === "dark") { STORY.blackout = true; STORY.darkForce = true; STORY.boAt = STORY.clk; }
+  },
+  playKnock, playAttention,
   strikeNow(kind) { if (!strike) newStrike(performance.now() / 1000, kind); },
   setWeather(k) { WX.k = k; WX.target = k; WX.state = k > 0.6 ? "squall" : "calm"; WX.tState = performance.now() / 1000; WX.dwell = 900; }
 };
