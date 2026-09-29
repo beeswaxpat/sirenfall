@@ -3735,7 +3735,7 @@ function frame(now) {
   // one line each, and fullscreen told the way this device does it
   const coarse = matchMedia("(pointer: coarse)").matches;
   breakerHint = coarse ? "Pull the breaker." : "Pull the breaker to power the siren.";
-  document.getElementById("hint").textContent = coarse ? "Tap anywhere for sound." : "Click anywhere for sound."; // until the first tap
+  { const h = document.getElementById("hint"); h.textContent = coarse ? "Tap anywhere for sound." : "Click anywhere for sound."; if (!built) h.classList.add("call"); } // bright until the first tap, so the sound is found at once
   document.getElementById("hp").textContent = coarse ? "\u{1F3A7} Headphones. Double-tap for fullscreen." : "\u{1F3A7} Headphones recommended. F for fullscreen.";
 }
 resize();
