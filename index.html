@@ -127,9 +127,15 @@
     font-size: 13px; letter-spacing: 1.2px; color: rgba(222,196,158,0.7);
     transition: opacity 1.4s ease; animation: breathe 3.4s ease-in-out infinite alternate;
   }
+  #hint.swap { opacity: 0; animation: none; transition: opacity 0.4s ease; }
+  #hint.back { animation: hintIn 0.9s ease both, breathe 3.4s ease-in-out 0.9s infinite alternate; }
+  @keyframes hintIn { from { opacity: 0; } to { opacity: 0.45; } }
   #hint.gone { opacity: 0; animation: none; }
+  #hint.call { color: rgba(238,214,172,0.95); animation: callIn 0.8s ease both, breathe2 1.7s ease-in-out 0.8s infinite alternate; }
+  @keyframes callIn { from { opacity: 0.45; } to { opacity: 0.75; } }
+  @keyframes breathe2 { from { opacity: 0.75; } to { opacity: 1; } }
   @keyframes breathe { from { opacity: 0.45; } to { opacity: 0.85; } }
-  @media (prefers-reduced-motion: reduce) { #hint { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { #hint, #hint.back, #hint.call { animation: none; } }
   #disc { bottom: 9px; width: 100%; text-align: center; font-size: 11px; color: rgba(160,150,135,0.38); letter-spacing: 0.4px; }
   #hp {
     left: 50%; transform: translateX(-50%); white-space: nowrap;
@@ -376,7 +382,18 @@ function ensureAudio() {
     try { build(); }
     catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = "Audio failed: " + e.message; }
   }
-  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; }
+  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); }
+}
+let hintSwapped = false, breakerHint = "";
+function hintAfterSound() {
+  // the sound is up: the one thing left to ask is the breaker
+  if (hintSwapped) return;
+  hintSwapped = true;
+  const h = document.getElementById("hint");
+  h.classList.remove("call");
+  if (powered || h.classList.contains("gone")) return;
+  h.classList.add("swap");
+  setTimeout(() => { if (powered) return; h.textContent = breakerHint; h.classList.remove("swap"); h.classList.add("back"); }, 450);
 }
 function setVolume(v) {
   S.vol = Math.min(1, Math.max(0, v));
@@ -407,20 +424,29 @@ function startRain() {
   N.rainG.gain.setTargetAtTime(powered ? 0.09 : 0.165, ctx.currentTime, 2.0);
   N.rainSrc = src;
 }
+let boomBuf = null, boomOff = 0, rollBuf = null, rollOff = 0;
+function onsetOf(b) { const d = b.getChannelData(0); let i = 0; while (i < d.length && Math.abs(d[i]) < 0.03) i++; return Math.max(0, i / b.sampleRate - 0.02); }
 async function loadWeatherAudio() {
   if (rainBuf !== null) return;
   rainBuf = false;
+  // the blast's boom has its own thunder, fetched first and alongside the rain, and played from where the sound starts
+  const boomP = fetch("audio/thunder2.mp3").then(r => r.arrayBuffer()).then(ab => ctx.decodeAudioData(ab)).then(b => {
+    boomOff = onsetOf(b); boomBuf = b; thunderBufs.push(b);
+  }).catch(() => {});
   try {
     const ab = await (await fetch("audio/rain.mp3")).arrayBuffer();
     rainBuf = await ctx.decodeAudioData(ab);
   } catch (e) { rainBuf = noiseBuf(6); }
   startRain();
-  for (const n2 of ["thunder1.mp3", "thunder2.mp3", "thunder3.mp3"]) {
+  for (const n2 of ["thunder3.mp3", "thunder1.mp3"]) {
     try {
-      const ab2 = await (await fetch("audio/" + n2)).arrayBuffer();
-      thunderBufs.push(await ctx.decodeAudioData(ab2));
+      const ab2 = await (await fetch("audio/" + n2)).arrayBuffer(), b2 = await ctx.decodeAudioData(ab2);
+      thunderBufs.push(b2);
+      if (n2 === "thunder3.mp3") { rollBuf = b2; rollOff = onsetOf(b2); } // the heavy one rolls on after the boom
     } catch (e) {}
   }
+  await boomP;
+  if (BLAST.at >= 0 || BLAST.jump >= 0) { noiseKept(1.6); noiseKept(4.8); }
 }
 function playThunder(mag) {
   if (!ctx || !built || !thunderBufs.length) return;
@@ -463,7 +489,161 @@ function playSlam() {
   rg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.7);
   ring.connect(rbp).connect(rg).connect(N.comp);
   ring.start(t0 + 0.01);
+  if (slatBuf) for (const [d, v] of [[0.06, 1], [0.13, 0.7], [0.19, 0.5], [0.27, 0.32], [0.36, 0.2]]) { // the slats settle
+    const src = new AudioBufferSourceNode(ctx, { buffer: slatBuf, playbackRate: 0.7 + Math.random() * 0.4 });
+    const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: SLAT_F[Math.floor(Math.random() * SLAT_F.length)], Q: 8 }), gn = new GainNode(ctx, { gain: 0.13 * v });
+    src.connect(bp).connect(gn).connect(N.comp); src.start(t0 + d);
+  }
 }
+const nbKeep = {}; // the blast's longer noise, made once so the moment itself never waits on it
+function noiseKept(sec) { return nbKeep[sec] || (nbKeep[sec] = noiseBuf(sec)); }
+let slatBuf = null, runBus = null;
+const SLAT_F = [540, 810, 1180, 1720, 2480, 3350]; // where the slats ring when they knock in their guides
+function playRelease() {
+  // the shutter's brake lets go: a steel latch snapping and the weight of the curtain dropping onto it
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime + 0.01, out = interiorOut(0.2), nb = noiseKept(1.6);
+  const ck = new AudioBufferSourceNode(ctx, { buffer: nb }), ckf = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1900, Q: 4 }), ckg = new GainNode(ctx, { gain: 0.0001 });
+  ckg.gain.setValueAtTime(0.0001, t0); ckg.gain.exponentialRampToValueAtTime(0.3, t0 + 0.002); ckg.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.05);
+  ck.connect(ckf).connect(ckg).connect(out); ck.start(t0, 0.3); ck.stop(t0 + 0.07);
+  const th = new OscillatorNode(ctx, { frequency: 110 }), thg = new GainNode(ctx, { gain: 0.0001 });
+  th.frequency.setValueAtTime(110, t0 + 0.01); th.frequency.exponentialRampToValueAtTime(48, t0 + 0.16);
+  thg.gain.setValueAtTime(0.0001, t0 + 0.01); thg.gain.exponentialRampToValueAtTime(0.26, t0 + 0.016); thg.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.2);
+  th.connect(thg).connect(out); th.start(t0 + 0.01); th.stop(t0 + 0.22);
+}
+function playShutterRun(down, dur) {
+  // a steel roller shutter on the move: the slats knock and ring in their guides, a fast clatter that speeds up as it falls,
+  // the drum rumbling above it, and going up a motor pulling it slow
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime + 0.02, out = interiorOut(0.15), sr = ctx.sampleRate;
+  if (!slatBuf) {
+    const n = Math.floor(sr * 0.03); slatBuf = ctx.createBuffer(1, n, sr);
+    const d = slatBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sr * 0.004));
+  }
+  if (runBus) {
+    const ob = runBus, n = ctx.currentTime;
+    ob.gain.cancelScheduledValues(n); ob.gain.setValueAtTime(ob.gain.value, n); ob.gain.linearRampToValueAtTime(0, n + 0.03);
+    setTimeout(() => { try { ob.disconnect(); } catch (e) {} }, 80);
+  }
+  const bus = runBus = new GainNode(ctx, { gain: 1 }); bus.connect(out);
+  // the drum and the curtain's weight: a low roll under everything
+  const rb = new AudioBufferSourceNode(ctx, { buffer: noiseKept(1.6), loop: true }), rl = new BiquadFilterNode(ctx, { type: "lowpass", frequency: down ? 170 : 130, Q: 0.8 }), rg = new GainNode(ctx, { gain: 0.0001 });
+  const rv = down ? 0.3 : 0.18;
+  rg.gain.setValueAtTime(0.0001, t0); rg.gain.linearRampToValueAtTime(rv, t0 + 0.08); rg.gain.setValueAtTime(rv, t0 + dur - 0.06); rg.gain.linearRampToValueAtTime(0.0001, t0 + dur + 0.02);
+  rb.connect(rl).connect(rg).connect(bus); rb.start(t0); rb.stop(t0 + dur + 0.05);
+  // the guides: steel dragging on steel, thin and harsh
+  const sc = new AudioBufferSourceNode(ctx, { buffer: noiseKept(1.6), loop: true }), sf = new BiquadFilterNode(ctx, { type: "bandpass", frequency: down ? 2300 : 1700, Q: 1.3 }), sg = new GainNode(ctx, { gain: 0.0001 });
+  const sv = down ? 0.035 : 0.022;
+  sg.gain.setValueAtTime(0.0001, t0); sg.gain.linearRampToValueAtTime(sv, t0 + 0.06); sg.gain.setValueAtTime(sv, t0 + dur - 0.05); sg.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+  sc.connect(sf).connect(sg).connect(bus); sc.start(t0, 0.7); sc.stop(t0 + dur + 0.05);
+  // the slats, one knock at a time
+  let tt = 0;
+  while (tt < dur) {
+    const prog = tt / dur, rate = down ? 26 + 64 * prog * prog : 18 + 5 * Math.sin(prog * 11);
+    tt += (0.55 + 0.9 * Math.random()) / rate;
+    if (tt >= dur) break;
+    const at = t0 + tt, f = SLAT_F[Math.floor(Math.random() * SLAT_F.length)] * (0.94 + Math.random() * 0.12);
+    const src = new AudioBufferSourceNode(ctx, { buffer: slatBuf, playbackRate: 0.75 + Math.random() * 0.6 });
+    const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: f, Q: 6 + Math.random() * 7 });
+    const gn = new GainNode(ctx, { gain: (0.09 + Math.random() * 0.1) * (down ? 0.75 + 0.5 * prog : 0.8) });
+    src.connect(bp).connect(gn).connect(bus); src.start(at);
+    if (Math.random() < 0.35) { // now and then a heavier slat: more body than ring
+      const s2 = new AudioBufferSourceNode(ctx, { buffer: slatBuf, playbackRate: 0.5 }), lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 480, Q: 1.2 }), g2 = new GainNode(ctx, { gain: 0.22 + Math.random() * 0.12 });
+      s2.connect(lp).connect(g2).connect(bus); s2.start(at);
+    }
+  }
+  if (!down) { // the motor hauling it back up
+    const m = new OscillatorNode(ctx, { type: "sawtooth", frequency: 52 }), ml = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 240, Q: 0.9 }), mg = new GainNode(ctx, { gain: 0.0001 });
+    m.frequency.setValueAtTime(46, t0); m.frequency.linearRampToValueAtTime(58, t0 + 0.4);
+    mg.gain.setValueAtTime(0.0001, t0); mg.gain.linearRampToValueAtTime(0.05, t0 + 0.2); mg.gain.setValueAtTime(0.05, t0 + dur - 0.15); mg.gain.linearRampToValueAtTime(0.0001, t0 + dur + 0.05);
+    m.connect(ml).connect(mg).connect(bus); m.start(t0); m.stop(t0 + dur + 0.1);
+  }
+}
+function playBlastWave() {
+  // the air arriving: a long low boom through the steel, the whole shelter taking the push, the shutter rattling in its guides
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime + 0.02;
+  if (boomBuf) {
+    const src = new AudioBufferSourceNode(ctx, { buffer: boomBuf, playbackRate: 0.5 });
+    const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 260, Q: 0.6 }), gn = new GainNode(ctx, { gain: BOOM_GAIN });
+    gn.gain.setValueAtTime(BOOM_GAIN, t0 + 3.5); gn.gain.exponentialRampToValueAtTime(0.001, t0 + 7);
+    src.connect(lp).connect(gn).connect(N.worldLp); src.start(t0, boomOff); src.stop(t0 + 7.1);
+    // the part small speakers can carry: the same boom, higher, as the steel and the walls take it
+    const mid = new AudioBufferSourceNode(ctx, { buffer: boomBuf, playbackRate: 0.8 });
+    const mbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 520, Q: 0.8 }), mg = new GainNode(ctx, { gain: MID_GAIN });
+    mg.gain.setValueAtTime(MID_GAIN, t0 + 0.6); mg.gain.exponentialRampToValueAtTime(0.001, t0 + 3);
+    mid.connect(mbp).connect(mg).connect(interiorOut(0)); mid.start(t0, boomOff); mid.stop(t0 + 3.1);
+  }
+  if (rollBuf) { // and the long roll of it coming in behind
+    const at = t0 + 0.3, src = new AudioBufferSourceNode(ctx, { buffer: rollBuf, playbackRate: 0.6 });
+    const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 200, Q: 0.6 }), gn = new GainNode(ctx, { gain: ROLL_GAIN });
+    gn.gain.setValueAtTime(ROLL_GAIN, at + 3.7); gn.gain.exponentialRampToValueAtTime(0.001, at + 7.5);
+    src.connect(lp).connect(gn).connect(N.worldLp); src.start(at, rollOff); src.stop(at + 7.6);
+  }
+  const out = interiorOut(0), nb = noiseKept(4.8);
+  const sub = new OscillatorNode(ctx, { frequency: 50 }), sg = new GainNode(ctx, { gain: 0.0001 });
+  sub.frequency.setValueAtTime(50, t0); sub.frequency.exponentialRampToValueAtTime(24, t0 + 1.4);
+  sg.gain.setValueAtTime(0.0001, t0); sg.gain.exponentialRampToValueAtTime(SUB_GAIN, t0 + 0.04); sg.gain.exponentialRampToValueAtTime(0.0005, t0 + 1.9);
+  sub.connect(sg).connect(out); sub.start(t0); sub.stop(t0 + 2);
+  const rum = new AudioBufferSourceNode(ctx, { buffer: nb }), rlp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 110, Q: 0.7 }), rgn = new GainNode(ctx, { gain: 0.0001 });
+  const rumLen = boomBuf ? 3.1 : 4.6; // no boom file yet: the structure carries the whole weight of it
+  rgn.gain.setValueAtTime(0.0001, t0); rgn.gain.exponentialRampToValueAtTime(RUM_GAIN * (boomBuf ? 1 : 1.3), t0 + 0.08); rgn.gain.exponentialRampToValueAtTime(0.0005, t0 + rumLen);
+  rum.connect(rlp).connect(rgn).connect(out); rum.start(t0); rum.stop(t0 + rumLen + 0.1);
+  // the thud small speakers can carry: the room itself taking the hit
+  const hit = new AudioBufferSourceNode(ctx, { buffer: nb }), hbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 420, Q: 0.7 }), hg = new GainNode(ctx, { gain: 0.0001 });
+  hg.gain.setValueAtTime(0.0001, t0); hg.gain.exponentialRampToValueAtTime(HIT_GAIN, t0 + 0.012); hg.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.55);
+  hit.connect(hbp).connect(hg).connect(out); hit.start(t0, 0.5); hit.stop(t0 + 0.6);
+  for (const [d, v] of [[0.03, 1], [0.11, 0.75], [0.2, 0.6], [0.33, 0.42], [0.5, 0.3], [0.74, 0.18], [1.05, 0.1]]) { // the shutter rattles in its guides
+    const at = t0 + d;
+    const s1 = new AudioBufferSourceNode(ctx, { buffer: nb }), f1 = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1250 * (0.94 + Math.random() * 0.12), Q: 12 }), g1 = new GainNode(ctx, { gain: 0.0001 });
+    g1.gain.setValueAtTime(0.11 * v, at); g1.gain.exponentialRampToValueAtTime(0.0005, at + 0.3);
+    s1.connect(f1).connect(g1).connect(out); s1.start(at, Math.random() * 2); s1.stop(at + 0.32);
+    const s2 = new AudioBufferSourceNode(ctx, { buffer: nb }), f2 = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 310, Q: 2.5 }), g2 = new GainNode(ctx, { gain: 0.0001 });
+    g2.gain.setValueAtTime(0.26 * v, at); g2.gain.exponentialRampToValueAtTime(0.0005, at + 0.09);
+    s2.connect(f2).connect(g2).connect(out); s2.start(at, Math.random() * 2); s2.stop(at + 0.1);
+  }
+  for (let i = 0; i < 9; i++) { // grit coming down on the sill
+    const at = t0 + 0.25 + Math.random() * 2.2;
+    const s3 = new AudioBufferSourceNode(ctx, { buffer: nb }), f3 = new BiquadFilterNode(ctx, { type: "highpass", frequency: 2600 + Math.random() * 2000, Q: 0.7 }), g3 = new GainNode(ctx, { gain: 0.0001 });
+    g3.gain.setValueAtTime(0.015 + Math.random() * 0.03, at); g3.gain.exponentialRampToValueAtTime(0.0003, at + 0.012);
+    s3.connect(f3).connect(g3).connect(interiorOut((Math.random() - 0.5) * 0.8)); s3.start(at, Math.random() * 2.5); s3.stop(at + 0.02);
+  }
+}
+const BOOM_GAIN = 1.0, ROLL_GAIN = 0.6, MID_GAIN = 0.85, SUB_GAIN = 0.3, RUM_GAIN = 0.6, HIT_GAIN = 1.5;
+function startRoar() {
+  // the city burning, far off: a low roar under the rain that never goes away again
+  if (!ctx || !built || BLAST.roar) return;
+  BLAST.roar = true;
+  const t0 = ctx.currentTime, src = new AudioBufferSourceNode(ctx, { buffer: noiseKept(4.8), loop: true });
+  const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 210, Q: 0.6 }), gn = new GainNode(ctx, { gain: 0.0001 });
+  const sw = new OscillatorNode(ctx, { frequency: 0.07 }), swg = new GainNode(ctx, { gain: 0.025 });
+  sw.connect(swg).connect(gn.gain); sw.start(t0);
+  gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(ROAR_GAIN, t0 + 14);
+  src.connect(lp).connect(gn).connect(N.worldLp); src.start(t0);
+}
+const ROAR_GAIN = 0.1;
+let clickBuf = null, geigerOut = null, geigerNext = 0;
+function stepGeiger(t) {
+  // while the warning is on screen, the monitor's speaker carries a counter clicking, irregular, now and then in a rush
+  const B = BLAST;
+  const gt = t - B.radT - RAD_RING;
+  if (!built || !ctx || !radioOn || B.radT < -1e8 || STORY.deadT >= 0 || gt < 0 || gt > GEIGER_LEN) { geigerNext = 0; return; }
+  const env = Math.min(1, gt / 1.5, (GEIGER_LEN - gt) / 5); // in softly, and away again
+  const now = ctx.currentTime;
+  if (!clickBuf) {
+    const n = Math.floor(ctx.sampleRate * 0.004); clickBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = clickBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * 0.12));
+    geigerOut = interiorOut(0.45);
+  }
+  if (geigerNext < now) geigerNext = now + 0.05;
+  while (geigerNext < now + 0.1) { // a short look ahead, so switching it off stops it at once
+    const s = new AudioBufferSourceNode(ctx, { buffer: clickBuf }), hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 1800, Q: 0.7 }), gn = new GainNode(ctx, { gain: GEIGER_GAIN * env * (0.75 + Math.random() * 0.5) });
+    s.connect(hp).connect(gn).connect(geigerOut); s.start(geigerNext);
+    const rate = 3.5 + 2.5 * Math.sin(t * 0.21) + (Math.random() < 0.025 ? 30 : 0);
+    geigerNext += -Math.log(1 - Math.random()) / Math.max(1.5, rate);
+  }
+}
+const GEIGER_GAIN = 0.03, GEIGER_LEN = 15;
 function playTick() {
   if (!ctx || !built) return;
   const s = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.05) });
@@ -538,7 +718,7 @@ function playStaticBurst(delay, dur, gain) {
   src.connect(hp).connect(gn).connect(interiorOut(0.45));
   src.start(at); src.stop(at + dur + 0.05);
 }
-const ATTN_GAP = 0.8;
+const ATTN_GAP = 0.8, RAD_RING = 0.3 + 3.2 * 2 + ATTN_GAP; // the warning's alarm: rings twice, after a beat
 const ATTN_GAIN = 0.095; // about 5 dB under the siren overall, yet ~8 dB above it in its own range, so it cuts through without piercing
 function playAttention(delay) {
   // a broadcast attention tone of our own: two held tones a whole step apart, pitched well below the real alert
@@ -562,6 +742,7 @@ function playAttention(delay) {
     gn.gain.setValueAtTime(ATTN_GAIN, r0 + dur - 0.12);
     gn.gain.linearRampToValueAtTime(0.0001, r0 + dur);
   }
+  return gn;
 }
 
 function playBrownout() {
@@ -596,6 +777,11 @@ function killPower(t) {
   // everything inside dies, and the siren with it: no signal leaves the shelter now
   STORY.deadT = t;
   STORY.deadCrt = radioOn || (STORY.cardT >= 0 && t - STORY.cardT < CARD_LEN);
+  if (BLAST.alarmG && ctx) { // a dead monitor says nothing more
+    const p = BLAST.alarmG.gain, n = ctx.currentTime;
+    if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(n); else { p.cancelScheduledValues(n); p.setValueAtTime(p.value, n); }
+    p.setTargetAtTime(0.0001, n, 0.01); BLAST.alarmG = null;
+  }
   if (powered) {
     powered = false;
     if (built) setRpsTarget(0, S.spinTauDown);
@@ -663,7 +849,9 @@ let cityC = null, frameC = null, fogC = null, grainC = null, vigGrad = null;
 let litWindows = [], anchors = null;
 let rainNear = null, rainFar = null, runnels = [], strike = null, nextStrikeT = -1;
 let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
-let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, feedC = null, feedOpenC = null;
+let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, shakeDur = 0.32, shakeAmp = 6, feedC = null, feedOpenC = null;
+let silC = null, lightC = null, mushC = null, cloudWarmC = null, cloudHotC = null, rotShown = false, variantT = null;
+let cityAfterC = null, silAfterC = null, fireL1 = null, fireL2 = null, afterFires = [], bakeAfter = false, nearM = null, silPallC = null, waveSilC = null, ruinSilC = null;
 let cloudC = null, cloudLitC = null, rainPhF = 0, rainPhN = 0, fogPh = 0, cloudPh = 0, wxAudioT = -9;
 /* weather: a slow random walk through calm, building, squall, passing; k is the rain intensity it drives */
 const WX = { state: "calm", k: 0.3, target: 0.3, tState: -1, dwell: 60, gust: 0, gustT: 0, gust0: -9, gustA: 0, spatDone: true };
@@ -686,6 +874,72 @@ let pwrLvl = 1, roomDark = 0; // the shelter's power: 1 is normal, it stutters a
   STORY.blackout = STORY.fastDark || Math.random() < 0.1;
   STORY.boAt = STORY.fastDark ? 15 : 120 + Math.random() * 90;
 }
+/* the blast: early in a first visit a bomb goes off beyond the city. The shelter shuts itself; when it opens again the city
+   is broken, the streets are burning, a cloud is climbing into the sky, and the monitor says what it is. */
+const NUKE = { x: 0.74, y: 0.545 }; // where it went off: out beyond the far rows
+const BLAST = { on: 0, at: -1, t0: -1e9, jump: -1, auto: false, dropped: false, lock: false, waved: false, lifted: false, fast: false, swapped: false,
+  gx: NUKE.x, gy: 0.535, waveT: -9, liftT: -9, puffT: -9, dipT: -9, dust: [], swing: 0, swingV: 0, radAt: -1e9, radT: -1e9, roar: false, snd: -1, alarmG: null };
+const BL_DROP = 0.85, BL_WAVE = 2.05, BL_LIFT = 7.6, BL_BUSY = 14; // after the light: the shutter trips, the air arrives, the shutter lifts, all quiet
+{
+  const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
+  let seen = "0";
+  try { seen = localStorage.getItem("sf.blast") || "0"; } catch (e) {}
+  const force = lh ? q.match(/[?&]blast(?:=(\d+))?\b/) : null; // local test: ?blast (at 15 s) or ?blast=4
+  const aft = lh ? q.match(/[?&]after(?:=(\d+))?\b/) : null;   // local test: ?after=60 opens a minute after it happened
+  if (aft) { BLAST.jump = aft[1] ? +aft[1] : 20; BLAST.at = -1; }
+  else if (force) BLAST.at = force[1] ? +force[1] : 15;
+  else if (seen === "1") BLAST.at = Math.random() < 0.2 ? 30 + Math.random() * 90 : -1; // a return visit: once in a while it happens again
+  else BLAST.at = 15; // a first visit: fifteen seconds in, every time
+  // after a bomb, nobody is afraid of a knock at the door: in a visit where it goes off, the door story never starts
+  if ((BLAST.at >= 0 || BLAST.jump >= 0) && !STORY.fast) { STORY.knock = false; STORY.card = false; }
+  BLAST.at0 = BLAST.at;
+}
+// every gap between the slats lets through its own amount of light; a few holes go right through the steel
+// (a hash-based generator here: the simple one above lines its values up in diagonals across a grid like this)
+const SLATS = [], HOLES = [];
+{
+  let sd = 5150;
+  const r = () => { sd = sd + 0x6D2B79F5 | 0; let q = Math.imul(sd ^ sd >>> 15, 1 | sd); q = q + Math.imul(q ^ q >>> 7, 61 | q) ^ q; return ((q ^ q >>> 14) >>> 0) / 4294967296; };
+  for (let i = 0; i < 64; i++) { // old steel: every gap uneven along its length, some crushed shut in places, a few sprung open
+    const base = 0.6 + 0.35 * r(), p = [];
+    for (let j = 0; j < 25; j++) p.push(base * (0.78 + 0.34 * r()));
+    if (r() < 0.25) { const a = 1 + Math.floor(r() * 20), n2 = 2 + Math.floor(r() * 3); for (let j = a; j < Math.min(25, a + n2); j++) p[j] = 0.05; }
+    if (r() < 0.3) p[1 + Math.floor(r() * 22)] = 1.5 + r() * 0.4;
+    SLATS.push(p);
+  }
+  // a burst of shrapnel holes low on the left pane, and one stray: ragged, never a tidy pair
+  const hx0 = 0.16 + 0.1 * r(), hy0 = 0.32 + 0.2 * r();
+  for (let i = 0; i < 9; i++) { const q = i / 8; HOLES.push({ x: hx0 + q * 0.06 + (r() - 0.5) * 0.008, yb: hy0 + 0.06 - q * 0.12 + (r() - 0.5) * 0.012, r: 1.9 - q * 1.1 + r() * 0.25, k: 1.1 - q * 0.45, ox: r() - 0.5, oy: r() - 0.5 }); }
+  HOLES.push({ x: 0.7 + r() * 0.15, yb: 0.62 + r() * 0.2, r: 1.4, k: 0.9, ox: 0.3, oy: -0.2 });
+}
+function blastF(tt) { // the light itself: there at once, held for a breath, then going
+  if (tt < 0) return 0;
+  const v = tt < 0.04 ? tt / 0.04 : tt < 0.9 ? 1 : Math.exp(-(tt - 0.9) / 1.6);
+  return RM ? v * 0.55 : v;
+}
+const BL_RGB = [[0, 255, 252, 246], [1.0, 255, 244, 232], [1.5, 255, 166, 100], [2.3, 232, 92, 42], [4, 180, 48, 24], [8, 110, 28, 18]];
+function blastRGB(tt) { // white, then the colors of fire as it cools
+  let i = 0;
+  while (i < BL_RGB.length - 2 && tt > BL_RGB[i + 1][0]) i++;
+  const a = BL_RGB[i], b = BL_RGB[i + 1], k = Math.min(1, Math.max(0, (tt - a[0]) / (b[0] - a[0])));
+  return [Math.round(a[1] + (b[1] - a[1]) * k), Math.round(a[2] + (b[2] - a[2]) * k), Math.round(a[3] + (b[3] - a[3]) * k)];
+}
+function blastFlick(t) { // a fire breathes, and now and then it flares
+  return RM ? 1 : 0.66 + 0.22 * Math.sin(t * 1.3) * Math.sin(t * 0.37 + 1) + 0.12 * Math.sin(t * 6.1) * Math.sin(t * 2.3 + 0.7) + 0.22 * Math.pow(Math.max(0, Math.sin(t * 0.9)), 12);
+}
+function blastG(t) { // the fires it left: hot when the shutter lifts, then burning on all visit
+  let v = 0;
+  if (BLAST.t0 > -1e8) { const tt = t - BLAST.t0; if (tt > 0) v = Math.max(v, Math.min(1, tt / 1.5) * (0.75 + 0.25 * Math.exp(-Math.max(0, tt - 8) / 16))); }
+  return v;
+}
+function blastIw(t) { // how much of the light is coming into the room: all of it before the steel is down, then what gets through
+  if (BLAST.t0 < -1e8) return 0;
+  return blastF(t - BLAST.t0) * ((1 - shutterPos) + shutterPos * 0.3);
+}
+function blastBusy(t) {
+  return (BLAST.t0 > -1e8 && t - BLAST.t0 < BL_BUSY) || (BLAST.at >= 0 && BLAST.t0 < -1e8 && BLAST.at - BLAST.on < 4) ||
+    (BLAST.radAt > -1e8 && (BLAST.radT < -1e8 || t - BLAST.radT < RAD_RING + 2));
+}
 // the lamp's last seconds: level by time, then the bulb pops at BO_POP
 const BO_PAT = [[0, 1], [0.12, 0.3], [0.2, 1], [0.5, 0.12], [0.58, 0.9], [0.9, 0.4], [1.0, 1], [1.35, 0.06], [1.5, 0.75], [1.62, 0.18], [1.8, 0.85], [2.05, 0.25]], BO_POP = 2.2;
 function boLevel(tt) { let v = 1; for (const [a, b] of BO_PAT) if (tt >= a) v = b; return v; }
@@ -696,6 +950,7 @@ let grab = null;
 let hover = null;
 
 function rngf(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+function hashRng(seed) { let sd = seed; return () => { sd = sd + 0x6D2B79F5 | 0; let q = Math.imul(sd ^ sd >>> 15, 1 | sd); q = q + Math.imul(q ^ q >>> 7, 61 | q) ^ q; return ((q ^ q >>> 14) >>> 0) / 4294967296; }; }
 function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
 
 function computeLayout() {
@@ -724,8 +979,7 @@ function computeLayout() {
     vol: { x: apX + apW * 0.135, y: cyC, r: knobR },
     dist: { x: apX + apW * 0.275, y: cyC, r: knobR },
     dim: { x: apX + apW * 0.40, y: cyC, r: knobR * 0.85 },
-    lamp: { x: apX + apW * 0.505, y: cyC - m * 0.038 },
-    radio: { x: apX + apW * 0.505, y: cyC + m * 0.024 },
+    radio: { x: apX + apW * 0.505, y: cyC },
     wipe: { x: apX + apW * 0.578, y: cyC },
     hintY
   };
@@ -742,7 +996,7 @@ function softBlob(x, cx, cy, r, rgb, a, sy) {
   x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
   x.restore();
 }
-function noiseOver(x, w, h, alpha, mono) {
+function noiseOver(x, w, h, alpha, mono, rnd) {
   const n = document.createElement("canvas");
   const nw = Math.min(512, Math.ceil(w)), nh = Math.min(512, Math.ceil(h));
   n.width = nw; n.height = nh;
@@ -750,7 +1004,7 @@ function noiseOver(x, w, h, alpha, mono) {
   const img = nx.createImageData(nw, nh);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
-    const v = Math.random() * 255;
+    const v = (rnd ? rnd() : Math.random()) * 255;
     d[i] = v; d[i + 1] = v; d[i + 2] = mono ? v : v * 0.94; d[i + 3] = 255;
   }
   nx.putImageData(img, 0, 0);
@@ -828,7 +1082,7 @@ function drawTallTower(x, r, ly, li, bx, top, bw, baseY, ext) {
   const wa = ly.winA || 0.09;
   for (let wy = top + bh * 0.42; wy < baseY - 6; wy += 9)
     for (let wx = bx + 3; wx < bx + bw - 5; wx += 7)
-      if (r() < 0.5) { x.fillStyle = "rgba(120,140,170," + (wa * 0.9 * ((wy - top) / bh)).toFixed(3) + ")"; x.fillRect(wx, wy, 2.6, 3.4); }
+      if (r() < 0.5) { x.fillStyle = bakeAfter ? "rgba(3,3,5,0.45)" : "rgba(120,140,170," + (wa * 0.9 * ((wy - top) / bh)).toFixed(3) + ")"; x.fillRect(wx, wy, 2.6, 3.4); }
 }
 
 function drawFarCrane(x, cx, base, aw, ah) {
@@ -905,7 +1159,7 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
     const wa = ly.winA * 0.8;
     for (let wy = yTop + 6; wy < baseY - 6; wy += gy) {
       for (const u of (sw > 12 ? [0.3, 0.7] : [0.5])) {
-        if (r() < 0.85) { x.fillStyle = "rgba(120,140,170," + (wa * (0.4 + r() * 0.8)).toFixed(3) + ")"; x.fillRect(fx + sgn * sw * u - 0.8, wy + (yTopFar - yTop) * u, 1.6, 4.2); }
+        if (r() < 0.85) { const wv = wa * (0.4 + r() * 0.8); x.fillStyle = bakeAfter ? "rgba(4,4,6,0.5)" : "rgba(120,140,170," + wv.toFixed(3) + ")"; x.fillRect(fx + sgn * sw * u - 0.8, wy + (yTopFar - yTop) * u, 1.6, 4.2); }
       }
     }
   }
@@ -947,8 +1201,8 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
         if (q < missP + brokenP) { x.fillStyle = "rgba(0,0,0,0.34)"; x.fillRect(wx - 0.4, wy - 0.4, www + 0.8, whh + 0.8); continue; }
         if (q < missP + brokenP + boardP) { x.fillStyle = "rgba(24,20,16,0.55)"; x.fillRect(wx - 0.3, wy - 0.3, www + 0.6, whh + 0.6); continue; }
         const a = ly.winA * fv * (0.5 + r() * 0.8) * (ft === 1 ? 0.8 : 1);
-        x.fillStyle = "rgba(120,140,170," + a.toFixed(3) + ")"; x.fillRect(wx, wy, www, whh);
-        if (near && ft !== 1) { x.fillStyle = "rgba(170,190,220," + (a * 0.7).toFixed(3) + ")"; x.fillRect(wx, wy, www, 0.7); }
+        x.fillStyle = bakeAfter ? "rgba(3,3,5,0.5)" : "rgba(120,140,170," + a.toFixed(3) + ")"; x.fillRect(wx, wy, www, whh); // after the blast: blown out
+        if (near && ft !== 1 && !bakeAfter) { x.fillStyle = "rgba(170,190,220," + (a * 0.7).toFixed(3) + ")"; x.fillRect(wx, wy, www, 0.7); }
         pushSurvivor(wx, wy);
       }
       if (ft === 1 && near) { x.fillStyle = "rgba(0,0,0,0.25)"; x.fillRect(bx, wy + whh, bw, 1); } // the spandrel band under a ribbon
@@ -1003,8 +1257,8 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
     const n = 8;
     for (let i = 0; i < n; i++) { const a = (i / n) * 6.283, rr = 0.7 + r() * 0.5; x.lineTo(hx + Math.cos(a) * hw * rr, hy + Math.sin(a) * hh * rr); }
     x.closePath(); x.fill();
-    x.strokeStyle = "rgba(150,165,190,0.14)"; x.lineWidth = 0.8; x.stroke();
-    x.fillStyle = "rgba(150,165,190,0.18)";
+    x.strokeStyle = bakeAfter ? "rgba(150,165,190,0.04)" : "rgba(150,165,190,0.14)"; x.lineWidth = 0.8; x.stroke();
+    x.fillStyle = bakeAfter ? "rgba(150,165,190,0.06)" : "rgba(150,165,190,0.18)";
     for (let sy = hy - hh * 0.5; sy < hy + hh * 0.6; sy += gy) x.fillRect(hx - hw * 0.6, sy, hw * 1.2, 1);
     softBlob(x, hx, hy - hh * 0.9, hw * 0.9, "0,0,0", 0.35, 0.5);
   }
@@ -1038,14 +1292,25 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
   return out;
 }
 
-function bakeBackdrop() {
-  const aw = L.apW, ah = L.apH;
-  const SS = Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
+function bakeBackdrop(mode) {
+  // mode "sil": everything that stands in front of the sky, in black, for the blast to light around.
+  // "after", "silAfter": the same city after the bomb, the same buildings broken, from their own random stream so the layout never shifts.
+  // "afterLo", "fireLo1", "fireLo2": small copies of the ruin, without and with each half of the fires, whose difference is the firelight
+  // "near1".."near4": the intact city in black from that row forward, for the blast wave to pass behind; "silAfter2": the
+  // same of the ruin, the rows that stood in front of the dust when the steel came down
+  const aw = L.apW, ah = L.apH, md = mode || "", nearK = md.startsWith("near") ? +md.slice(4) : md.startsWith("silAfter") && md.length > 8 ? +md.slice(8) : 0;
+  const sil = md === "sil" || md.startsWith("silAfter") || nearK > 0;
+  const after = md === "after" || md.startsWith("silAfter") || md === "afterLo" || md.startsWith("fireLo"), lo = md === "afterLo" || md.startsWith("fireLo");
+  const fireOn = md === "fireLo1" ? 1 : md === "fireLo2" ? 2 : 0, fullAfter = md === "after";
+  const SS = lo ? 0.5 : nearK ? 1 : Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
+  const rd = after ? hashRng(4242) : null, rf = after ? hashRng(9090) : null, fires = [];
+  bakeAfter = after;
   const c = document.createElement("canvas");
   c.width = Math.ceil(aw * SS); c.height = Math.ceil(ah * SS);
   const x = c.getContext("2d");
   x.scale(SS, SS);
   const r = rngf(1337);
+  const hideFor = depth => { if (nearK <= depth) return false; x.save(); x.beginPath(); x.rect(0, 0, 0, 0); x.clip(); return true; }; // drawn into nothing, the stream still spent
   litWindows = [];
   anchors = { blink: [], smoke: null, smoke2: null, tower: null, dying: null };
   const farline = ah * 0.52;
@@ -1059,6 +1324,11 @@ function bakeBackdrop() {
   sky.addColorStop(1, "#1d2532");
   x.fillStyle = sky; x.fillRect(0, 0, aw, farline + 2);
   x.fillStyle = "#0a0d13"; x.fillRect(0, farline, aw, ah - farline);
+  if (after) {
+    const fg = x.createLinearGradient(0, farline - 16, 0, farline + 18);
+    fg.addColorStop(0, "rgba(24,30,40,0)"); fg.addColorStop(0.45, "rgba(21,27,36,0.9)"); fg.addColorStop(1, "rgba(10,13,19,0)");
+    x.fillStyle = fg; x.fillRect(0, farline - 16, aw, 34);
+  }
   // one cold skylight hug at the far line so the last silhouettes have something to dissolve into
   softBlob(x, aw * 0.45, farline, aw * 0.62, "118,138,166", 0.05, 0.30);
 
@@ -1071,11 +1341,14 @@ function bakeBackdrop() {
     const cx2 = r() * aw, cy2 = ah * (0.16 + r() * 0.12);
     softBlob(x, cx2, cy2, aw * (0.07 + r() * 0.09), "8,11,16", 0.45, 0.30);
   }
+  if (sil) x.clearRect(0, 0, aw, ah);
 
   // ---- the city continues past seeing: a last row of specks at the far line ----
+  const hS = hideFor(0);
   x.globalAlpha = 0.16; x.fillStyle = "#1c2432";
   for (let fx = -6; fx < aw + 6;) { const fw2 = 6 + r() * 10, fh2 = ah * (0.02 + r() * 0.05); x.fillRect(fx, ah * 0.535 - fh2, fw2, fh2 + 4); fx += fw2 + 2 + r() * 14; }
   x.globalAlpha = 1;
+  if (hS) x.restore();
 
   // ---- skyline layers, back to front, colder and emptier with depth; the city ends in nothing ----
   const layers = [
@@ -1089,10 +1362,57 @@ function bakeBackdrop() {
   let towerBaseY = ah * 0.60, towerFound = false;
   const wounds = { broken: 4, collapsed: 3, lean: 2, crack: 2, hole: 3, toppled: 3, stack: 1, board: 8 };
 
+  const breakAt = (bx, top, bw, baseY, dmg) => {
+    // what is left standing: a slanted, ragged break across the building, and nothing above it
+    const bh = baseY - top, keep = dmg.v > 0.8 ? 0.07 + 0.2 * dmg.f : 0.34 + 0.4 * dmg.f;
+    const yL = baseY - bh * keep * (0.75 + 0.5 * dmg.s), yR = baseY - bh * keep * (1.25 - 0.5 * dmg.s);
+    const n = Math.max(4, Math.round(bw / 5)), pts = [];
+    for (let i = 0; i <= n; i++) { const q = i / n; pts.push([bx - 3 + (bw + 6) * q, yL + (yR - yL) * q + (rd() - 0.5) * Math.min(16, bh * 0.1)]); }
+    x.save(); x.beginPath(); x.moveTo(bx - 3, baseY + ext + 4);
+    for (const p of pts) x.lineTo(p[0], p[1]);
+    x.lineTo(bx + bw + 3, baseY + ext + 4); x.closePath(); x.clip();
+    return { pts, top: Math.min(yL, yR), bh };
+  };
+  const breakEdge = (cut, bx, bw, baseY, col) => {
+    // the broken edge: floors hanging out, the concrete black with soot below it
+    const sg = x.createLinearGradient(0, cut.top, 0, cut.top + cut.bh * 0.25);
+    sg.addColorStop(0, "rgba(0,0,0,0.55)"); sg.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = sg; x.fillRect(bx - 3, cut.top - 16, bw + 6, cut.bh * 0.25 + 16);
+    x.strokeStyle = "rgba(150,165,190,0.12)"; x.lineWidth = 1;
+    for (let i = 0; i < 3; i++) { const p = cut.pts[1 + Math.floor(rd() * (cut.pts.length - 2))]; x.beginPath(); x.moveTo(p[0] - 4, p[1] + 3 + i * 5); x.lineTo(p[0] + 5 + rd() * 6, p[1] + 3 + i * 5); x.stroke(); }
+  };
+  const rubble = (bx, bw, baseY, col) => { // what came down, heaped at the foot of it
+    x.fillStyle = shade(col, -0.3); x.beginPath(); x.moveTo(bx - 6, baseY + ext);
+    const n = 6; for (let i = 0; i <= n; i++) x.lineTo(bx - 6 + (bw + 12) * (i / n), baseY - (i === 0 || i === n ? 1 : 3 + rd() * 9));
+    x.lineTo(bx + bw + 6, baseY + ext); x.closePath(); x.fill();
+  };
+  const damage = (li, cx, keep) => { // how hard the blast hit this building: harder toward it, harder in the far rows that faced it
+    const a = rd(), b = rd(), c2 = rd();
+    if (keep || li < 1) return null;
+    const close = 1 - Math.min(1, Math.abs(cx - aw * NUKE.x) / (aw * 1.1));
+    return { v: clamp(close * [0, 1, 1, 0.8, 0.6][li] * 1.2 + (a - 0.5) * 0.6, 0, 1), f: b, s: c2 };
+  };
+  const burn = (li, bx, bw, top, baseY, cut, dmg) => {
+    // in the buildings it gutted, one floor still burning: a ragged band of fire along it with soot above, never a lit window
+    const n0 = Math.floor(rf() * 3), n = dmg && dmg.v > 0.4 && li >= 2 ? n0 : 0, near = li >= 3;
+    for (let i = 0; i < n; i++) {
+      const wx = bx + 4 + rf() * Math.max(2, bw - 10), y0 = (cut ? cut.top + 6 : top + 6), wy = y0 + rf() * Math.max(4, (baseY - y0) * 0.35), grp = rf() < 0.5 ? 1 : 2, wf = rf();
+      if (i > 0) continue; // one floor to a building: two small lights side by side read as a face
+      const fh = near ? 4.6 : 3.4, fw = Math.min(bw - 6, Math.max(fh * 3, bw * (0.3 + 0.4 * wf))), fx0 = clamp(wx - fw * 0.5, bx + 3, bx + bw - 3 - fw);
+      if (fullAfter) {
+        const hh = hashRng(Math.floor(wx * 97 + wy * 13));
+        softBlob(x, fx0 + fw / 2, wy - fh * 1.4, fw * 0.55, "0,0,0", 0.45, 0.35);
+        x.fillStyle = "rgba(255,112,40,0.3)";
+        for (let px = fx0; px < fx0 + fw; px += 2) { const fl = fh * (0.3 + 0.7 * hh()); x.fillRect(px, wy + fh - fl, 2, fl); }
+      }
+      if (fireOn === grp) softBlob(x, fx0 + fw / 2, wy - fh * 0.3, fw * 0.4, "255,104,36", 0.36, 1.4); // licking up the front
+    }
+  };
+
   layers.forEach((ly, li) => {
-    const baseY = ly.base * ah;
+    const baseY = ly.base * ah, hR = hideFor(li);
     let bx = -12, lots = ly.lots || 0, tallI = 0;
-    x.globalAlpha = ly.ghost || 1;
+    x.globalAlpha = sil ? [0.3, 0.8, 1, 1, 1][li] : (ly.ghost || 1); // the far rows let some of the light through
     while (bx < aw + 12) {
       let bw = ly.wMin + r() * (ly.wMax - ly.wMin);
       // the siren mast needs a mid-ground roof under it: make sure one building in this row spans it
@@ -1101,7 +1421,9 @@ function bakeBackdrop() {
       // dead high-rises in the far rows, tall enough to lose their tops in the scud
       if (ly.tall && tallI < ly.tall.length && bx + bw > ly.tall[tallI]) {
         const tw = (li === 1 ? 18 : 30) + r() * 12, th = ah * (li === 1 ? 0.30 + r() * 0.10 : 0.36 + r() * 0.08);
+        const dmgT = rd ? damage(li, bx + tw / 2, false) : null, cutT = dmgT && dmgT.v > 0.45 ? breakAt(bx, baseY - th, tw, baseY, dmgT) : null;
         drawTallTower(x, r, ly, li, bx, baseY - th, tw, baseY, ext);
+        if (cutT) { breakEdge(cutT, bx, tw, baseY, ly.col); x.restore(); rubble(bx, tw, baseY, ly.col); }
         bx += tw + 6 + r() * 12; tallI++; continue;
       }
       // demolition lots: nothing stands here any more
@@ -1128,7 +1450,10 @@ function bakeBackdrop() {
         o.decay = r() < 0.4; o.cornice = r() < 0.45; o.side = r() < 0.65; o.shell = !o.fire && !o.broken && !o.collapsed && r() < 0.14;
         const fq = r(); o.ftype = fq < 0.65 ? 0 : (fq < 0.83 ? 1 : 2);
       }
+      const dmg = rd ? damage(li, bx + bw / 2, spansTower || o.fire) : null;
+      const cut = dmg && dmg.v > 0.45 ? breakAt(bx, top, bw, baseY, dmg) : null;
       const res = drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o);
+      if (rd) burn(li, bx, bw, top, baseY, cut, dmg);
       if (res && o.fire) anchors.smoke = res;
       // a second, thinner fire far across the city
       if (li === 1 && !anchors.smoke2 && bx > aw * 0.74 && bh > ah * 0.08) anchors.smoke2 = { x: bx + bw * 0.5, y: top };
@@ -1143,24 +1468,57 @@ function bakeBackdrop() {
       }
       // rooftop clutter, sparse
       if (ly.clut && !o.broken && !o.collapsed && !o.lean && !o.setback && r() < ly.clut) drawClutter(x, r, bx, top, bw, shade(ly.col, -0.35));
+      if (cut) { breakEdge(cut, bx, bw, baseY, ly.col); x.restore(); rubble(bx, bw, baseY, ly.col); }
       // remember the mid-ground rooftop the siren mast stands on
       if (spansTower && !towerFound) { towerBaseY = top; towerFound = true; }
       bx += Math.max(bw + 4 + r() * 10, (ly.wMax * (ly.gapK || 0.9)) * (0.55 + r() * 0.7));
     }
     if (li === 1) drawFarCrane(x, aw * 0.47, baseY, aw, ah);
     x.globalAlpha = 1;
+    if (rf && li >= 1 && li <= 3) { // the streets in front of this row are burning, thickest toward the blast
+      const nF = Math.round((aw / 52) * [0, 0.8, 1, 0.8][li]), s = [0, 0.55, 0.8, 1][li] * clamp(Math.max(aw / 1459, ah / 540), 0.55, 1);
+      for (let k = 0; k < nF; k++) {
+        const u1 = rf(), u2 = rf(), u3 = rf(), u4 = rf(), grp = rf() < 0.5 ? 1 : 2;
+        const fx = u1 < 0.55 ? aw * (NUKE.x + (u2 - 0.5) * 0.9) : aw * (0.02 + 0.98 * u2);
+        const close = 1 - Math.min(1, Math.abs(fx - aw * NUKE.x) / (aw * 0.6));
+        if (u3 > 0.3 + 0.7 * close) continue; // thick toward it, thinner far from it
+        const rr = (12 + 24 * u4) * s;
+        if (fullAfter) {
+          fires.push({ x: fx, y: baseY, r: rr, li, grp, ph: u4 * 6.28 });
+          const hq = hashRng(k * 71 + li * 29 + Math.floor(u2 * 1e5)), fw2 = rr * (1.2 + hq() * 1.2), fx1 = fx - fw2 / 2;
+          const bumps = [0, 1, 2].map(() => [fx1 + fw2 * (0.1 + 0.8 * hq()), fw2 * (0.1 + 0.2 * hq()), rr * (0.2 + 0.4 * hq())]);
+          for (let px = fx1; px < fx1 + fw2;) { // a few masses of flame along the street, uneven, with gaps, hotter low down
+            const cw = 1 + Math.floor(hq() * 2.5);
+            let h = 0; for (const [bc, bw2, bh] of bumps) h = Math.max(h, bh * Math.exp(-Math.pow((px - bc) / bw2, 2)));
+            h = h * (0.4 + 0.6 * hq()) + 1.2;
+            x.fillStyle = "rgba(232," + (66 + Math.round(40 * hq())) + ",24,0.42)"; x.fillRect(px, baseY - h, cw, h + 2);
+            x.fillStyle = "rgba(255," + (150 + Math.round(50 * hq())) + ",72,0.5)"; x.fillRect(px, baseY - h * 0.45, cw, h * 0.45 + 2);
+            px += cw + (hq() < 0.2 ? 1 + hq() * 2 : 0);
+          }
+        }
+        if (fireOn === grp) { // a ragged run of fire along the street, never one tidy pool; its light climbing the fronts behind it
+          const hh = hashRng(k * 131 + li * 17 + Math.floor(u4 * 1e5)), n = 3 + Math.floor(hh() * 3);
+          softBlob(x, fx, baseY - rr * 0.9, rr * 1.9, "200,70,22", 0.16, 0.85);
+          for (let j = 0; j < n; j++) { // tongues of it: taller than wide, each its own height, no bright pip in any
+            const dx = (hh() - 0.5) * rr * 2, rj = rr * (0.25 + hh() * 0.3), tall = 1.3 + hh() * 1.1;
+            softBlob(x, fx + dx, baseY - rj * tall * 0.5, rj, "255,96,26", 0.26 + hh() * 0.1, tall);
+          }
+        }
+      }
+    }
     // depth haze wash over everything behind this point
-    if (ly.haze) {
+    if (ly.haze && !sil) {
       const hz = x.createLinearGradient(0, baseY - ah * 0.3, 0, baseY + ah * 0.05);
       hz.addColorStop(0, "rgba(" + ly.haze.split(",").slice(0, 3).join(",") + ",0)");
       hz.addColorStop(1, "rgba(" + ly.haze + ")");
       x.fillStyle = hz;
       x.fillRect(0, 0, aw, baseY + ah * 0.05);
     }
+    if (hR) x.restore();
   });
 
   // abandoned tower crane, mid-left, its load never set down
-  const crx = aw * 0.15, crTop = ah * 0.30, crBase = ah * 0.62;
+  const crx = aw * 0.15, crTop = ah * 0.30, crBase = ah * 0.62, hC = hideFor(1);
   x.strokeStyle = "rgba(9,12,18,0.8)"; x.lineWidth = 1.6; x.lineCap = "round";
   x.beginPath(); x.moveTo(crx, crBase); x.lineTo(crx, crTop); x.stroke();
   x.lineWidth = 0.6;
@@ -1175,6 +1533,7 @@ function bakeBackdrop() {
   x.beginPath(); x.moveTo(hkX, crTop + 4); x.lineTo(hkX + 1.5, crTop + 4 + hkLen); x.stroke();
   x.fillStyle = "rgba(9,12,18,0.85)";
   x.save(); x.translate(hkX + 1.5, crTop + 4 + hkLen); x.rotate(0.07); x.fillRect(-7, 0, 14, 4.5); x.restore();
+  if (hC) x.restore();
 
   // ---- what little is still lit on the ground: two pools, one of them under the failing streetlight ----
   anchors.dying = { x: aw * (0.14 + r() * 0.2), y: ah * 0.86 };
@@ -1183,13 +1542,15 @@ function bakeBackdrop() {
   // if no building burned in this bake, the smoke comes from an old boiler stack instead
   if (!anchors.smoke) {
     anchors.smoke = { x: aw * (0.24 + r() * 0.1), y: ah * 0.62, fy: ah * 0.64, r: 12 };
+    const hK = hideFor(2);
     x.fillStyle = "#0a0e15";
     x.fillRect(anchors.smoke.x - 3, anchors.smoke.y, 6, ah * 0.10);
     x.fillRect(anchors.smoke.x - 5, anchors.smoke.y - 2, 10, 4);
+    if (hK) x.restore();
   }
 
   // ---- the siren mast, standing on its mid-ground roof ----
-  const tb = towerBaseY, mastH = ah * 0.30, tt = tb - mastH;
+  const tb = towerBaseY, mastH = ah * 0.30, tt = tb - mastH, hM = hideFor(2);
   anchors.tower = { x: towerX, topY: tt, baseY: tb };
   x.strokeStyle = "#060910"; x.fillStyle = "#060910"; x.lineCap = "round";
   x.lineWidth = 2.6;
@@ -1206,13 +1567,16 @@ function bakeBackdrop() {
   x.fillRect(towerX - 8, tt - 3, 16, 3.4);
   x.fillRect(towerX - 6, tb - 7, 12, 7);
   anchors.blink.push({ x: towerX, y: tb - mastH * 0.45, ph: 2.1 });
+  if (hM) x.restore();
 
+  if (fullAfter) afterFires = fires;
+  if (sil) { x.globalCompositeOperation = "source-in"; x.fillStyle = "#000"; x.fillRect(0, 0, aw, ah); bakeAfter = false; return c; }
   // ---- ground fog bed and grade ----
   const haze2 = x.createLinearGradient(0, ah * 0.74, 0, ah);
   haze2.addColorStop(0, "rgba(140,152,170,0)");
   haze2.addColorStop(1, "rgba(140,152,170,0.17)");
   x.fillStyle = haze2; x.fillRect(0, ah * 0.74, aw, ah * 0.26);
-  noiseOver(x, aw, ah, 0.04, true);
+  if (!lo) noiseOver(x, aw, ah, 0.04, true); // the small plates are compared pixel for pixel: no random grain in them
   // final grade: ground the near city, deepen the zenith
   const gr2 = x.createLinearGradient(0, farline, 0, ah);
   gr2.addColorStop(0, "rgba(0,0,0,0)"); gr2.addColorStop(1, "rgba(0,0,0,0.16)");
@@ -1230,8 +1594,19 @@ function bakeBackdrop() {
     }
     litWindows.length = CAP;
   }
+  bakeAfter = false;
   return c;
 }
+function lightDiff(a, b) {
+  // the firelight alone: the ruin with the fires, less the ruin without them, pixel by pixel; drawn back with "lighter"
+  const w = a.width, h = a.height, c = document.createElement("canvas"); c.width = w; c.height = h;
+  const A = a.getContext("2d").getImageData(0, 0, w, h).data, Bd = b.getContext("2d").getImageData(0, 0, w, h).data;
+  const cx = c.getContext("2d"), out = cx.createImageData(w, h), o = out.data;
+  for (let i = 0; i < A.length; i += 4) { o[i] = Math.max(0, Bd[i] - A[i]); o[i + 1] = Math.max(0, Bd[i + 1] - A[i + 1]); o[i + 2] = Math.max(0, Bd[i + 2] - A[i + 2]); o[i + 3] = 255; }
+  cx.putImageData(out, 0, 0);
+  return c;
+}
+function bakeVariant(mode) { const lw = litWindows, an = anchors, c = bakeBackdrop(mode); litWindows = lw; anchors = an; return c; }
 function shade(hex, k) {
   const n = parseInt(hex.slice(1), 16);
   const f = c2 => clamp(Math.round(c2 * (1 + k)), 0, 255);
@@ -1250,21 +1625,41 @@ function buildFogTile() {
   return c;
 }
 
+function buildDustTile() {
+  const c = document.createElement("canvas");
+  c.width = 1024; c.height = 300;
+  const x = c.getContext("2d"), r = hashRng(6161);
+  const blob = (cx, cy, rad, rgb, a, sy) => {
+    softBlob(x, cx, cy, rad, rgb, a, sy);
+    if (cx - rad < 0) softBlob(x, cx + 1024, cy, rad, rgb, a, sy);
+    if (cx + rad > 1024) softBlob(x, cx - 1024, cy, rad, rgb, a, sy);
+  };
+  for (let i = 0; i < 60; i++) blob(r() * 1024, 70 + r() * 210, 60 + r() * 150, "104,86,72", 0.16 + r() * 0.16, 0.2 + r() * 0.18); // sheets of it
+  for (let i = 0; i < 90; i++) blob(r() * 1024, 40 + r() * 250, 12 + r() * 40, "124,104,88", 0.1 + r() * 0.12, 0.3 + r() * 0.3);  // torn bits
+  return c;
+}
+let dustC = null;
 function buildCloudStrip(lit) {
-  // low scud, one tile: torn dark bottoms with a faint skylight catch; the lit twin glows from inside for the sheet lightning
+  // low scud, one tile: torn dark bottoms with a faint skylight catch; the lit twin glows from inside for the sheet lightning,
+  // and the warm twin is the same cloud lit from below by something burning
   const c = document.createElement("canvas");
   c.width = 1024; c.height = 240;
   const x = c.getContext("2d");
   const r = rngf(9191);
+  const blob = (cx, cy, rad, rgb, a, sy) => { // wrapped around, so one tile runs into the next with no seam
+    softBlob(x, cx, cy, rad, rgb, a, sy);
+    if (cx - rad < 0) softBlob(x, cx + 1024, cy, rad, rgb, a, sy);
+    if (cx + rad > 1024) softBlob(x, cx - 1024, cy, rad, rgb, a, sy);
+  };
   for (let i = 0; i < 34; i++) {
     const cx = r() * 1024, cy = 40 + r() * 120, rad = 60 + r() * 120, sy = 0.35 + r() * 0.3;
-    if (lit) softBlob(x, cx, cy, rad * 0.85, "150,172,225", 0.16 + r() * 0.14, sy);
-    else { softBlob(x, cx, cy, rad, "5,7,11", 0.30 + r() * 0.25, sy); softBlob(x, cx, cy + rad * sy * 0.75, rad * 0.55, "48,60,84", 0.07, 0.22); }
+    if (lit) blob(cx, cy, rad * 0.85, lit === 3 ? "246,240,230" : lit === 2 ? "255,150,82" : "150,172,225", 0.16 + r() * 0.14, sy);
+    else { blob(cx, cy, rad, "5,7,11", 0.30 + r() * 0.25, sy); blob(cx, cy + rad * sy * 0.75, rad * 0.55, "48,60,84", 0.07, 0.22); }
   }
   for (let i = 0; i < 40; i++) {
     const cx = r() * 1024, cy = 120 + r() * 100, rad = 18 + r() * 50, sy = 0.5 + r() * 0.4;
-    if (lit) softBlob(x, cx, cy, rad, "120,140,190", 0.10 + r() * 0.10, sy);
-    else softBlob(x, cx, cy, rad, "7,9,14", 0.22 + r() * 0.2, sy);
+    if (lit) blob(cx, cy, rad, lit === 3 ? "222,214,202" : lit === 2 ? "236,112,58" : "120,140,190", 0.10 + r() * 0.10, sy);
+    else blob(cx, cy, rad, "7,9,14", 0.22 + r() * 0.2, sy);
   }
   return c;
 }
@@ -1358,6 +1753,7 @@ function buildFrame() {
   const p = L, lx = p.lever.x, py = p.lever.y;
   const px0 = p.vol.x - p.vol.r * 2.2, px1 = lx + p.lever.arm * 1.3;
   const py0 = Math.max(py - p.lever.arm * 1.5, p.sillY + 19), py1 = Math.min(h - 26, py + p.lever.arm * 1.15); // never up into the sill
+  L.console = { px0, px1, py0, py1 };
   const pg = x.createLinearGradient(0, py0, 0, py1);
   pg.addColorStop(0, "#1a1613"); pg.addColorStop(0.12, "#141110"); pg.addColorStop(1, "#0c0a09");
   x.fillStyle = pg;
@@ -1506,7 +1902,10 @@ function buildFrame() {
     x.beginPath(); x.moveTo(w * 0.045, h * 0.795); x.lineTo(w * 0.045 + 26, h * 0.795); x.stroke();
     x.beginPath(); x.moveTo(w * 0.028, h * 0.88); x.lineTo(w * 0.028 + 34, h * 0.88); x.stroke();
   }
-  // the keeper's lamp fixture: conduit, canopy, enamel hood; the bulb and its cage are drawn live, in front
+  return c;
+}
+function drawLampFixture(x, la) {
+  // the keeper's lamp fixture: conduit, canopy, enamel hood; drawn live so it can swing when the shelter is hit
   const u = la.u;
   x.strokeStyle = "#242019"; x.lineWidth = 1.2 + u;
   x.beginPath(); x.moveTo(la.x, 0); x.lineTo(la.x, la.y - 16 * u); x.stroke();
@@ -1521,7 +1920,6 @@ function buildFrame() {
   x.closePath(); x.fill();
   x.strokeStyle = "rgba(255,214,150,0.10)"; x.lineWidth = 1; // a worn highlight along the dome
   x.beginPath(); x.moveTo(la.x - 1.5 * u, la.y - 16 * u); x.quadraticCurveTo(la.x - 4 * u, la.y - 11 * u, la.x - 9.5 * u, la.y - 7 * u); x.stroke();
-  return c;
 }
 function roundRect(x, a, b, w2, h2, r2) {
   x.beginPath();
@@ -1566,13 +1964,33 @@ function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
   W = innerWidth; H = innerHeight;
   if (W < 10 || H < 10) { setTimeout(resize, 300); return; }
-  document.getElementById("rot").classList.toggle("show", H > W && Math.min(W, H) < 620);
+  rotShown = H > W && Math.min(W, H) < 620;
+  document.getElementById("rot").classList.toggle("show", rotShown);
   cv.width = Math.ceil(W * DPR); cv.height = Math.ceil(H * DPR);
   L = computeLayout();
   cityC = bakeBackdrop();
+  // the plates the blast needs: the city in black, the ruin, its black, and its firelight. Baked a piece at a time a
+  // moment after load so no frame is held up; all at once if they are on screen now. A visit with no blast bakes none of it.
+  clearTimeout(variantT);
+  silC = cityAfterC = silAfterC = fireL1 = fireL2 = nearM = silPallC = ruinSilC = null;
+  const steps = [];
+  if (!BLAST.swapped) steps.push(() => { silC = bakeVariant("sil"); }, () => { nearM = [null, bakeVariant("near1"), bakeVariant("near2")]; },
+    () => { if (nearM) nearM.push(bakeVariant("near3"), bakeVariant("near4")); });
+  steps.push(() => { cityAfterC = bakeVariant("after"); if (!PUFFS) buildPuffs(); if (!dustC) dustC = buildDustTile(); }, () => { silAfterC = bakeVariant("silAfter"); silPallC = bakeVariant("silAfter2"); if (!BLAST.swapped) ruinSilC = bakeVariant("silAfter1"); },
+    () => { const a = bakeVariant("afterLo"); fireL1 = lightDiff(a, bakeVariant("fireLo1")); fireL2 = lightDiff(a, bakeVariant("fireLo2")); });
+  if (BLAST.at >= 0 || BLAST.t0 > -1e8 || BLAST.jump >= 0) {
+    if (BLAST.t0 > -1e8 || BLAST.jump >= 0 || BLAST.at - BLAST.on < 4) steps.forEach(f => f());
+    else { let si = 0; const run = () => { if (!L) return; steps[si++](); if (si < steps.length) variantT = setTimeout(run, 120); }; variantT = setTimeout(run, 400); }
+  }
+  {
+    const mk = (sc) => { const c = document.createElement("canvas"); c.width = Math.ceil(L.apW * sc); c.height = Math.ceil(L.apH * sc); c.sc = sc; return c; };
+    lightC = mk(Math.min(1, 720 / L.apW)); mushC = mk(Math.min(0.8, 900 / L.apW)); // the cloud a touch soft, like smoke far off
+    waveSilC = BLAST.swapped ? null : mk(1); // the city breaking as the wave goes through it
+  }
+  BLAST.dust = [];
   frameC = buildFrame();
   fogC = buildFogTile();
-  cloudC = buildCloudStrip(false); cloudLitC = buildCloudStrip(true);
+  cloudC = buildCloudStrip(false); cloudLitC = buildCloudStrip(true); cloudWarmC = buildCloudStrip(2); cloudHotC = buildCloudStrip(3);
   rainNear = buildRainLayer(1, 20, 36, 0.09, 0.19, 255);
   rainFar = buildRainLayer(2, 10, 18, 0.05, 0.10, 225);
   runnels = [];
@@ -1607,7 +2025,8 @@ function drawCity(t, amp, dt, flashA) {
   g.save();
   g.beginPath(); g.rect(apX, apY, apW, apH); g.clip();
   g.translate(apX, apY);
-  g.drawImage(cityC, 0, 0, apW, apH);
+  const bT = BLAST.t0 > -1e8 ? t - BLAST.t0 : 99, bF = BLAST.t0 > -1e8 ? blastF(bT) : 0, bG = blastG(t);
+  drawBackdrop(t);
   // everything that drifts takes its pace from the weather
   fogPh += dt * (0.7 + 0.6 * WX.k + 0.6 * WX.gust);
   cloudPh += dt * (0.6 + 1.2 * WX.k + 0.8 * WX.gust);
@@ -1617,7 +2036,7 @@ function drawCity(t, amp, dt, flashA) {
   // lightning: a cold lift of the matte, a colder wash, and now and then a bolt far off behind the scud
   if (flashA > 0.004) {
     g.save(); g.globalCompositeOperation = "screen"; g.globalAlpha = Math.min(1, flashA * 0.5);
-    g.drawImage(cityC, 0, 0, apW, apH); g.restore();
+    g.drawImage(BLAST.swapped && cityAfterC ? cityAfterC : cityC, 0, 0, apW, apH); g.restore();
     g.fillStyle = "rgba(170,192,255," + (flashA * 0.55).toFixed(3) + ")";
     g.fillRect(0, 0, apW, apH);
     const bt = strike ? t - strike.t0 - strike.boltT : -1;
@@ -1641,11 +2060,30 @@ function drawCity(t, amp, dt, flashA) {
   if (cloudC) {
     const cw = apW * 1.5, chh = apH * 0.36, cy0 = apH * 0.08;
     const oc = RM ? 200 : (cloudPh * 4) % cw;
-    g.globalAlpha = 0.42;
+    g.globalAlpha = 0.42 * (1 - 0.8 * bF); // in the flash the scud is lit, not dark
     g.drawImage(cloudC, -oc, cy0, cw, chh); g.drawImage(cloudC, cw - oc, cy0, cw, chh);
     const la = strike ? Math.min(1, flashA * (strike.sheet ? 8 : 4)) : 0;
     if (la > 0.01) { g.globalAlpha = 0.75 * la; g.drawImage(cloudLitC, -oc, cy0, cw, chh); g.drawImage(cloudLitC, cw - oc, cy0, cw, chh); }
+    // the blast lights the underside of the cloud: all of it in the flash, then only the scud drifting over the fire
+    if (bF > 0.01 && cloudWarmC && cloudHotC) {
+      const wm = clamp((bT - 0.6) / 1.4, 0, 1);
+      g.save(); g.globalCompositeOperation = "lighter";
+      g.globalAlpha = Math.min(1, 1.1 * bF * (1 - wm)); g.drawImage(cloudHotC, -oc, cy0, cw, chh); g.drawImage(cloudHotC, cw - oc, cy0, cw, chh);
+      g.globalAlpha = Math.min(1, 1.1 * bF * wm); g.drawImage(cloudWarmC, -oc, cy0, cw, chh); g.drawImage(cloudWarmC, cw - oc, cy0, cw, chh);
+      g.restore();
+    }
     g.globalAlpha = 1;
+    if (bG > 0.01 && lightC && cloudWarmC) {
+      const mg0 = mushGeom(t), lx = lightC.getContext("2d"), fx = mg0 ? mg0.cx : apW * NUKE.x, fy = cy0 + chh * 0.85;
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1; lx.clearRect(0, 0, lightC.width, lightC.height);
+      lx.setTransform(lightC.sc, 0, 0, lightC.sc, 0, 0);
+      lx.drawImage(cloudWarmC, -oc, cy0, cw, chh); lx.drawImage(cloudWarmC, cw - oc, cy0, cw, chh);
+      lx.globalCompositeOperation = "destination-in";
+      const mg = lx.createRadialGradient(fx, fy, 0, fx, fy, apW * 0.2);
+      mg.addColorStop(0, "#fff"); mg.addColorStop(1, "rgba(255,255,255,0)");
+      lx.fillStyle = mg; lx.fillRect(0, 0, apW, apH);
+      g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = Math.min(1, 0.55 * bG * blastFlick(t)); g.drawImage(lightC, 0, 0, apW, apH); g.restore();
+    }
   }
 
   // siren head on the mast: horn bell + rotor housing on a trunnion yoke
@@ -1710,6 +2148,7 @@ function drawCity(t, amp, dt, flashA) {
 
   // obstruction lights blinking out of phase
   for (const b of anchors.blink) {
+    if (b.fail && BLAST.swapped) continue; // the crown light went with its building
     let on = Math.sin(t * 4.19 + b.ph) > 0.55;
     // the last crown light misfires: it drops beats and goes dark for stretches
     if (b.fail) on = on && Math.sin(t * 0.23 + b.ph) > -0.35 && Math.sin(t * 1.31 + b.ph * 2) > -0.6;
@@ -1727,9 +2166,10 @@ function drawCity(t, amp, dt, flashA) {
     const st = anchors.smoke, lean = RM ? 0.6 : Math.min(1.3, 0.3 + 0.6 * WX.k + 0.6 * WX.gust);
     const ps = clamp(apH / 540, 0.45, 1); // sized for a desktop window; phones get it in proportion
     const fl = RM ? 0.5 : 0.5 + 0.5 * Math.sin(t * 7.3) * Math.sin(t * 3.1 + 0.4) * Math.sin(t * 0.9);
-    softBlob(g, st.x, st.fy, st.r * (1 + 0.15 * fl), "255,118,46", 0.06 + 0.07 * fl, 0.9);
-    softBlob(g, st.x, st.y + 1, 14 * ps, "255,120,50", 0.08 + 0.06 * fl, 0.5);
-    softBlob(g, st.x, st.y + 1, 4.5 * ps, "255,175,105", 0.2 + 0.15 * fl, 0.6);
+    const ow = 1 - bF; // in the flash, nothing out there glows by itself
+    softBlob(g, st.x, st.fy, st.r * (1 + 0.15 * fl), "255,118,46", (0.06 + 0.07 * fl) * ow, 0.9);
+    softBlob(g, st.x, st.y + 1, 14 * ps, "255,120,50", (0.08 + 0.06 * fl) * ow, 0.5);
+    softBlob(g, st.x, st.y + 1, 4.5 * ps, "255,175,105", (0.2 + 0.15 * fl) * ow, 0.6);
     const N2 = 18;
     for (let i = 0; i < N2; i++) {
       const k = RM ? i / N2 : ((t / 22) + i / N2) % 1;
@@ -1756,6 +2196,13 @@ function drawCity(t, amp, dt, flashA) {
   g.globalAlpha = 0.15;
   g.drawImage(fogC, -o1, apH * 0.48, fw, fh);
   g.drawImage(fogC, fw - o1, apH * 0.48, fw, fh);
+  const fogFlare = (a, o, y, hh) => { // in the flash the mist between the rows glows
+    if (bF < 0.02) return;
+    g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = Math.min(1, a * bF);
+    g.drawImage(fogC, -o, y, fw, hh); g.drawImage(fogC, fw - o, y, fw, hh); g.restore();
+  };
+  fogFlare(1.2, o1, apH * 0.48, fh);
+  drawBlastWind(t);
 
   // far rain sheet
   // sheet lean: calm rain falls near straight, a gust drives it sideways
@@ -1763,15 +2210,18 @@ function drawCity(t, amp, dt, flashA) {
   if (rainFar) {
     const chF = rainFar.height, oyF = RM ? 0 : rainPhF % chF, rwF = rainFar.width;
     g.save(); g.transform(1, 0, -rsh * 0.7, 1, rsh * 0.7 * apH * 0.5, 0);
-    g.globalAlpha = Math.min(0.8, 0.55 * (0.55 + 0.75 * rk));
+    g.globalAlpha = Math.min(1, Math.min(0.8, 0.55 * (0.55 + 0.75 * rk)) * (1 + 1.5 * bF)); // backlit, every streak flares
+    if (bF > 0.05) g.globalCompositeOperation = "lighter";
     g.drawImage(rainFar, -(rwF - apW) / 2, oyF - chF); g.drawImage(rainFar, -(rwF - apW) / 2, oyF);
     g.restore();
   }
 
   // lit windows with bloom
   g.globalAlpha = 1;
-  for (const wn of litWindows) {
-    let a = wn.a0;
+  for (let wi = 0; wi < litWindows.length; wi++) {
+    const wn = litWindows[wi];
+    if (BLAST.swapped) break; // the last lights in the city went out with the blast
+    let a = wn.a0 * (1 - bF);
     if (wn.mode === 1) a *= 0.7 + 0.3 * Math.sin(t * wn.sp + wn.ph);
     else if (wn.mode === 2) a *= Math.sin(t * wn.sp * 2.4 + wn.ph) > 0.35 ? 1 : 0.08;
     const col = wn.cool ? "150,190,255" : "255,186,110";
@@ -1783,9 +2233,9 @@ function drawCity(t, amp, dt, flashA) {
 
   // the one streetlight that is losing its fight
   const dl = anchors.dying;
-  const buzz = Math.sin(t * 13 + Math.sin(t * 3.7) * 4) > -0.3 ? 1 : 0.12;
-  softBlob(g, dl.x, dl.y, 26, "255,158,64", 0.10 * buzz, 0.55);
-  g.fillStyle = "rgba(255,190,120," + (0.5 * buzz).toFixed(2) + ")";
+  const buzz = BLAST.swapped ? 0 : Math.sin(t * 13 + Math.sin(t * 3.7) * 4) > -0.3 ? 1 : 0.12;
+  softBlob(g, dl.x, dl.y, 26, "255,158,64", 0.10 * buzz * (1 - bF), 0.55);
+  g.fillStyle = "rgba(255,190,120," + (0.5 * buzz * (1 - bF)).toFixed(2) + ")";
   g.fillRect(dl.x - 1.2, dl.y - 1.2, 2.4, 2.4);
 
   // fog band two (in front)
@@ -1793,16 +2243,19 @@ function drawCity(t, amp, dt, flashA) {
   g.globalAlpha = 0.22;
   g.drawImage(fogC, -o2, apH * 0.62, fw, fh);
   g.drawImage(fogC, fw - o2, apH * 0.62, fw, fh);
+  fogFlare(0.9, o2, apH * 0.62, fh);
   // near wisps along the bottom
   const o3 = RM ? 300 : (fogPh * 24) % fw;
   g.globalAlpha = 0.17;
   g.drawImage(fogC, -o3, apH * 0.80, fw, fh * 0.8);
   g.drawImage(fogC, fw - o3, apH * 0.80, fw, fh * 0.8);
+  fogFlare(0.6, o3, apH * 0.80, fh * 0.8);
   // near rain sheet
   if (rainNear) {
     const chN = rainNear.height, oyN = RM ? 60 : rainPhN % chN, rwN = rainNear.width;
     g.save(); g.transform(1, 0, -rsh, 1, rsh * apH * 0.5, 0);
-    g.globalAlpha = Math.min(1, 0.8 * (0.5 + 0.75 * rk));
+    g.globalAlpha = Math.min(1, 0.8 * (0.5 + 0.75 * rk) * (1 + 1.5 * bF));
+    if (bF > 0.05) g.globalCompositeOperation = "lighter";
     g.drawImage(rainNear, -(rwN - apW) / 2, oyN - chN); g.drawImage(rainNear, -(rwN - apW) / 2, oyN);
     g.restore();
   }
@@ -1830,6 +2283,14 @@ function drawCity(t, amp, dt, flashA) {
     for (let sy3 = (hgt % 13) + 1.2; sy3 < hgt - 4; sy3 += 13) { g.beginPath(); g.moveTo(0, sy3); g.lineTo(apW, sy3); g.stroke(); }
     g.fillStyle = "#1e2128"; g.fillRect(0, hgt - 6, apW, 6);
     g.fillStyle = "rgba(255,220,170,0.10)"; g.fillRect(0, hgt - 6, apW, 1.2);
+    for (const hl of HOLES) { // old holes right through the steel, each with its rust run
+      const hy = hgt - hl.yb * apH; if (hy < 2) continue;
+      g.fillStyle = "rgba(40,24,16,0.35)"; g.fillRect(hl.x * apW - 0.5, hy + hl.r, 1, 10 + hl.k * 10);
+      g.fillStyle = "rgba(0,0,0,0.55)"; g.beginPath(); g.arc(hl.x * apW, hy, hl.r, 0, 7); g.fill();
+    }
+    // light from outside comes through every gap between the slats, down the guides, under the bottom edge, and through the holes
+    const sI = bF + 0.25 * (BLAST.t0 > -1e8 ? bG : 0) * (bT < BL_BUSY ? 1 : Math.max(0, 1 - (bT - BL_BUSY) / 6));
+    if (sI > 0.01) drawSlatLight(t, bT, hgt, sI);
   }
 
   // rain on the glass: only where the shutter is not covering it
@@ -1882,6 +2343,572 @@ function drawCity(t, amp, dt, flashA) {
   if (runnels.some(rn => rn.dead)) runnels = runnels.filter(rn => !rn.dead);
   g.restore();
   g.restore();
+}
+
+function drawBackdrop(t) {
+  // the painted city, or after the blast the same city broken; when light goes into the sky it goes only where the sky
+  // shows, the buildings standing black in front of it
+  const { apW, apH } = L, B = BLAST, ruin = B.swapped && cityAfterC;
+  g.drawImage(ruin ? cityAfterC : cityC, 0, 0, apW, apH);
+  const tt = B.t0 > -1e8 ? t - B.t0 : 99, F = B.t0 > -1e8 ? blastF(tt) : 0, G = blastG(t), sil = ruin ? silAfterC : (waveSil(tt) || silC);
+  if ((F < 0.003 && G < 0.003) || !sil || !lightC) return;
+  const gx = apW * B.gx, gy = apH * B.gy, lx = lightC.getContext("2d"), mg = mushGeom(t);
+  if (F > 0.01) { g.fillStyle = "rgba(0,0,0," + (0.6 * F).toFixed(3) + ")"; g.fillRect(0, 0, apW, apH); } // the eye stops down: what isn't lit goes black
+  if (ruin && fireL1 && fireL2) { // the streets burning: two halves of the fires, each breathing on its own
+    const k = Math.min(1, tt / 5);
+    g.save(); g.globalCompositeOperation = "lighter";
+    g.globalAlpha = clamp(k * (0.7 + 0.4 * blastFlick(t * 1.3)), 0, 1); g.drawImage(fireL1, 0, 0, apW, apH);
+    g.globalAlpha = clamp(k * (0.7 + 0.4 * blastFlick(t * 1.1 + 17)), 0, 1); g.drawImage(fireL2, 0, 0, apW, apH);
+    g.restore();
+  }
+  lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1; lx.clearRect(0, 0, lightC.width, lightC.height);
+  lx.setTransform(lightC.sc, 0, 0, lightC.sc, 0, 0);
+  lx.globalCompositeOperation = "lighter";
+  if (F > 0.003) { // the flash: one point low behind the city, the sky lit from it, brightest along the horizon
+    const [r, gg, b] = blastRGB(tt), col = r + "," + gg + "," + b;
+    const fr = lx.createRadialGradient(gx, gy, 0, gx, gy, apW * 0.95);
+    fr.addColorStop(0, "rgba(" + col + "," + F.toFixed(3) + ")");
+    fr.addColorStop(0.06, "rgba(" + col + "," + F.toFixed(3) + ")");
+    fr.addColorStop(0.16, "rgba(" + col + "," + (0.8 * F).toFixed(3) + ")");
+    fr.addColorStop(0.32, "rgba(" + col + "," + (0.46 * F).toFixed(3) + ")");
+    fr.addColorStop(0.6, "rgba(" + col + "," + (0.35 * F).toFixed(3) + ")");
+    fr.addColorStop(1, "rgba(" + col + "," + (0.2 * F).toFixed(3) + ")");
+    lx.fillStyle = fr; lx.fillRect(0, 0, apW, apH);
+    const hb = lx.createLinearGradient(0, apH * 0.18, 0, apH * 0.56);
+    hb.addColorStop(0, "rgba(" + col + "," + (0.12 * F).toFixed(3) + ")"); hb.addColorStop(1, "rgba(" + col + "," + (0.6 * F).toFixed(3) + ")");
+    lx.fillStyle = hb; lx.fillRect(0, 0, apW, apH * 0.62);
+  }
+  if (G > 0.003 && ruin) { // the sky over a burning city: low and red, and brightest under the cloud
+    const m = blastFlick(t);
+    softBlob(lx, gx, apH * 0.56, apW * 0.5, "118,36,14", 0.3 * G * m, 0.3);
+    if (mg) {
+      softBlob(lx, mg.cxBase, mg.y0 - mg.U * 0.06, mg.Rs * 1.9, "150,52,20", 0.32 * G * m, 0.55);
+      softBlob(lx, mg.cx, mg.capY, mg.Rx * 1.7, "112,40,18", 0.24 * (1 + 1.7 * mg.crop) * G * m, 0.65); // the smoke-filled sky behind the cap, lit by the city, so the cap stands dark against it
+    }
+    for (let i = 0; i < afterFires.length; i += 3) { // over the worst of the fires the air above the roofs flickers
+      const f = afterFires[i], fl = RM ? 0.7 : 0.45 + 0.55 * Math.abs(Math.sin(t * (2.1 + (i % 5) * 0.37) + f.ph));
+      softBlob(lx, f.x, f.y - f.r * 1.6, f.r * 2.6, "255,104,34", 0.16 * G * fl, 0.8);
+    }
+  }
+  // only the sky and the gaps between the buildings carry it; before the blast the ground under the far line stays dark
+  lx.globalCompositeOperation = "destination-in";
+  if (!ruin) {
+    const v0 = Math.max(0.6, B.gy + 0.02), vm = lx.createLinearGradient(0, apH * v0, 0, apH);
+    vm.addColorStop(0, "#fff");
+    vm.addColorStop(0.4, "rgba(255,255,255," + (0.12 * F).toFixed(3) + ")");
+    vm.addColorStop(1, "rgba(255,255,255," + (0.05 * F).toFixed(3) + ")");
+    lx.fillStyle = vm; lx.fillRect(0, 0, apW, apH);
+  }
+  lx.globalCompositeOperation = "destination-out";
+  lx.drawImage(sil, 0, 0, apW, apH);
+  g.save(); g.globalCompositeOperation = "lighter"; g.drawImage(lightC, 0, 0, apW, apH); g.restore();
+  if ((F > 0.01 || tt < BL_WAVE) && !ruin) { g.globalAlpha = tt < BL_WAVE ? 1 : Math.min(1, F * 1.2); g.drawImage(sil, 0, 0, apW, apH); g.globalAlpha = 1; } // backlit, the city goes black
+  if (ruin) drawPall(t, tt, G, sil); // behind the cloud: it climbs out of the dust
+  drawMushroom(t, G, sil);
+  if (!ruin && B.t0 > -1e8) drawShockWall(tt, F);
+}
+/* the cloud. Puffs of billowing smoke, each a small painted sprite lit from below, placed on a rolling ring for the cap
+   (up through the middle, out over the top, down the outside), a column of them for the stem, a skirt at the foot */
+let PUFFS = null;
+const PUFF_SETS = (() => {
+  const r = hashRng(31337), cap = [], dome = [], stem = [], foot = [], deck = [];
+  for (let i = 0; i < 46; i++) cap.push({ phi: (i / 46) * 6.283 + (r() - 0.5) * 0.9, psi: r() * 6.283, sf: 0.6 + r() * 0.8, v: Math.floor(r() * 6), ph: r() * 6.28 });
+  for (let i = 0; i < 12; i++) dome.push({ dx: (r() - 0.5) * 1.3, dy: r(), sf: 0.8 + r() * 0.4, v: Math.floor(r() * 6) });
+  for (let i = 0; i < 22; i++) stem.push({ k0: i / 22, xj: r() - 0.5, sf: 0.85 + r() * 0.35, v: Math.floor(r() * 6), ph: r() * 6.28 });
+  for (let i = 0; i < 12; i++) foot.push({ dx: (r() - 0.5) * 2, dy: r(), sf: 0.8 + r() * 0.5, v: Math.floor(r() * 6) });
+  for (let i = 0; i < 10; i++) deck.push({ dx: -1.2 + 2.9 * (i / 9) + (r() - 0.5) * 0.3, dy: r(), sf: 0.8 + r() * 0.5, v: Math.floor(r() * 6) });
+  return { cap, dome, stem, foot, deck };
+})();
+function buildPuffs() {
+  // six puff shapes, each painted three ways: the smoke itself (matte, soft, lumpy, a little lighter under each bulge),
+  // its underside glowing hot, and glowing dull red
+  PUFFS = [];
+  for (let v = 0; v < 6; v++) {
+    const r = hashRng(700 + v), lumps = [];
+    for (let i = 0; i < 26; i++) { const a = r() * 6.283, d = Math.sqrt(r()) * 30; lumps.push([64 + Math.cos(a) * d, 62 + Math.sin(a) * d * 0.8, 13 + r() * 15]); }
+    for (let i = 0; i < 14; i++) { const a = r() * 6.283, d = 28 + r() * 12; lumps.push([64 + Math.cos(a) * d, 62 + Math.sin(a) * d * 0.78, 5 + r() * 6]); }
+    lumps.sort((p, q) => p[1] - q[1]);
+    const mk = (paint) => {
+      const c = document.createElement("canvas"); c.width = c.height = 128;
+      const x = c.getContext("2d");
+      paint(x);
+      x.globalCompositeOperation = "destination-in";
+      const m = x.createRadialGradient(64, 62, 30, 64, 62, 63); m.addColorStop(0, "#fff"); m.addColorStop(1, "rgba(255,255,255,0)");
+      x.fillStyle = m; x.fillRect(0, 0, 128, 128);
+      return c;
+    };
+    const body = mk(x => {
+      for (const [lx, ly, lr] of lumps) softBlob(x, lx, ly, lr, "33,29,30", 1, 1);             // the mass
+      for (const [lx, ly, lr] of lumps) softBlob(x, lx, ly + lr * 0.42, lr * 0.62, "74,64,60", 0.34, 0.7); // each bulge catches a little light from below
+      for (const [lx, ly, lr] of lumps) softBlob(x, lx, ly - lr * 0.35, lr * 0.6, "16,14,16", 0.3, 0.8);   // and is darker on top
+      const img = x.getImageData(0, 0, 128, 128), d = img.data; // grain, so it reads as smoke and not as paint
+      for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 9; d[i] = clamp(d[i] + n, 0, 255); d[i + 1] = clamp(d[i + 1] + n, 0, 255); d[i + 2] = clamp(d[i + 2] + n, 0, 255); }
+      x.putImageData(img, 0, 0);
+    });
+    const glow = (c0, c1) => mk(x => {
+      for (const [lx, ly, lr] of lumps) if (ly > 52) { // only the lower bulges face the fire
+        softBlob(x, lx, ly + lr * 0.35, lr * 0.95, c1, 0.42, 0.75);
+        softBlob(x, lx, ly + lr * 0.5, lr * 0.5, c0, 0.5, 0.7);
+      }
+    });
+    PUFFS.push({ body, hot: glow("255,178,98", "236,108,38"), red: glow("222,88,38", "150,38,14") });
+  }
+}
+function mushGeom(t) {
+  // the cloud's shape at a given age. The fireball climbs fast; then the cloud keeps rising, slower and slower, for minutes,
+  // its cap flattening as it goes, until it hangs high over the city and spreads out into the overcast
+  const B = BLAST;
+  if (B.t0 < -1e8 || !L) return null;
+  const u = t - B.t0, { apW, apH } = L, sky = apH * 0.52, sm = v => v * v * (3 - 2 * v);
+  const U = 0.85 * Math.min(apW * 0.35, apH * 1.1); // its size across the window, for how far off it is: a letterbox window gets a flatter cap, not a smaller cloud
+  const cxBase = apW * NUKE.x, y0 = apH * NUKE.y;
+  const merge = sm(clamp((u - 150) / 330, 0, 1)); // from about two and a half minutes it goes into the overcast
+  const drift = Math.min(U * 0.2, U * 0.0008 * Math.max(0, u - 25)); // the wind up high takes the top of it
+  const Rs = U * (0.11 + 0.28 * (1 - Math.exp(-u / 26)) + 0.06 * clamp((u - 60) / 240, 0, 1)); // the cloud's own size
+  const Rx = Rs * (1 + 0.7 * merge); // how far the cap reaches: out into the overcast at the end
+  // a boiling ball at first, flatter as it ages, and never taller than a share of the sky it has
+  const crop = clamp((300 - apH) / 300, 0, 0.35); // a short window lets the top of it go out of the frame, so it can stay tall
+  const kf = Math.min(1 - 0.5 * sm(clamp((u - 15) / 135, 0, 1)), sky * (0.4 - 0.16 * sm(clamp((u - 20) / 100, 0, 1))) * (1 + 1.5 * crop) / (0.8 * Rs)) * (1 - 0.3 * merge);
+  const capH = 0.8 * Rs * kf;
+  const yF = apH * 0.04 + capH * (1 - crop);
+  const rise = 0.62 * (1 - Math.exp(-u / 13)) + 0.38 * (1 - Math.exp(-u / 110));
+  const away = apH * 1.1 * sm(clamp((u - 150) / 360, 0, 1)); // from two and a half minutes it goes on up, out of sight
+  const gone = sm(clamp((u - 420) / 300, 0, 1)); // and what is left of the stem thins away after it
+  const ks = Math.sqrt(kf), rm = 0.42 * Rs * ks; // half of the flattening in the billows' size, half in pressing them flat
+  return { u, U, cxBase, y0, cx: cxBase + drift, capY: y0 - (y0 - yF) * rise - away, Rx, Rs, Ry: 0.5 * Rs * ks, Rm: 1.02 * Rx - rm, rm, kf, ks, capH, merge, crop, gone };
+}
+function drawMushroom(t, G, sil) {
+  const B = BLAST, mg = mushGeom(t);
+  if (!mg || !mushC || !sil || mg.gone >= 1) return;
+  if (!PUFFS) buildPuffs();
+  const { apW, apH } = L, { u, U, cxBase, y0, cx, capY, Rx, Rs, Ry, Rm, rm, capH, merge } = mg, S = PUFF_SETS;
+  const mx = mushC.getContext("2d");
+  mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = "source-over"; mx.globalAlpha = 1; mx.clearRect(0, 0, mushC.width, mushC.height);
+  mx.setTransform(mushC.sc, 0, 0, mushC.sc, 0, 0);
+  const born = clamp((u - 0.4) / 2.5, 0, 1); // it is there almost at once, a boiling ball
+  const street = 0.55 * Math.min(1, G * 1.3), hotW = clamp(1 - (u - 6) / 26, 0, 1);
+  const capGlow = u < 6 ? 1 : Math.max(0.2 + 0.8 * Math.exp(-(u - 6) / 30), 0.4 * street); // the burning city keeps its underside lit
+  const fade = 1 - 0.45 * merge; // going into the overcast, it thins to the same grey
+  const puff = (p, px, py, size, a, glow) => {
+    const P = PUFFS[p.v];
+    if (a <= 0.01 || size < 2) return;
+    mx.globalAlpha = Math.min(1, a); mx.drawImage(P.body, px - size / 2, py - size / 2, size, size);
+    if (glow > 0.01) {
+      mx.globalCompositeOperation = "lighter";
+      if (hotW > 0.01) { mx.globalAlpha = Math.min(1, glow * hotW * a); mx.drawImage(P.hot, px - size / 2, py - size / 2, size, size); }
+      if (hotW < 0.99) { mx.globalAlpha = Math.min(1, glow * (1 - hotW) * a); mx.drawImage(P.red, px - size / 2, py - size / 2, size, size); }
+      mx.globalCompositeOperation = "source-over";
+    }
+  };
+  // the foot: dust and smoke boiling out along the ground and still spreading, lit by the fires in it
+  const footA = 0.7 * born * (1 - clamp((u - 30) / 90, 0, 1));
+  for (const p of S.foot) puff(p, cxBase + p.dx * Rs * (0.5 + 1.1 * (1 - Math.exp(-u / 40))), y0 + U * (0.03 - 0.03 * p.dy), Rs * 0.5 * p.sf, footA, street * 0.8 + capGlow * 0.15);
+  // the stem: smoke and dust sucked up into it, climbing all the time, longer as the cap rises
+  const stemTop = capY + capH * 0.2, thin = (1 - 0.15 * clamp((u - 90) / 200, 0, 1)) * (1 - 0.2 * merge);
+  for (const p of S.stem) {
+    const k = RM ? p.k0 : (p.k0 + u * 0.035) % 1, y = y0 - k * (y0 - stemTop);
+    const w = Rs * (0.14 + 0.08 * (1 - k)) * thin;
+    const x2 = cxBase + (cx - cxBase) * Math.pow(k, 1.6) + Math.sin(k * 6 + p.ph) * w * 0.12 + p.xj * w * 0.3;
+    const a = 0.5 * born * clamp((u - 1) / 5, 0, 1) * Math.min(1, k / 0.06, (1 - k) / 0.08) * (1 - 0.3 * merge) * (1 - mg.gone);
+    puff(p, x2, y, w * 1.8 * p.sf, a, street * Math.pow(1 - k, 2.5) + capGlow * Math.pow(k, 4) * 0.8);
+  }
+  // at the end, the overcast takes it: its top spreads downwind in a flat deck and goes the grey of the rest
+  if (merge > 0.01) for (const p of S.deck) {
+    const dx = p.dx * Rx + (RM ? 0 : Math.max(0, u - 150) * 0.0004 * U);
+    puff(p, cx + dx, capY - capH * (0.25 + 0.4 * p.dy), Rs * 1.1 * p.sf * (0.7 + 0.5 * merge), 0.5 * merge, capGlow * 0.12);
+  }
+  // the cap: a thick ring of smoke rolling on itself, seen a little from below
+  const tv = 0.85 - 0.3 * clamp((u - 30) / 120, 0, 1);
+  mx.save(); mx.translate(0, capY); mx.scale(1, mg.ks); mx.translate(0, -capY); // pressed flat about its middle
+  const ring = S.cap.map(p => {
+    const psi = RM ? p.psi : p.psi - u * 0.1, R = Rm + rm * Math.cos(psi);
+    return { p, x: cx + R * Math.cos(p.phi), y: capY - rm * Math.sin(psi) * tv - R * Math.sin(p.phi) * 0.14, z: Math.sin(p.phi), under: Math.max(0, -Math.sin(psi)) };
+  }).sort((a, b) => b.z - a.z);
+  const capPuff = q => puff(q.p, q.x, q.y, rm * 1.75 * q.p.sf * (1 + 0.08 * Math.sin(u * 0.3 + q.p.ph)), 0.95 * born * fade, 0.75 * capGlow * Math.pow(q.under, 1.5) * (0.85 - 0.25 * q.z));
+  for (const q of ring) if (q.z > 0) capPuff(q);
+  for (const p of S.dome) puff(p, cx + p.dx * Rm, capY - Ry * (0.15 + 0.6 * p.dy), Rs * 0.85 * mg.ks * p.sf, 0.95 * born * fade, capGlow * 0.05);
+  for (const q of ring) if (q.z <= 0) capPuff(q);
+  mx.restore();
+  mx.globalAlpha = 1;
+  // its underside lit as one surface by the fire under it, not bead by bead
+  if (capGlow > 0.02) {
+    mx.globalCompositeOperation = "source-atop";
+    softBlob(mx, cx, capY + capH * 0.5, Rx * 1.1, hotW > 0.5 ? "255,150,70" : "214,82,32", Math.min(1, 0.4 * (1 + 1.4 * mg.crop) * capGlow * born), 0.3);
+    mx.globalCompositeOperation = "source-over";
+  }
+  if (u < 22) { // in its first seconds the heart of it still burns through the smoke
+    mx.globalCompositeOperation = "lighter";
+    const hk = Math.pow(1 - u / 22, 1.4) * born;
+    softBlob(mx, cx, capY + Ry * 0.25, Rx * 0.95, "255,150,70", 0.75 * hk, 0.8);
+    softBlob(mx, cx, capY + Ry * 0.3, Rx * 0.5, "255,214,160", 0.8 * hk, 0.8);
+    mx.globalCompositeOperation = "source-over";
+  }
+  // smoke off the burning streets, nearer than the cloud: lit from below where it leaves the fire
+  const sk = clamp((u - 2) / 8, 0, 1);
+  if (sk > 0) for (let i = 0; i < afterFires.length; i += 4) {
+    const f = afterFires[i];
+    if (f.r < 11) continue;
+    const colH = Math.min(U * 0.5, f.y - apH * 0.08);
+    for (let k = 0; k < 7; k++) {
+      const q = RM ? (k + 0.5) / 7 : (u * 0.03 + k / 7 + f.ph / 6.283) % 1, p = S.stem[(i + k) % S.stem.length];
+      puff(p, f.x + q * q * U * 0.12 + Math.sin(q * 5 + f.ph) * f.r * 0.3, f.y - f.r * 1.2 - q * colH, f.r * (1.1 + 2.8 * q),
+        0.34 * sk * Math.min(1, q / 0.15) * (1 - q), street * 1.2 * Math.pow(1 - q, 3));
+    }
+  }
+  mx.globalAlpha = 1;
+  mx.globalCompositeOperation = "destination-out"; // the city stands in front of it
+  mx.drawImage(sil, 0, 0, apW, apH);
+  mx.globalCompositeOperation = "source-over";
+  g.drawImage(mushC, 0, 0, apW, apH);
+}
+/* the blast wave on its way: a wall of dust rolling out from the blast across the city, the far rows going into it first,
+   lit from behind by the fireball. The shutter comes down just before it gets here */
+const WALL = (() => {
+  const r = hashRng(8383), p = [];
+  for (let i = 0; i < 52; i++) p.push({ q: -1 + 2 * (i + 0.2 + r() * 0.6) / 52, rho: 1, sf: 0.7 + r() * 0.6, v: Math.floor(r() * 6), up: r(), ph: r() * 6.28 });
+  for (let i = 0; i < 36; i++) p.push({ q: -1 + 2 * r(), rho: 0.5 + 0.45 * r(), sf: 0.8 + r() * 0.6, v: Math.floor(r() * 6), up: r(), ph: r() * 6.28 });
+  return p;
+})();
+const WALL_T = 1.55; // the wave reaches the shelter just after the steel is down; its full weight lands on it a beat after the slam (BL_WAVE)
+const WALL_K0 = 0.1, WALL_KH = 0.075, WALL_SPREAD = 0.55, WALL_LAST = 1.05; // where its foot and top run on screen, how far it spreads; when the steel last lets it be seen
+function wallS(tt) { const p = clamp((tt - 0.05) / (WALL_T - 0.05), 0, 1); return 0.9 * (1 - Math.pow(1 - p, 1.4)); } // how far it has come: fastest leaving the blast, and rushing on the screen as it nears
+function wallPts(s) {
+  const { apW, apH } = L, far = apH * 0.52, bx = apW * NUKE.x;
+  return WALL.map(p => { // a ring spreading from the blast, seen from here: nearest straight ahead, far off to the sides
+    const sl = s * p.rho, e = Math.sqrt(Math.max(0, 1 - p.q * p.q)), z = 1 + (1 / (1 - sl) - 1) * e;
+    return { p, e, x: bx + p.q * apW * Math.max(0.03, sl) * WALL_SPREAD, y: far + apH * WALL_K0 * (z - 1), h: apH * WALL_KH * z * (0.45 + 0.55 * e) }; // highest straight ahead, low at its far ends
+  }).sort((a, c) => a.h - c.h);
+}
+function wallPuffs(mx, pts, tt, a0, sink, flat, boil, spread) {
+  for (const w of pts) { // billows of it, some heaped higher than others
+    const h = w.h * flat, P = PUFFS[w.p.v], sz = h * (1.1 + 1.0 * w.p.up) * w.p.sf;
+    const cy = w.y + sink - h * (0.2 + 0.6 * w.p.up) + (RM ? 0 : Math.sin(tt * 2.2 + w.p.ph) * h * boil), cx = w.x + w.p.q * spread;
+    mx.globalAlpha = Math.min(1, (w.p.rho === 1 ? 0.82 : 0.55) * a0 * (0.35 + 0.65 * w.e)); mx.drawImage(P.body, cx - sz / 2, cy - sz / 2, sz, sz);
+  }
+}
+function waveReach(tt, k) { // how far either side of the blast the wave has passed row k's street line (0 when it has not got there)
+  const { apW, apH } = L, s = wallS(tt), zc = 1 / (1 - s);
+  if (zc < 1.0001) return 0;
+  const ek = ((apH * [0.545, 0.6, 0.68, 0.78, 0.9][k] - apH * 0.52) / (apH * WALL_K0)) / (zc - 1);
+  return ek >= 1 ? 0 : apW * s * WALL_SPREAD * Math.sqrt(1 - ek * ek);
+}
+function waveSil(tt) {
+  // the city in black as the wave leaves it: broken where it has been, still standing where it has not
+  if (!waveSilC || !ruinSilC || !silC || !nearM || nearM.length !== 5 || tt < 0.05 || tt > WALL_T + 0.3) return null;
+  const { apW, apH } = L, bx = apW * NUKE.x, x = waveSilC.getContext("2d");
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.clearRect(0, 0, waveSilC.width, waveSilC.height);
+  x.setTransform(waveSilC.sc, 0, 0, waveSilC.sc, 0, 0);
+  x.drawImage(ruinSilC, 0, 0, apW, apH); // the ruin everywhere (the farthest row flattened), and over it each row still standing where the wave has not reached it
+  for (let k = 0; k <= 4; k++) {
+    const X = waveReach(tt, k), m = k ? nearM[k] : silC;
+    if (X <= 0) { x.drawImage(m, 0, 0, apW, apH); continue; }
+    x.save(); x.beginPath(); x.rect(0, 0, Math.max(0, bx - X), apH); x.rect(bx + X, 0, Math.max(0, apW - bx - X), apH); x.clip();
+    x.drawImage(m, 0, 0, apW, apH); x.restore();
+  }
+  return waveSilC;
+}
+function drawShockWall(tt, F) {
+  if (!PUFFS || !mushC || tt < 0.05 || tt > WALL_T) return;
+  const { apW, apH } = L, far = apH * 0.52, k0 = apH * WALL_K0, kh = apH * WALL_KH, s = wallS(tt);
+  const [r, gg, b] = blastRGB(tt), rim = r + "," + gg + "," + b;
+  const mx = mushC.getContext("2d");
+  mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = "source-over"; mx.globalAlpha = 1; mx.clearRect(0, 0, mushC.width, mushC.height);
+  mx.setTransform(mushC.sc, 0, 0, mushC.sc, 0, 0);
+  const pts = wallPts(s);
+  wallPuffs(mx, pts, tt, clamp((tt - 0.05) / 0.2, 0, 1), 0, 1, 0.04, 0); // boiling as it rolls
+  mx.globalCompositeOperation = "source-atop"; // dust, lighter than the buildings standing black in front of it, lit from above and behind
+  const top = far - kh * (1 / (1 - s)) * 1.2, dg = mx.createLinearGradient(0, top, 0, apH);
+  dg.addColorStop(0, "rgba(168,134,104,0.46)"); dg.addColorStop(0.5, "rgba(118,92,74,0.42)"); dg.addColorStop(1, "rgba(70,54,44,0.38)");
+  mx.fillStyle = dg; mx.fillRect(0, 0, apW, apH);
+  for (const w of pts) if (w.p.rho === 1 && F > 0.05) softBlob(mx, w.x, w.y - w.h * 1.05, w.h * 0.7, rim, Math.min(1, 0.6 * F), 0.5); // its top edge burns with the fireball's light
+  // the rows it has not reached yet stand in front of it; each goes into it where it passes
+  if (nearM && nearM.length === 5) {
+    const bx = apW * NUKE.x;
+    mx.globalCompositeOperation = "destination-out";
+    for (let k = 1; k <= 4; k++) {
+      const X = waveReach(tt, k);
+      if (X <= 0) { mx.drawImage(nearM[k], 0, 0, apW, apH); continue; }
+      mx.save(); mx.beginPath(); mx.rect(0, 0, Math.max(0, bx - X), apH); mx.rect(bx + X, 0, Math.max(0, apW - bx - X), apH); mx.clip();
+      mx.drawImage(nearM[k], 0, 0, apW, apH); mx.restore();
+    }
+  }
+  mx.globalAlpha = 1; mx.globalCompositeOperation = "source-over";
+  g.drawImage(mushC, 0, 0, apW, apH);
+}
+function drawPall(t, tt, G, sil) {
+  const sm = v => v * v * (3 - 2 * v), k = 0.62 * clamp((tt - BL_DROP) / 1, 0, 1) * (1 - sm(clamp((tt - 10) / 38, 0, 1)));
+  if (k < 0.01 || !PUFFS || !mushC || !sil) return;
+  const { apW, apH } = L, far = apH * 0.52, bx = apW * NUKE.x, settle = sm(clamp((tt - 8) / 30, 0, 1));
+  const mx = mushC.getContext("2d");
+  mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = "source-over"; mx.globalAlpha = 1; mx.clearRect(0, 0, mushC.width, mushC.height);
+  mx.setTransform(mushC.sc, 0, 0, mushC.sc, 0, 0);
+  wallPuffs(mx, wallPts(wallS(WALL_LAST)), t, 1, apH * 0.08 * settle, 1 - 0.45 * settle, 0, apW * 0.05 * settle); // as it was, spreading a little, lower and flatter as it settles; still, no bobbing
+  mx.globalCompositeOperation = "source-atop"; // in the dark now: brown-black, the fires under it lighting its belly
+  const dg = mx.createLinearGradient(0, apH * 0.1, 0, far + apH * 0.1);
+  dg.addColorStop(0, "rgba(80,66,58,0.55)"); dg.addColorStop(1, "rgba(104,76,58,0.5)");
+  mx.fillStyle = dg; mx.fillRect(0, 0, apW, apH);
+  const m = 0.8 + 0.2 * blastFlick(t * 0.8 + 3); // the light on it steady, only breathing a little with the fires
+  softBlob(mx, bx, far, apW * 0.65, "160,74,34", Math.min(1, 0.45 * G * m), 0.5);
+  softBlob(mx, bx, far - apH * 0.08, apW * 0.26, "226,122,56", Math.min(1, 0.38 * G * m * (1 - 0.5 * settle)), 0.6); // brightest round the foot of the cloud
+  mx.globalAlpha = 1; mx.globalCompositeOperation = "destination-out"; // what stood in front of the wall stands in front of it; the far rows are still inside it
+  mx.drawImage(silPallC || sil, 0, 0, apW, apH);
+  mx.globalCompositeOperation = "source-over";
+  g.save(); g.globalAlpha = Math.min(1, k); g.drawImage(mushC, 0, 0, apW, apH); g.restore();
+}
+/* the blast's wind: when the shutter comes up, the air over the city is still full of what it tore loose, dust and grit
+   streaming out from the blast and thinning away over a few seconds */
+const SURGE = (() => {
+  const r = hashRng(5151), d = [];
+  for (let i = 0; i < 80; i++) d.push({ x: r(), y: r(), sp: 0.6 + r() * 0.8, len: r(), ph: r(), lit: r() < 0.25 });
+  return { d };
+})();
+function drawBlastWind(t) {
+  const B = BLAST, { apW, apH } = L, s = t - B.t0 - BL_LIFT, WL = 7.5;
+  if (B.t0 < -1e8 || s < 0 || s > WL) return;
+  const k = 1 - s / WL, a0 = Math.pow(k, 1.5), street = Math.min(1, blastG(t) * 1.3), mv = RM ? 0 : 1;
+  // the air itself: brown with dust, lower and thicker toward the streets
+  const hz = g.createLinearGradient(0, apH * 0.2, 0, apH);
+  hz.addColorStop(0, "rgba(64,48,38,0)"); hz.addColorStop(0.45, "rgba(64,48,38," + (0.28 * a0).toFixed(3) + ")"); hz.addColorStop(1, "rgba(52,40,32," + (0.42 * a0).toFixed(3) + ")");
+  g.fillStyle = hz; g.fillRect(0, 0, apW, apH);
+  // sheets of it streaming out from the blast to either side, fast at first and slowing
+  if (dustC) {
+    const bx = apW * NUKE.x, dw = apW * 1.25, dh = apH * 0.6, y = apH * 0.38 - s * apH * 0.012;
+    const run = (off, a) => { // two layers at their own pace, so it tears rather than slides
+      const o = ((off % dw) + dw) % dw;
+      g.globalAlpha = Math.min(1, a);
+      g.save(); g.beginPath(); g.rect(0, 0, bx, apH); g.clip();
+      g.drawImage(dustC, -o, y, dw, dh); g.drawImage(dustC, dw - o, y, dw, dh); g.restore();
+      g.save(); g.beginPath(); g.rect(bx, 0, apW - bx, apH); g.clip();
+      g.drawImage(dustC, o - dw, y, dw, dh); g.drawImage(dustC, o, y, dw, dh); g.restore();
+    };
+    const d = mv * (s - 0.35 * s * s / WL);
+    run(apW * (0.3 + 0.36 * d), 0.9 * a0);
+    run(apW * (0.9 + 0.22 * d), 0.6 * a0);
+    softBlob(g, bx, apH * 0.66, apH * 0.3, "86,68,56", 0.4 * a0, 1.5); // where they part, it is going up into the column
+    g.globalAlpha = 1;
+  }
+  // grit and bits of things, driven hard at first, fewer and slower as it dies down
+  const n = Math.round(SURGE.d.length * Math.min(1, 1.4 * k)), sp = 0.35 + 0.65 * k;
+  g.lineCap = "round";
+  for (let i = 0; i < n; i++) {
+    const d = SURGE.d[i], q = RM ? d.ph : (s * d.sp * 0.55 * sp + d.ph) % 1;
+    const side = d.x < NUKE.x ? -1 : 1, x = (d.x + side * (q - 0.2) * 0.7) * apW, y = apH * (0.28 + 0.66 * d.y) + q * q * apH * 0.12;
+    const ln = (3 + 9 * d.len) * sp * clamp(apW / 1400, 0.5, 1), fa = Math.min(1, q / 0.1, (1 - q) / 0.2) * a0;
+    if (fa < 0.02) continue;
+    g.strokeStyle = d.lit ? "rgba(255,150,70," + (0.55 * fa * Math.max(0.3, street)).toFixed(3) + ")" : "rgba(18,14,12," + (0.6 * fa).toFixed(3) + ")";
+    g.lineWidth = d.lit ? 1 : 1.4;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - side * ln, y - ln * 0.08); g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+function drawSlatLight(t, bt, hgt, I) {
+  // in aperture space, over the shutter: hot, uneven lines on black steel, each gap breathing with the fire outside
+  const { apW, apH } = L, B = BLAST;
+  const [r, gg, b] = blastRGB(bt), col = r + "," + gg + "," + b;
+  const wv = t - B.waveT, inWave = !RM && wv >= 0 && wv < 1.5;
+  const n = SLATS[0].length;
+  g.save(); g.globalCompositeOperation = "lighter";
+  for (let sy3 = hgt % 13; sy3 < hgt - 4; sy3 += 13) {
+    const ri = Math.round((hgt - sy3) / 13), prof = SLATS[ri % SLATS.length];
+    let rowK = 0.7 + 0.45 * Math.exp(-Math.pow(sy3 / apH - (B.gy - 0.1), 2) / 0.08); // brightest at the height it came from
+    if (bt > 1 && !RM) rowK *= 0.7 + 0.3 * blastFlick(t * 2.3 + ri * 1.9);
+    let dy = 0;
+    if (inWave) { // the air shoves the curtain: every gap flares open, then the slats rattle in their guides
+      rowK *= 1 + 1.4 * Math.exp(-wv / 0.07) - 0.55 * Math.exp(-wv / 0.5) * (0.5 + 0.5 * Math.sin(wv * 27 + ri * 2.1));
+      dy = 2 * Math.exp(-wv / 0.35) * Math.sin(wv * 33 + ri * 1.3);
+    }
+    const lg = g.createLinearGradient(0, 0, apW, 0), lb = g.createLinearGradient(0, 0, apW, 0);
+    for (let j = 0; j < n; j++) {
+      const x = j / (n - 1);
+      let v = I * prof[j] * rowK * (0.55 + 0.75 * Math.exp(-Math.pow(x - B.gx, 2) / 0.05)); // and toward the side it came from
+      if (bt > 1.5 && !RM) v *= 1 - 0.45 * Math.pow(Math.max(0, Math.sin(j * 0.55 - t * 1.7 + ri * 0.21)), 3); // smoke drifting past outside
+      const wh = clamp((v - 0.8) / 0.8, 0, 0.75); // the hottest spots burn white
+      lg.addColorStop(x, "rgba(" + Math.round(r + (255 - r) * wh) + "," + Math.round(gg + (255 - gg) * wh) + "," + Math.round(b + (255 - b) * wh) + "," + Math.min(1, v).toFixed(3) + ")");
+      lb.addColorStop(x, "rgba(" + col + "," + Math.min(0.5, 0.2 * v).toFixed(3) + ")");
+    }
+    g.fillStyle = lb; g.fillRect(0, sy3 + dy - 4, apW, 8);
+    g.fillStyle = lg; g.fillRect(0, sy3 + dy - 1, apW, 2);
+  }
+  const pump = inWave ? 1 + 2.5 * Math.exp(-wv / 0.08) : 1;
+  g.fillStyle = "rgba(" + col + "," + Math.min(1, 1.1 * I).toFixed(3) + ")"; // down the guides at both sides
+  g.fillRect(0, 0, 3, hgt); g.fillRect(apW - 3, 0, 3, hgt);
+  if (hgt > apH - 1) { // under the bottom edge: the curtain never quite seals on the sill
+    g.fillStyle = "rgba(" + col + "," + Math.min(1, 1.2 * I * pump).toFixed(3) + ")"; g.fillRect(0, apH - 1.6, apW, 1.6);
+    g.fillStyle = "rgba(" + col + "," + Math.min(0.5, 0.25 * I * pump).toFixed(3) + ")"; g.fillRect(0, apH - 5, apW, 5);
+  }
+  const hk = clamp(apH / 400, 0.8, 1.4);
+  for (const hl of HOLES) { // ragged punctures, not neat circles
+    const hy = hgt - hl.yb * apH; if (hy < 2) continue;
+    const hx = hl.x * apW, hr = Math.max(1.3, hl.r * hk); // never too small to see on a phone
+    softBlob(g, hx, hy, hr * 4.5, col, Math.min(0.4, 0.35 * I * hl.k), 1);
+    g.fillStyle = "rgba(" + col + "," + Math.min(1, 1.3 * I * hl.k).toFixed(3) + ")";
+    g.beginPath(); g.arc(hx, hy, hr, 0, 7); g.arc(hx + hl.ox * hr, hy + hl.oy * hr, hr * 0.7, 0, 7); g.fill();
+  }
+  g.restore();
+}
+function spawnDust(n) {
+  // shaken loose from the head of the window and from the ceiling: fine dust that drifts, and grit that drops
+  const { apX, apY, apW, w, h } = L, u = clamp(Math.min(w, h) / 560, 1, 2);
+  for (let i = 0; i < n; i++) {
+    const grit = Math.random() < 0.14, ceil = Math.random() < 0.3;
+    BLAST.dust.push({
+      x: ceil ? Math.random() * w : apX + Math.random() * apW, y: ceil ? h * (0.03 + Math.random() * 0.04) : apY - 6 + Math.random() * 26,
+      vx: (Math.random() - 0.5) * 16, vy: grit ? 30 + Math.random() * 60 : 5 + Math.random() * 14,
+      r: (grit ? 1.1 + Math.random() * 0.9 : 0.6 + Math.random() * 0.8) * u, a: grit ? 0.75 + Math.random() * 0.2 : 0.22 + Math.random() * 0.3,
+      grit, age: -Math.random() * (grit ? 0.4 : 1.2), life: grit ? 2.5 : 3.5 + Math.random() * 4, ph: Math.random() * 6.3
+    });
+  }
+}
+function drawBlastRoom(t, dt) {
+  // the room side: the window throws the light in, then the dust comes down through it
+  const B = BLAST, { apX, apY, apW, apH, sillY, w, h } = L;
+  const tt = B.t0 > -1e8 ? t - B.t0 : 99, F = B.t0 > -1e8 ? blastF(tt) : 0, Iw = blastIw(t);
+  const [r, gg, b] = blastRGB(tt), col = r + "," + gg + "," + b;
+  if (Iw > 0.004) {
+    const rv = 16;
+    g.save(); g.globalCompositeOperation = "lighter";
+    const cx = apX + apW / 2, cy = apY + apH * 0.55, bo = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.75);
+    bo.addColorStop(0, "rgba(" + col + "," + (0.22 * Iw).toFixed(3) + ")"); bo.addColorStop(1, "rgba(" + col + "," + (0.05 * Iw).toFixed(3) + ")");
+    g.fillStyle = bo; g.beginPath(); g.rect(0, 0, w, h); g.rect(apX, apY, apW, apH); g.fill("evenodd"); // the room takes some of it
+    const gl = Math.max(34, apW * 0.03), ga = (0.45 * Iw).toFixed(3); // glare: the opening burns into the wall around it
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[apX, 0, apX - gl, 0, apX - gl, apY, gl, apH], [apX + apW, 0, apX + apW + gl, 0, apX + apW, apY, gl, apH],
+      [0, apY, 0, apY - gl, apX, apY - gl, apW, gl], [0, apY + apH, 0, apY + apH + gl, apX, apY + apH, apW, gl]]) {
+      const eg = g.createLinearGradient(x0, y0, x1, y1);
+      eg.addColorStop(0, "rgba(" + col + "," + ga + ")"); eg.addColorStop(1, "rgba(" + col + ",0)");
+      g.fillStyle = eg; g.fillRect(rx, ry, rw, rh);
+    }
+    for (const [cx2, cy2, sx, sy] of [[apX, apY, -1, -1], [apX + apW, apY, 1, -1], [apX, apY + apH, -1, 1], [apX + apW, apY + apH, 1, 1]]) {
+      const cg = g.createRadialGradient(cx2, cy2, 0, cx2, cy2, gl); // rounded at the corners
+      cg.addColorStop(0, "rgba(" + col + "," + ga + ")"); cg.addColorStop(1, "rgba(" + col + ",0)");
+      g.fillStyle = cg; g.fillRect(sx < 0 ? cx2 - gl : cx2, sy < 0 ? cy2 - gl : cy2, gl, gl);
+    }
+    g.fillStyle = "rgba(" + col + "," + (0.55 * Iw).toFixed(3) + ")"; // the deep reveals of the window catch it hardest
+    g.beginPath();
+    g.moveTo(apX, apY); g.lineTo(apX + rv, apY + rv * 0.6); g.lineTo(apX + rv, apY + apH - rv * 0.6); g.lineTo(apX, apY + apH); g.closePath();
+    g.moveTo(apX + apW, apY); g.lineTo(apX + apW - rv, apY + rv * 0.6); g.lineTo(apX + apW - rv, apY + apH - rv * 0.6); g.lineTo(apX + apW, apY + apH); g.closePath();
+    g.fill();
+    g.fillStyle = "rgba(" + col + "," + (0.3 * Iw).toFixed(3) + ")";
+    g.beginPath();
+    g.moveTo(apX, apY + apH); g.lineTo(apX + rv, apY + apH - rv * 0.6); g.lineTo(apX + apW - rv, apY + apH - rv * 0.6); g.lineTo(apX + apW, apY + apH); g.closePath();
+    g.fill();
+    g.fillStyle = "rgba(" + col + "," + Math.min(0.8, 0.6 * Iw).toFixed(3) + ")"; g.fillRect(apX - 10, sillY + 2, apW + 20, 1.6); // the sill's steel edge
+    const cn = L.console;
+    if (cn) { g.fillStyle = "rgba(" + col + "," + Math.min(0.9, 0.7 * Iw).toFixed(3) + ")"; g.fillRect(cn.px0 + 8, cn.py0, cn.px1 - cn.px0 - 16, 3); }
+    g.restore();
+  }
+  if (B.dust.length) {
+    const lit = Math.min(1.8, 0.8 + 2.2 * Iw), hgt = shutterPos * apH;
+    const sI = shutterPos > 0.9 && B.t0 > -1e8 && tt < BL_BUSY ? F + 0.25 * blastG(t) : 0;
+    for (const p of B.dust) {
+      if (p.age < 0) { p.age += dt; continue; }
+      p.age += dt;
+      if (p.grit) p.vy += 520 * dt;
+      else { p.vy += (14 - p.vy) * Math.min(1, dt * 1.2); p.vx += Math.sin(p.age * 1.7 + p.ph) * 6 * dt; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.grit && p.y > sillY && p.y < sillY + 12 && p.x > apX - 10 && p.x < apX + apW + 10) p.dead = true; // it lands on the sill
+      const fade = Math.min(1, p.age / 0.3) * Math.min(1, (p.life - p.age) / 1.2);
+      if (fade <= 0 || p.y > h) { p.dead = true; continue; }
+      if (p.grit) { // chips of concrete: dark against everything
+        g.fillStyle = "rgba(34,29,24," + Math.min(1, p.a * fade).toFixed(3) + ")";
+        g.beginPath(); g.arc(p.x, p.y, p.r * 0.6, 0, 7); g.fill();
+        continue;
+      }
+      let a = p.a * fade * lit, pc = "196,182,158";
+      if (sI > 0.02 && p.x > apX && p.x < apX + apW && p.y > apY && p.y < apY + apH) { // crossing a gap, it catches the light
+        const d = ((p.y - apY - hgt % 13) % 13 + 13) % 13, near = Math.max(0, 1 - Math.min(d, 13 - d) / 2.5);
+        if (near > 0) { a *= 1 + 2.5 * near * sI; pc = col; }
+      }
+      g.fillStyle = "rgba(" + pc + "," + Math.min(0.8, a).toFixed(3) + ")";
+      g.beginPath(); g.arc(p.x, p.y, p.r * 0.5, 0, 7); g.fill();
+    }
+    if (B.dust.some(p => p.dead)) B.dust = B.dust.filter(p => !p.dead);
+  }
+  const pk = t - B.puffT; // the cloud of it, hanging under the head of the window and falling
+  if (pk >= 0 && pk < 7) {
+    const e = Math.min(1, pk / 0.25) * Math.exp(-pk / 1.8);
+    softBlob(g, apX + apW * 0.5, apY + 12 + apH * 0.3 * (1 - Math.exp(-pk / 1.6)), apW * 0.55, "150,138,118", 0.3 * e, 0.12);
+    softBlob(g, apX + apW * 0.3, h * 0.06 + pk * 3, apW * 0.35, "120,110,96", 0.18 * e, 0.14);
+    const sh = g.createLinearGradient(0, apY, 0, apY + Math.min(apH, 8 + pk * apH * 0.35)); // a sheet of it coming down the steel
+    sh.addColorStop(0, "rgba(150,138,118," + (0.18 * e).toFixed(3) + ")"); sh.addColorStop(1, "rgba(150,138,118,0)");
+    g.fillStyle = sh; g.fillRect(apX, apY, apW, Math.min(apH, 8 + pk * apH * 0.35));
+  }
+}
+function stepBlast(t, dt, gap) {
+  const B = BLAST, st = STORY;
+  // the page was away (a hidden tab, a locked phone): the event picks up where it stopped, not where the clock got to
+  if (gap > 0.2 && B.t0 > -1e8 && (t - gap) - B.t0 < BL_BUSY) {
+    B.t0 += gap;
+    if (B.waved) { B.waveT += gap; B.dipT += gap; B.puffT += gap; }
+    if (B.liftT >= 0) B.liftT += gap;
+    if ((t - gap) - shakeT < shakeDur) shakeT += gap;
+  }
+  if (gap > 0.2 && B.radAt > -1e8 && B.radT < -1e8) B.radAt += gap; // the warning keeps its place after the lift
+  if (!rotShown) B.on += dt; // its clock runs only while the scene is on screen
+  if (built && B.snd < 0) B.snd = B.on; // when the sound came up
+  if (!built && !B.called && B.at0 >= 0 && B.t0 < -1e8 && B.on > B.at0 - 4) { // it is nearly time and the sound is still off
+    B.called = true; const h = document.getElementById("hint"); if (!h.classList.contains("gone")) h.classList.add("call");
+  }
+  const ready = silAfterC && cityAfterC && fireL1 && fireL2;
+  if (B.jump >= 0 && B.t0 < -1e8 && ready) { // local test: open some time after it happened
+    B.t0 = t - B.jump; B.dropped = B.waved = B.lifted = B.swapped = true; B.lock = B.auto = false; B.radAt = B.jump > 12 ? t + 1 : B.t0 + BL_LIFT + 4.5;
+  }
+  // 1. the light, when nothing else is happening
+  if (B.at >= 0 && B.t0 < -1e8 && B.on >= B.at) {
+    if (st.boT >= 0) B.at = -1; // the power is going or gone: not this visit
+    // it waits for anything already happening; anything only coming up waits for it instead
+    else if (!silC || !ready || strike || (grab && grab.kind === "shutter") || shutterMoving || (st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) ||
+      (st.knocked >= 0 && t - st.knocked < 8)) B.at = B.on + 1.5;
+    // it is a sound event: without sound it waits a little for a tap, and just after one it gives the boom time to load
+    else if ((!built && B.on < B.at0 + 10) || (built && B.on - B.snd < 3)) B.at = B.on + 0.5;
+    else {
+      B.t0 = t; B.lock = true; B.auto = shutterTarget < 0.5; B.dropped = B.waved = B.lifted = B.swapped = false; B.radAt = B.radT = -1e9;
+      st.knock = false; st.card = false; // and no knock at the door after this
+      if (nextStrikeT < t + BL_BUSY + 6) nextStrikeT = t + BL_BUSY + 6 + Math.random() * 12;
+      if (built) try { localStorage.setItem("sf.blast", "1"); } catch (e) {} // seen without sound, it comes again next visit
+    }
+  }
+  if (B.t0 > -1e8) {
+    const tt = t - B.t0;
+    // 2. the shelter shuts itself a beat after the light
+    if (B.auto && !B.dropped && tt >= BL_DROP) { B.dropped = true; B.fast = true; shutterTarget = 1; playRelease(); playShutterRun(true, 0.66); }
+    // behind the steel, the city it opens on is not the one it closed on
+    if (!B.swapped && tt >= BL_DROP + 0.7 && (!B.auto || shutterPos > 0.995) && ready) { B.swapped = true; nearM = waveSilC = ruinSilC = null; }
+    // 3. the air arrives
+    if (!B.waved && tt >= BL_WAVE) {
+      B.waved = true; B.waveT = t; B.dipT = t; B.puffT = t;
+      if (!RM) {
+        shakeT = t; shakeDur = 1.4; shakeAmp = 9 * clamp(Math.min(W, H) / 700, 0.9, 1.6); B.swingV += 0.3;
+        spawnDust(Math.round(170 * clamp(W * H / 921600, 0.6, 1.6)));
+      }
+      WX.k = Math.max(WX.k, 0.62);
+      playBlastWave();
+    }
+    // 4. it lets go and lifts itself; the lever is held until the shutter is all the way up
+    if (!B.lifted && tt >= BL_LIFT) {
+      B.lifted = true; B.fast = false;
+      B.radAt = t + 1.45 + 4; // once the shutter is up and the cloud has been seen, the monitor comes on by itself
+      startRoar();
+      if (B.auto && shutterTarget > 0.5) {
+        shutterTarget = 0; B.liftT = t; playRelease(); playShutterRun(false, 1.45);
+        WX.gustA = 1; WX.gust0 = t; WX.gustT = t + 7; WX.spatDone = false; // the storm it stirred up hits the glass
+      } else B.lock = false;
+    }
+    if (B.lock && B.lifted && (shutterPos < 0.002 || tt > BL_LIFT + 2.5)) B.lock = false;
+    if (tt < BL_BUSY && nextStrikeT < B.t0 + BL_BUSY + 4) nextStrikeT = B.t0 + BL_BUSY + 4 + Math.random() * 10;
+  }
+  // 5. the monitor: it switches itself on and shows the radiation warning; the switch still turns it off
+  if (B.radAt > -1e8 && B.radT < -1e8 && t >= B.radAt) {
+    if (!crtShown() || st.deadT >= 0 || st.boT >= 0) B.radAt = -1e9; // no monitor on this screen, or no power for it
+    else if (st.cardT >= 0 && t - st.cardT < CARD_LEN) B.radAt = t + 2;
+    else { B.radT = t; radioOn = true; if (built) { playClack(true); playStaticBurst(0, 0.25, 0.03); B.alarmG = playAttention(0.3); } }
+  }
+  stepGeiger(t);
+  // the lamp on its conduit: a pendulum, nudged by the slam and the air
+  if (!RM && (B.swing || B.swingV)) {
+    B.swingV += (-5.8 * B.swing - 0.22 * B.swingV) * Math.min(dt, 0.05);
+    B.swing += B.swingV * Math.min(dt, 0.05);
+    if (Math.abs(B.swing) < 2e-4 && Math.abs(B.swingV) < 2e-4) B.swing = B.swingV = 0;
+  }
 }
 
 function drawLever(t) {
@@ -2067,22 +3094,28 @@ function drawLampAndGlow(t, amp, flashA) {
     g.fillStyle = "rgba(2,2,3," + dk.toFixed(3) + ")";
     g.fill("evenodd");
   };
+  const la = lampPos(), u = la.u, sw = RM ? 0 : BLAST.swing;
+  const swing = () => { if (sw) { g.translate(la.x, 0); g.rotate(sw); g.translate(-la.x, 0); } };
+  g.save(); swing(); drawLampFixture(g, la); g.restore(); // the fixture sits in the room's light like everything else
   if (!deadK) shade(); // with power, the lamps glow on top of the room; without it they sink into the dark with everything else
-  const { x, y } = L.lamp;
+  const lv = L.lever, x = lv.x + lv.arm * 0.47 - 12, y = lv.y - lv.arm * 1.28 + 16; // top corner of the breaker plate
   const glow = Math.min(1, amp * pwrLvl);
   g.fillStyle = "rgb(" + Math.round(58 + glow * 197) + "," + Math.round(35 + glow * 105) + "," + Math.round(19 + glow * 40) + ")";
-  g.strokeStyle = "#4a3020"; g.lineWidth = 2;
-  g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); g.stroke();
+  g.strokeStyle = "#3a2618"; g.lineWidth = 1.4;
+  g.beginPath(); g.arc(x, y, 3.6, 0, 7); g.fill(); g.stroke();
   if (glow > 0.02) {
-    const lg = g.createRadialGradient(x, y, 0, x, y, 26);
-    lg.addColorStop(0, "rgba(255,150,70," + (glow * 0.5).toFixed(2) + ")");
+    const lg = g.createRadialGradient(x, y, 0, x, y, 13);
+    lg.addColorStop(0, "rgba(255,150,70," + (glow * 0.45).toFixed(2) + ")");
     lg.addColorStop(1, "rgba(255,150,70,0)");
-    g.fillStyle = lg; g.beginPath(); g.arc(x, y, 26, 0, 7); g.fill();
+    g.fillStyle = lg; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill();
   }
   // keeper's lamp: a soft ceiling glow, and the LAMP knob raises or lowers the whole room
-  const la = lampPos(), u = la.u;
-  const fl = (RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim * pwrLvl;
+  const dj = t - BLAST.dipT; // the filament stutters in the jolt
+  const jolt = RM || dj < 0 || dj >= 0.32 ? 1 : dj < 0.05 ? 0.25 : dj < 0.11 ? 1 : dj < 0.2 ? 0.5 : 0.85;
+  const fl = (RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim * pwrLvl * jolt;
+  g.save(); swing();
   softBlob(g, la.x, la.y, Math.min(L.w, L.h) * 0.30, "226,168,104", 0.09 * fl, 1);
+  softBlob(g, la.x, la.y + Math.min(L.w, L.h) * 0.3, Math.min(L.w, L.h) * 0.35, "226,168,104", 0.035 * fl, 1); // its light on the wall below
   softBlob(g, la.x, la.y - 1 * u, 26 * u, "255,190,120", 0.16 * fl, 0.85); // the hot pool around the fixture
   g.fillStyle = "rgba(255,196,128," + (0.32 * fl).toFixed(3) + ")"; // the hood's mouth, lit from inside
   g.beginPath(); g.ellipse(la.x, la.y - 6 * u, 11.6 * u, 2 * u, 0, 0, Math.PI); g.fill();
@@ -2098,6 +3131,7 @@ function drawLampAndGlow(t, amp, flashA) {
   for (const dx of [-9, -3.4, 3.4, 9]) { g.moveTo(la.x + dx * u, la.y - 6 * u); g.quadraticCurveTo(la.x + dx * 0.9 * u, la.y + 3 * u, la.x, la.y + 5.5 * u); }
   g.stroke();
   g.beginPath(); g.ellipse(la.x, la.y - 0.5 * u, 8.2 * u, 1.6 * u, 0, 0, 7); g.stroke();
+  g.restore();
   if (deadK) shade();
 }
 function drawAlarm(t, amp) {
@@ -2219,7 +3253,7 @@ function crtRect() {
     return { x: L.apX + L.apW - wC - 14, y: L.sillY + 17 + (band - hC) / 2, w: wC, h: hC, wall: true };
   }
   const mg = L.w - (L.apX + L.apW);
-  const wC = Math.min(mg * 0.86, 170), hC = wC * 0.8;
+  const wC = Math.min(mg - 26, mg * 0.86, 170), hC = wC * 0.8; // its bezel keeps a few pixels clear of the window and the screen edge
   return { x: L.apX + L.apW + (mg - wC) / 2, y: L.h * 0.13, w: wC, h: hC };
 }
 function crtShown() { return L.portrait ? crtRect().h >= 60 : L.apX > 70; }
@@ -2234,8 +3268,8 @@ function drawCRT(t) {
   g.strokeStyle = "#2e2822"; g.lineWidth = 1.6; roundRect(g, c.x - 7, c.y - 7, c.w + 14, c.h + 14, 8); g.stroke();
   g.fillStyle = "#050506"; roundRect(g, c.x, c.y, c.w, c.h, 5); g.fill();
   if (STORY.deadT >= 0) { drawDeadCRT(c, t - STORY.deadT); return; }
-  const ct = STORY.cardT >= 0 ? t - STORY.cardT : 99, inCard = ct < CARD_LEN;
-  if (!radioOn && !inCard) {
+  const ct = STORY.cardT >= 0 ? t - STORY.cardT : 99, inCard = ct < CARD_LEN, inRad = BLAST.radT > -1e8 && t - BLAST.radT < RAD_RING;
+  if (!radioOn && !inCard && !inRad) {
     g.fillStyle = "rgba(200,60,40," + (0.55 * Math.min(1, pwrLvl)).toFixed(3) + ")";
     g.beginPath(); g.arc(c.x + c.w - 8, c.y + c.h - 8, 2, 0, 7); g.fill();
     return;
@@ -2243,12 +3277,19 @@ function drawCRT(t) {
   g.save();
   roundRect(g, c.x, c.y, c.w, c.h, 5); g.clip();
   const flick = 0.86 + 0.08 * Math.sin(t * 11.3) * Math.sin(t * 2.9) + 0.05 * Math.random();
+  const bwv = t - BLAST.waveT;
   if (inCard && ct > CARD_LEN - 0.3) drawSnow(c);
   else if (inCard) drawCard(c, ct, flick);
+  else if (bwv >= 0 && bwv < 0.35) drawSnow(c); // the air hits the camera outside
+  else if (BLAST.radT > -1e8) { if (t - BLAST.radT < 0.25) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
   else {
     g.globalAlpha = flick;
     g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, c.y, c.w, c.h);
     g.globalAlpha = 1;
+    if (BLAST.t0 > -1e8) { // the camera outside sees the light before anything else: the picture whites out
+      const bt = t - BLAST.t0, bF = blastF(bt);
+      if (bF > 0.01) { const [r, gg, b] = blastRGB(bt); g.fillStyle = "rgba(" + r + "," + gg + "," + b + "," + (0.9 * bF).toFixed(3) + ")"; g.fillRect(c.x, c.y, c.w, c.h); }
+    }
     g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = 1; // live rain specks
     for (let i = 0; i < 5; i++) {
       const rx3 = c.x + Math.random() * c.w, ry3 = c.y + Math.random() * c.h * 0.9;
@@ -2279,7 +3320,9 @@ function drawDeadCRT(c, d) {
   roundRect(g, c.x, c.y, c.w, c.h, 5); g.clip();
   if (d < 0.2) { // the picture squashes into a bright line
     const k = 1 - d / 0.2, hh = Math.max(2, c.h * k);
-    g.globalAlpha = 0.85; g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
+    g.globalAlpha = 0.85;
+    if (BLAST.radT > -1e8) { g.save(); g.translate(0, cy); g.scale(1, hh / c.h); g.translate(0, -cy); drawRadCard(c, 1, 1); g.restore(); }
+    else g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
     g.globalAlpha = 1; g.fillStyle = "rgba(230,236,255," + (0.5 * (1 - k)).toFixed(3) + ")"; g.fillRect(c.x, cy - hh / 2, c.w, hh);
   } else if (d < 0.5) { // the line draws in to a point
     const ww = Math.max(3, c.w * (1 - (d - 0.2) / 0.3));
@@ -2303,6 +3346,31 @@ function drawSnow(c) {
     g.fillStyle = "rgba(255,255,255," + (0.05 + Math.random() * 0.12).toFixed(2) + ")";
     g.fillRect(c.x, c.y + Math.random() * c.h, c.w, 1 + Math.random() * 4);
   }
+}
+function drawRadCard(c, rt, flick) {
+  // after the blast the monitor carries one thing: the radiation symbol and two words
+  g.fillStyle = "#07080a"; g.fillRect(c.x, c.y, c.w, c.h);
+  const pulse = RM ? 1 : 0.78 + 0.22 * Math.pow(Math.max(0, Math.sin(rt * 3.1)), 2);
+  const R = Math.min(c.w * 0.21, c.h * 0.25), cx = c.x + c.w / 2, cy = c.y + c.h * 0.33;
+  g.save(); g.globalAlpha = (0.9 + 0.1 * flick) * pulse;
+  g.fillStyle = "rgb(236,186,34)"; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.fill();
+  const r2 = R * 0.86, r0 = r2 / 5, r1 = r0 * 1.5;
+  g.fillStyle = "#07080a"; g.beginPath(); g.arc(cx, cy, r0, 0, 7); g.fill();
+  for (const a of [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6]) { // three blades, one pointing down
+    g.beginPath(); g.arc(cx, cy, r2, a - Math.PI / 6, a + Math.PI / 6); g.arc(cx, cy, r1, a + Math.PI / 6, a - Math.PI / 6, true); g.closePath(); g.fill();
+  }
+  g.restore();
+  g.save();
+  g.globalAlpha = 0.9 + 0.1 * flick;
+  g.textAlign = "center"; g.textBaseline = "middle";
+  try { g.letterSpacing = c.w < 90 ? "0px" : "1px"; } catch (e) {}
+  const ink = "rgb(240,237,228)", fitPx = (txt, maxW, maxPx) => { g.font = "800 " + maxPx.toFixed(1) + "px 'Segoe UI', system-ui, sans-serif"; const mw = g.measureText(txt).width; return mw > maxW ? maxPx * maxW / mw : maxPx; };
+  const px = Math.min(fitPx("RADIATION", c.w * 0.92, c.h * 0.17), fitPx("DETECTED", c.w * 0.92, c.h * 0.17));
+  g.font = "800 " + px.toFixed(1) + "px 'Segoe UI', system-ui, sans-serif";
+  g.shadowColor = "rgba(240,237,228,0.5)"; g.shadowBlur = 6; g.fillStyle = ink;
+  g.fillText("RADIATION", cx, c.y + c.h * 0.72); g.fillText("DETECTED", cx, c.y + c.h * 0.88);
+  try { g.letterSpacing = "0px"; } catch (e) {}
+  g.restore();
 }
 function drawCard(c, ct, flick) {
   // the broadcast slate: big plain words filling the screen, nobody signs it
@@ -2336,7 +3404,7 @@ function stepStory(t, dt) {
   const thunderNear = strike && (strike.played ? t - strike.t0 - strike.delay < 4 : strike.delay - (t - strike.t0) < 2.5);
   // 1. the knock, never on top of a shutter slam or thunder
   if (st.knock && st.knocked < 0 && st.clk >= st.knockAt) {
-    if (!built || shutterMoving || thunderNear) st.knockAt = st.clk + 3;
+    if (!built || shutterMoving || thunderNear || blastBusy(t)) st.knockAt = st.clk + 3;
     else {
       st.knocked = t; playKnock();
       st.cardAt = st.clk + 20 + (st.fast ? 0 : Math.random() * 4);
@@ -2346,7 +3414,7 @@ function stepStory(t, dt) {
   // 2. the broadcast: the monitor turns itself on if it has to, and the words are there with the first buzz
   if (st.card && st.cardT < 0 && st.deadT < 0 && st.clk >= st.cardAt) {
     if (!crtShown()) { st.card = false; if (st.knocked >= 0) st.doorOpen = true; } // no monitor on this screen
-    else if (thunderNear || shutterMoving) st.cardAt = st.clk + 2;
+    else if (thunderNear || shutterMoving || blastBusy(t)) st.cardAt = st.clk + 2;
     else { st.cardT = t; radioOn = true; playAttention(0); playStaticBurst(CARD_LEN - 0.3, 0.3, 0.03); }
   }
   if (st.cardT >= 0 && t - st.cardT < CARD_LEN && nextStrikeT < t + 3) nextStrikeT = t + 3; // no new lightning while it's up
@@ -2354,7 +3422,7 @@ function stepStory(t, dt) {
   if (st.knocked >= 0 && !st.doorOpen && st.cardT >= 0 && t - st.cardT >= CARD_LEN - 0.3) st.doorOpen = true;
   // the blackout: in a knock visit it waits until the door has been seen open
   if (st.doorOpen && st.openClk < 0) { st.openClk = st.clk; st.boAt = Math.max(st.boAt, st.clk + (st.fast ? 8 : 20 + Math.random() * 15)); }
-  if (st.blackout && st.boT < 0 && st.clk >= st.boAt && (!st.knock || st.doorOpen || st.darkForce) && !(st.cardT >= 0 && t - st.cardT < CARD_LEN + 2)) {
+  if (st.blackout && st.boT < 0 && st.clk >= st.boAt && (!st.knock || st.doorOpen || st.darkForce) && !(st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) && !blastBusy(t)) {
     st.boT = t; playBrownout();
   }
   if (st.boT >= 0) {
@@ -2390,14 +3458,16 @@ function hitTest(px, py) {
   return null;
 }
 cv.addEventListener("pointerdown", e => {
+  ensureAudio(); // a tap anywhere brings the sound up, not only on a control
   const k = hitTest(e.clientX, e.clientY);
   if (!k) return;
   cv.setPointerCapture(e.pointerId);
   const v0 = k === "vol" ? S.vol : k === "dist" ? S.dist : k === "dim" ? lampDim : 0;
   grab = { kind: k, x0: e.clientX, y0: e.clientY, v0, th0: leverTh, moved: 0 };
   document.body.classList.add("grabbing");
-  ensureAudio();
 });
+// some phones only let the sound start as the finger lifts
+for (const ev of ["pointerup", "touchend"]) cv.addEventListener(ev, () => { if (ctx && ctx.state !== "running") ctx.resume(); }, { passive: true });
 cv.addEventListener("pointermove", e => {
   if (!grab) {
     const k = hitTest(e.clientX, e.clientY);
@@ -2421,8 +3491,12 @@ function endGrab(e) {
     setPower(on);
     leverThT = on ? ON_TH : OFF_TH;
   } else if (grab.kind === "shutter" && grab.moved < 12) {
-    shutterTarget = shutterTarget > 0.5 ? 0 : 1;
-    playClack(shutterTarget > 0.5);
+    if (BLAST.lock) playClack(false); // it's held shut; the lever won't move until it lets go
+    else {
+      shutterTarget = shutterTarget > 0.5 ? 0 : 1;
+      playClack(shutterTarget > 0.5);
+      playShutterRun(shutterTarget > 0.5, Math.abs(shutterTarget - shutterPos) / (shutterTarget > 0.5 ? 1.05 : 0.7));
+    }
   } else if (grab.kind === "radio" && grab.moved < 7) {
     setRadio(!radioOn);
   } else if (grab.kind === "wipe" && grab.moved < 7) {
@@ -2509,6 +3583,7 @@ function snapshot() {
 }
 addEventListener("keydown", e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+  if (!rotShown) ensureAudio(); // any key brings the sound up too
   if (e.key === "f" || e.key === "F") toggleFullscreen();
   else if (e.key === "s" || e.key === "S") snapshot();
 });
@@ -2555,6 +3630,7 @@ function frame(now) {
   if (!L) return;
   if (now - lastDraw < 31) return;
   const dt = Math.min(0.1, (now - lastDraw) / 1000);
+  const gap = lastDraw > 0 ? Math.max(0, (now - lastDraw) / 1000 - dt) : 0; // time the page was away
   lastDraw = now;
   const t = now / 1000;
   const amp = ampLevel();
@@ -2580,12 +3656,15 @@ function frame(now) {
   // heavy steel shutter travel: fast drop, hard slam
   const sd = shutterTarget - shutterPos;
   if (Math.abs(sd) > 0.0005) {
-    shutterPos = clamp(shutterPos + Math.sign(sd) * dt * (sd > 0 ? 1.05 : 0.7), 0, 1);
+    shutterPos = clamp(shutterPos + Math.sign(sd) * dt * (sd > 0 ? (BLAST.fast ? 1.55 : 1.05) : 0.7), 0, 1);
     shutterMoving = true;
     if (built) applyShutterAudio();
   } else if (shutterMoving) {
     shutterMoving = false;
-    if (shutterTarget > 0.5) { playSlam(); shakeT = t; } else playClack(false);
+    if (shutterTarget > 0.5) {
+      playSlam(); shakeT = t; shakeDur = 0.32; shakeAmp = 6;
+      if (BLAST.fast) { BLAST.fast = false; if (!RM) { BLAST.swingV += 0.08; spawnDust(26); } }
+    } else playClack(false);
   }
 
   // weather: the squall engine paces the rain, the fog, the smoke, and the rain bed (gain only, the recording is untouched)
@@ -2597,7 +3676,7 @@ function frame(now) {
   }
   // storm scheduler: flash first, thunder arrives late by distance, siren stays hero; squalls bring strikes closer together
   let flashA = 0;
-  if (nextStrikeT < 0) nextStrikeT = t + 12 + Math.random() * 18;
+  if (nextStrikeT < 0) nextStrikeT = t + (BLAST.at >= 0 && BLAST.at < 40 ? BLAST.at + BL_BUSY + 6 + Math.random() * 12 : 12 + Math.random() * 18);
   if (!strike && t >= nextStrikeT) newStrike(t);
   if (strike) {
     const st = t - strike.t0;
@@ -2607,15 +3686,22 @@ function frame(now) {
     if (st > strike.delay + 1.2) { strike = null; nextStrikeT = t + (20 + Math.random() * 50) * (1.15 - 0.5 * wk); }
   }
 
+  stepBlast(t, dt, gap);
   stepStory(t, dt);
 
   let shX = 0, shY = 0;
-  if (t - shakeT < 0.32) {
-    const kk = (1 - (t - shakeT) / 0.32) * 6;
+  if (t - shakeT < shakeDur) {
+    const e = t - shakeT, kk = (1 - e / shakeDur) * shakeAmp;
     shX = (Math.random() * 2 - 1) * kk; shY = (Math.random() * 2 - 1) * kk;
+    if (shakeDur > 0.5) { // a heavy push: one shove, then a sway that dies away
+      const k2 = shakeAmp * Math.exp(-e / 0.38);
+      shX = 0.35 * (Math.random() * 2 - 1) * k2 + Math.sin(e * 9.4) * k2 * 0.9;
+      shY = 0.35 * (Math.random() * 2 - 1) * k2 + Math.sin(e * 12.6 + 1) * k2 * 0.55 + (e < 0.07 ? 0.9 * k2 : 0);
+    }
   }
-  g.setTransform(DPR, 0, 0, DPR, shX * DPR, shY * DPR);
-  g.fillStyle = "#060708"; g.fillRect(-8, -8, W + 16, H + 16);
+  const zs = shakeDur > 0.5 && t - shakeT < 0.6 ? 1 + 0.022 * Math.exp(-(t - shakeT) / 0.14) : 1; // the room punches in
+  g.setTransform(DPR * zs, 0, 0, DPR * zs, (shX + W * (1 - zs) / 2) * DPR, (shY + H * (1 - zs) / 2) * DPR);
+  g.fillStyle = "#060708"; g.fillRect(-40, -40, W + 80, H + 80);
   drawCity(t, amp, dt, flashA);
   g.drawImage(frameC, 0, 0, W, H);
   if (flashA > 0.01) { g.fillStyle = "rgba(180,200,255," + (flashA * 0.10).toFixed(3) + ")"; g.fillRect(0, 0, W, H); }
@@ -2629,18 +3715,27 @@ function frame(now) {
   drawLampAndGlow(t, amp, flashA);
   drawAlarm(t, amp);
   drawCRT(t);
-  g.fillStyle = vigGrad; g.fillRect(0, 0, W, H);
+  drawBlastRoom(t, dt);
+  g.globalAlpha = 1 - 0.6 * blastIw(t); g.fillStyle = vigGrad; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
   if (grainC) {
     const ox = RM ? 60 : Math.floor(Math.random() * 160), oy = RM ? 60 : Math.floor(Math.random() * 160);
     g.globalAlpha = 0.05;
     g.drawImage(grainC, -ox, -oy);
     g.globalAlpha = 1;
   }
+  if (BLAST.t0 > -1e8 && !RM) { // the first instant of it whites out everything, once
+    const bt = t - BLAST.t0;
+    if (bt >= 0 && bt < 0.55) {
+      const [r, gg, b] = blastRGB(bt), a = bt < 0.12 ? 0.95 : 0.95 * Math.pow(1 - (bt - 0.12) / 0.43, 2);
+      g.fillStyle = "rgba(" + r + "," + gg + "," + b + "," + a.toFixed(3) + ")"; g.fillRect(-40, -40, W + 80, H + 80);
+    }
+  }
 }
 {
   // one line each, and fullscreen told the way this device does it
   const coarse = matchMedia("(pointer: coarse)").matches;
-  document.getElementById("hint").textContent = coarse ? "Pull the breaker." : "Pull the breaker to power the siren.";
+  breakerHint = coarse ? "Pull the breaker." : "Pull the breaker to power the siren.";
+  document.getElementById("hint").textContent = coarse ? "Tap anywhere for sound." : "Click anywhere for sound."; // until the first tap
   document.getElementById("hp").textContent = coarse ? "\u{1F3A7} Headphones. Double-tap for fullscreen." : "\u{1F3A7} Headphones recommended. F for fullscreen.";
 }
 resize();
@@ -2659,7 +3754,9 @@ window.__sirens = {
     else if (what === "open") STORY.doorOpen = true;
     else if (what === "dark") { STORY.blackout = true; STORY.darkForce = true; STORY.boAt = STORY.clk; }
   },
-  playKnock, playAttention,
+  playKnock, playAttention, playBlastWave,
+  get blast() { return BLAST; }, mushGeom, playShutterRun, playRelease,
+  blastNow(sec) { BLAST.at = BLAST.at0 = BLAST.on + (sec || 0); BLAST.t0 = -1e9; BLAST.swapped = false; BLAST.radAt = BLAST.radT = -1e9; resize(); },
   strikeNow(kind) { if (!strike) newStrike(performance.now() / 1000, kind); },
   setWeather(k) { WX.k = k; WX.target = k; WX.state = k > 0.6 ? "squall" : "calm"; WX.tState = performance.now() / 1000; WX.dwell = 900; }
 };
