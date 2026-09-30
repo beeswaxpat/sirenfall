@@ -2953,7 +2953,7 @@ function stepBlast(t, dt, gap) {
   if (B.radAt > -1e8 && B.radT < -1e8 && t >= B.radAt) {
     if (!crtShown() || st.deadT >= 0 || st.boT >= 0) B.radAt = -1e9; // no monitor on this screen, or no power for it
     else if (st.cardT >= 0 && t - st.cardT < CARD_LEN) B.radAt = t + 2;
-    else { B.radT = t; radioOn = true; if (built) { playClack(true); playStaticBurst(0, 0.25, 0.03); B.alarmG = playAttention(0.3); } }
+    else { B.radT = t; radioOn = true; if (built) { playClack(true); playStaticBurst(0, 0.25, 0.03); } } // no alarm tone: the storm stays the loudest thing
   }
   stepGeiger(t);
   // the lamp on its conduit: a pendulum, nudged by the slam and the air
@@ -3321,7 +3321,7 @@ function drawCRT(t) {
   g.strokeStyle = "#2e2822"; g.lineWidth = 1.6; roundRect(g, c.x - 7, c.y - 7, c.w + 14, c.h + 14, 8); g.stroke();
   g.fillStyle = "#050506"; roundRect(g, c.x, c.y, c.w, c.h, 5); g.fill();
   if (STORY.deadT >= 0) { drawDeadCRT(c, t - STORY.deadT); return; }
-  const ct = STORY.cardT >= 0 ? t - STORY.cardT : 99, inCard = ct < CARD_LEN, inRad = BLAST.radT > -1e8 && t - BLAST.radT < RAD_RING;
+  const ct = STORY.cardT >= 0 ? t - STORY.cardT : 99, inCard = ct < CARD_LEN, inRad = false; // the warning has no alarm to hold the picture for: the switch works at once
   if (!radioOn && !inCard && !inRad) {
     g.fillStyle = "rgba(200,60,40," + (0.55 * Math.min(1, pwrLvl)).toFixed(3) + ")";
     g.beginPath(); g.arc(c.x + c.w - 8, c.y + c.h - 8, 2, 0, 7); g.fill();
