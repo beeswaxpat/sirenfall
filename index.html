@@ -382,7 +382,7 @@ function ensureAudio() {
     try { build(); }
     catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = "Audio failed: " + e.message; }
   }
-  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); }
+  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); rumbleCatchUp(performance.now() / 1000); }
 }
 let hintSwapped = false, breakerHint = "";
 function hintAfterSound() {
@@ -468,30 +468,30 @@ function setRadio(on) {
   radioOn = on;
   if (built) playClack(on);
 }
-function playSlam() {
+function playSlam(k = 1) {
   if (!ctx || !built) return;
   const t0 = ctx.currentTime;
   const thump = new OscillatorNode(ctx, { frequency: 68 });
   thump.frequency.exponentialRampToValueAtTime(38, t0 + 0.22);
-  const tg = new GainNode(ctx, { gain: 0.5 });
+  const tg = new GainNode(ctx, { gain: 0.5 * k });
   tg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
   thump.connect(tg).connect(N.comp);
   thump.start(t0); thump.stop(t0 + 0.32);
   const body = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.3) });
   const blp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 750, Q: 0.7 });
-  const bg = new GainNode(ctx, { gain: 0.4 });
+  const bg = new GainNode(ctx, { gain: 0.4 * k });
   bg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
   body.connect(blp).connect(bg).connect(N.comp);
   body.start(t0);
   const ring = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.7) });
   const rbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1250, Q: 14 });
-  const rg = new GainNode(ctx, { gain: 0.14 });
+  const rg = new GainNode(ctx, { gain: 0.14 * k });
   rg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.7);
   ring.connect(rbp).connect(rg).connect(N.comp);
   ring.start(t0 + 0.01);
   if (slatBuf) for (const [d, v] of [[0.06, 1], [0.13, 0.7], [0.19, 0.5], [0.27, 0.32], [0.36, 0.2]]) { // the slats settle
     const src = new AudioBufferSourceNode(ctx, { buffer: slatBuf, playbackRate: 0.7 + Math.random() * 0.4 });
-    const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: SLAT_F[Math.floor(Math.random() * SLAT_F.length)], Q: 8 }), gn = new GainNode(ctx, { gain: 0.13 * v });
+    const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: SLAT_F[Math.floor(Math.random() * SLAT_F.length)], Q: 8 }), gn = new GainNode(ctx, { gain: 0.13 * v * k });
     src.connect(bp).connect(gn).connect(N.comp); src.start(t0 + d);
   }
 }
@@ -566,8 +566,8 @@ function playBlastWave() {
   if (boomBuf) {
     const src = new AudioBufferSourceNode(ctx, { buffer: boomBuf, playbackRate: 0.5 });
     const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 260, Q: 0.6 }), gn = new GainNode(ctx, { gain: BOOM_GAIN });
-    gn.gain.setValueAtTime(BOOM_GAIN, t0 + 3.5); gn.gain.exponentialRampToValueAtTime(0.001, t0 + 7);
-    src.connect(lp).connect(gn).connect(N.worldLp); src.start(t0, boomOff); src.stop(t0 + 7.1);
+    gn.gain.setValueAtTime(BOOM_GAIN, t0 + 2.5); gn.gain.exponentialRampToValueAtTime(0.001, t0 + 7.5);
+    src.connect(lp).connect(gn).connect(N.worldLp); src.start(t0, boomOff); src.stop(t0 + 7.6);
     // the part small speakers can carry: the same boom, higher, as the steel and the walls take it
     const mid = new AudioBufferSourceNode(ctx, { buffer: boomBuf, playbackRate: 0.8 });
     const mbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 520, Q: 0.8 }), mg = new GainNode(ctx, { gain: MID_GAIN });
@@ -577,16 +577,29 @@ function playBlastWave() {
   if (rollBuf) { // and the long roll of it coming in behind
     const at = t0 + 0.3, src = new AudioBufferSourceNode(ctx, { buffer: rollBuf, playbackRate: 0.6 });
     const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 200, Q: 0.6 }), gn = new GainNode(ctx, { gain: ROLL_GAIN });
-    gn.gain.setValueAtTime(ROLL_GAIN, at + 3.7); gn.gain.exponentialRampToValueAtTime(0.001, at + 7.5);
-    src.connect(lp).connect(gn).connect(N.worldLp); src.start(at, rollOff); src.stop(at + 7.6);
+    gn.gain.setValueAtTime(ROLL_GAIN, at + 2.2); gn.gain.exponentialRampToValueAtTime(0.001, at + 7.2);
+    src.connect(lp).connect(gn).connect(N.worldLp); src.start(at, rollOff); src.stop(at + 7.3);
   }
   const out = interiorOut(0), nb = noiseKept(4.8);
-  const sub = new OscillatorNode(ctx, { frequency: 50 }), sg = new GainNode(ctx, { gain: 0.0001 });
-  sub.frequency.setValueAtTime(50, t0); sub.frequency.exponentialRampToValueAtTime(24, t0 + 1.4);
-  sg.gain.setValueAtTime(0.0001, t0); sg.gain.exponentialRampToValueAtTime(SUB_GAIN, t0 + 0.04); sg.gain.exponentialRampToValueAtTime(0.0005, t0 + 1.9);
-  sub.connect(sg).connect(out); sub.start(t0); sub.stop(t0 + 2);
+  const sub = new OscillatorNode(ctx, { frequency: 48 }), sg = new GainNode(ctx, { gain: 0.0001 });
+  sub.frequency.setValueAtTime(48, t0); sub.frequency.exponentialRampToValueAtTime(22, t0 + 2.6);
+  sg.gain.setValueAtTime(0.0001, t0); sg.gain.exponentialRampToValueAtTime(SUB_GAIN, t0 + 0.04); sg.gain.exponentialRampToValueAtTime(0.0005, t0 + 3.2);
+  sub.connect(sg).connect(out); sub.start(t0); sub.stop(t0 + 3.3);
+  for (const [d, v] of [[0, 1], [0.13, 0.45]]) { // the crack of it through the steel, and its echo off the buildings a beat after
+    const at = t0 + d, ck = new AudioBufferSourceNode(ctx, { buffer: nb }), cf = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 750, Q: 0.7 }), cg = new GainNode(ctx, { gain: 0.0001 });
+    cg.gain.setValueAtTime(0.0001, at); cg.gain.exponentialRampToValueAtTime(CRACK_GAIN * v, at + 0.003); cg.gain.exponentialRampToValueAtTime(0.0005, at + 0.3);
+    ck.connect(cf).connect(cg).connect(out); ck.start(at, Math.random() * 3); ck.stop(at + 0.32);
+  }
+  { // and the roar of it rolling on across the city, rising and falling as it goes, dying away over a few seconds
+    const ro = new AudioBufferSourceNode(ctx, { buffer: nb, loop: true }), rol = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 160, Q: 0.7 });
+    const ram = new GainNode(ctx, { gain: 0.75 }), rog = new GainNode(ctx, { gain: 0.0001 }), rl = new OscillatorNode(ctx, { frequency: 0.55 }), rlg = new GainNode(ctx, { gain: 0.25 });
+    rl.connect(rlg).connect(ram.gain);
+    rog.gain.setValueAtTime(0.0001, t0 + 0.1); rog.gain.exponentialRampToValueAtTime(ROAR2_GAIN, t0 + 0.9);
+    rog.gain.exponentialRampToValueAtTime(ROAR2_GAIN * 0.3, t0 + 3); rog.gain.exponentialRampToValueAtTime(0.0005, t0 + 7);
+    ro.connect(rol).connect(ram).connect(rog).connect(N.worldLp); ro.start(t0 + 0.1, Math.random() * 3); rl.start(t0); ro.stop(t0 + 7.1); rl.stop(t0 + 7.1);
+  }
   const rum = new AudioBufferSourceNode(ctx, { buffer: nb }), rlp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 110, Q: 0.7 }), rgn = new GainNode(ctx, { gain: 0.0001 });
-  const rumLen = boomBuf ? 3.1 : 4.6; // no boom file yet: the structure carries the whole weight of it
+  const rumLen = boomBuf ? 4 : 5; // no boom file yet: the structure carries the whole weight of it
   rgn.gain.setValueAtTime(0.0001, t0); rgn.gain.exponentialRampToValueAtTime(RUM_GAIN * (boomBuf ? 1 : 1.3), t0 + 0.08); rgn.gain.exponentialRampToValueAtTime(0.0005, t0 + rumLen);
   rum.connect(rlp).connect(rgn).connect(out); rum.start(t0); rum.stop(t0 + rumLen + 0.1);
   // the thud small speakers can carry: the room itself taking the hit
@@ -609,7 +622,41 @@ function playBlastWave() {
     s3.connect(f3).connect(g3).connect(interiorOut((Math.random() - 0.5) * 0.8)); s3.start(at, Math.random() * 2.5); s3.stop(at + 0.02);
   }
 }
-const BOOM_GAIN = 1.0, ROLL_GAIN = 0.6, MID_GAIN = 0.85, SUB_GAIN = 0.3, RUM_GAIN = 0.6, HIT_GAIN = 1.5;
+const BOOM_GAIN = 1.0, ROLL_GAIN = 0.6, MID_GAIN = 0.85, SUB_GAIN = 0.3, RUM_GAIN = 0.6, HIT_GAIN = 1.5, CRACK_GAIN = 0.55, ROAR2_GAIN = 1.2;
+const RUMBLE_AT = 0.3, RUMBLE_GAIN = 0.25; // the ground shock outruns the air: felt through the floor a moment after the flash
+function rumbleCatchUp(t) {
+  // the rumble lost to a hidden tab (it played out on the audio clock while the blast waited) or to a late first tap:
+  // play what is left of it before the air arrives
+  const B = BLAST;
+  if (!built || !ctx || B.t0 < -1e8 || !B.rumbled || B.waved || ctx.currentTime < B.rumEnd - 0.3) return;
+  const left = BL_WAVE - (t - B.t0);
+  if (left > 0.4) { playGroundRumble(left); B.rumEnd = ctx.currentTime + 0.02 + left; }
+}
+function playGroundRumble(dur) {
+  // a deep rumble through the floor that swells until the air arrives, and small things rattling on their shelves
+  if (!ctx || !built) return;
+  const t0 = ctx.currentTime + 0.02, end = t0 + dur, out = interiorOut(0), nb = noiseKept(4.8);
+  const env = (gp, peak) => {
+    gp.setValueAtTime(0.0001, t0); gp.exponentialRampToValueAtTime(peak * 0.6, t0 + 0.35); gp.exponentialRampToValueAtTime(peak, end);
+    gp.setValueAtTime(peak, end + 0.15); gp.exponentialRampToValueAtTime(0.0005, end + 1.4);
+  };
+  const b = new AudioBufferSourceNode(ctx, { buffer: nb, loop: true }), bl = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 75, Q: 0.8 }), bg = new GainNode(ctx, { gain: 0.0001 });
+  env(bg.gain, RUMBLE_GAIN); // the deep body of it
+  b.connect(bl).connect(bg).connect(out); b.start(t0, Math.random() * 3); b.stop(end + 1.5);
+  const o = new OscillatorNode(ctx, { frequency: 34 }), ol = new OscillatorNode(ctx, { frequency: 2.7 }), olg = new GainNode(ctx, { gain: 3 }), og = new GainNode(ctx, { gain: 0.0001 });
+  ol.connect(olg).connect(o.frequency); env(og.gain, RUMBLE_GAIN * 0.3); // a low tone under it, wavering, for anything that can play it
+  o.connect(og).connect(out); o.start(t0); ol.start(t0); o.stop(end + 1.5); ol.stop(end + 1.5);
+  const m = new AudioBufferSourceNode(ctx, { buffer: nb, loop: true }), mb = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 130, Q: 1.1 }), mg = new GainNode(ctx, { gain: 0.0001 });
+  const tr = new GainNode(ctx, { gain: 0.7 }), lf = new OscillatorNode(ctx, { frequency: 8.3 }), lfg = new GainNode(ctx, { gain: 0.3 });
+  lf.connect(lfg).connect(tr.gain); env(mg.gain, RUMBLE_GAIN * 0.8); // the part small speakers can carry: the room humming with it, trembling
+  m.connect(mb).connect(tr).connect(mg).connect(out); m.start(t0, Math.random() * 3); lf.start(t0); m.stop(end + 1.5); lf.stop(end + 1.5);
+  for (let i = 0; i < 14; i++) { // small things rattling, more of them as it builds
+    const at = t0 + dur * Math.sqrt(Math.random()), v = (at - t0) / dur;
+    const s2 = new AudioBufferSourceNode(ctx, { buffer: nb }), f = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1700 + Math.random() * 1800, Q: 9 }), g2 = new GainNode(ctx, { gain: 0.0001 });
+    g2.gain.setValueAtTime(0.02 + 0.05 * v, at); g2.gain.exponentialRampToValueAtTime(0.0003, at + 0.05);
+    s2.connect(f).connect(g2).connect(interiorOut((Math.random() - 0.5) * 1.2)); s2.start(at, Math.random() * 4); s2.stop(at + 0.06);
+  }
+}
 function startRoar() {
   // the city burning, far off: a low roar under the rain that never goes away again
   if (!ctx || !built || BLAST.roar) return;
@@ -878,7 +925,7 @@ let pwrLvl = 1, roomDark = 0; // the shelter's power: 1 is normal, it stutters a
    is broken, the streets are burning, a cloud is climbing into the sky, and the monitor says what it is. */
 const NUKE = { x: 0.74, y: 0.545 }; // where it went off: out beyond the far rows
 const BLAST = { on: 0, at: -1, t0: -1e9, jump: -1, auto: false, dropped: false, lock: false, waved: false, lifted: false, fast: false, swapped: false,
-  gx: NUKE.x, gy: 0.535, waveT: -9, liftT: -9, puffT: -9, dipT: -9, dust: [], swing: 0, swingV: 0, radAt: -1e9, radT: -1e9, roar: false, snd: -1, alarmG: null };
+  gx: NUKE.x, gy: 0.535, waveT: -9, liftT: -9, puffT: -9, dipT: -9, dust: [], swing: 0, swingV: 0, radAt: -1e9, radT: -1e9, roar: false, snd: -1, alarmG: null, rumbled: false, rumEnd: -1 };
 const BL_DROP = 0.85, BL_WAVE = 2.05, BL_LIFT = 7.6, BL_BUSY = 14; // after the light: the shutter trips, the air arrives, the shutter lifts, all quiet
 {
   const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
@@ -2841,6 +2888,7 @@ function stepBlast(t, dt, gap) {
     if (B.waved) { B.waveT += gap; B.dipT += gap; B.puffT += gap; }
     if (B.liftT >= 0) B.liftT += gap;
     if ((t - gap) - shakeT < shakeDur) shakeT += gap;
+    rumbleCatchUp(t);
   }
   if (gap > 0.2 && B.radAt > -1e8 && B.radT < -1e8) B.radAt += gap; // the warning keeps its place after the lift
   if (!rotShown) B.on += dt; // its clock runs only while the scene is on screen
@@ -2850,7 +2898,7 @@ function stepBlast(t, dt, gap) {
   }
   const ready = silAfterC && cityAfterC && fireL1 && fireL2;
   if (B.jump >= 0 && B.t0 < -1e8 && ready) { // local test: open some time after it happened
-    B.t0 = t - B.jump; B.dropped = B.waved = B.lifted = B.swapped = true; B.lock = B.auto = false; B.radAt = B.jump > 12 ? t + 1 : B.t0 + BL_LIFT + 4.5;
+    B.t0 = t - B.jump; B.dropped = B.waved = B.lifted = B.swapped = B.rumbled = true; B.lock = B.auto = false; B.radAt = B.jump > 12 ? t + 1 : B.t0 + BL_LIFT + 4.5;
   }
   // 1. the light, when nothing else is happening
   if (B.at >= 0 && B.t0 < -1e8 && B.on >= B.at) {
@@ -2861,7 +2909,7 @@ function stepBlast(t, dt, gap) {
     // it is a sound event: without sound it waits a little for a tap, and just after one it gives the boom time to load
     else if ((!built && B.on < B.at0 + 10) || (built && B.on - B.snd < 3)) B.at = B.on + 0.5;
     else {
-      B.t0 = t; B.lock = true; B.auto = shutterTarget < 0.5; B.dropped = B.waved = B.lifted = B.swapped = false; B.radAt = B.radT = -1e9;
+      B.t0 = t; B.lock = true; B.auto = shutterTarget < 0.5; B.dropped = B.waved = B.lifted = B.swapped = B.rumbled = false; B.radAt = B.radT = -1e9;
       st.knock = false; st.card = false; // and no knock at the door after this
       if (nextStrikeT < t + BL_BUSY + 6) nextStrikeT = t + BL_BUSY + 6 + Math.random() * 12;
       if (built) try { localStorage.setItem("sf.blast", "1"); } catch (e) {} // seen without sound, it comes again next visit
@@ -2869,6 +2917,11 @@ function stepBlast(t, dt, gap) {
   }
   if (B.t0 > -1e8) {
     const tt = t - B.t0;
+    // 1b. the ground shock, ahead of the air: a rumble through the floor, the lamp stirring on its conduit
+    if (!B.rumbled && tt >= RUMBLE_AT) {
+      B.rumbled = true; playGroundRumble(BL_WAVE - RUMBLE_AT); if (!RM) B.swingV += 0.05;
+      B.rumEnd = built && ctx ? ctx.currentTime + 0.02 + (BL_WAVE - RUMBLE_AT) : -1;
+    }
     // 2. the shelter shuts itself a beat after the light
     if (B.auto && !B.dropped && tt >= BL_DROP) { B.dropped = true; B.fast = true; shutterTarget = 1; playRelease(); playShutterRun(true, 0.66); }
     // behind the steel, the city it opens on is not the one it closed on
@@ -3662,7 +3715,7 @@ function frame(now) {
   } else if (shutterMoving) {
     shutterMoving = false;
     if (shutterTarget > 0.5) {
-      playSlam(); shakeT = t; shakeDur = 0.32; shakeAmp = 6;
+      playSlam(BLAST.fast ? 0.6 : 1); shakeT = t; shakeDur = 0.32; shakeAmp = 6; // in the blast it is the lesser blow: the air is the one that hits
       if (BLAST.fast) { BLAST.fast = false; if (!RM) { BLAST.swingV += 0.08; spawnDust(26); } }
     } else playClack(false);
   }
@@ -3697,6 +3750,13 @@ function frame(now) {
       const k2 = shakeAmp * Math.exp(-e / 0.38);
       shX = 0.35 * (Math.random() * 2 - 1) * k2 + Math.sin(e * 9.4) * k2 * 0.9;
       shY = 0.35 * (Math.random() * 2 - 1) * k2 + Math.sin(e * 12.6 + 1) * k2 * 0.55 + (e < 0.07 ? 0.9 * k2 : 0);
+    }
+  }
+  if (!RM && BLAST.t0 > -1e8) { // the ground shaking before the air arrives: a low tremble that builds, and stops when the air lands
+    const tq = t - BLAST.t0 - RUMBLE_AT, tw = BL_WAVE - RUMBLE_AT;
+    if (tq > 0 && tq < tw + 0.3) {
+      const k = Math.pow(Math.min(1, tq / tw), 1.6) * (tq > tw ? 1 - (tq - tw) / 0.3 : 1) * 1.6 * clamp(Math.min(W, H) / 700, 0.8, 1.4);
+      shX += Math.sin(t * 61) * k * 0.6 + (Math.random() - 0.5) * k * 0.8; shY += Math.sin(t * 47 + 1) * k * 0.5 + (Math.random() - 0.5) * k * 0.8;
     }
   }
   const zs = shakeDur > 0.5 && t - shakeT < 0.6 ? 1 + 0.022 * Math.exp(-(t - shakeT) / 0.14) : 1; // the room punches in
