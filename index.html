@@ -3335,9 +3335,10 @@ function drawCRT(t) {
   else if (inCard) drawCard(c, ct, flick);
   else if (bwv >= 0 && bwv < 0.35) drawSnow(c); // the air hits the camera outside
   else if (BLAST.radT > -1e8) { if (t - BLAST.radT < 0.25) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
+  else if (t - STORY.glitchT < 0.35) drawSnow(c); // the picture breaks up; when it comes back the door is open
   else {
     g.globalAlpha = flick;
-    g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, c.y, c.w, c.h);
+    g.drawImage(STORY.doorOpen || STORY.knocked >= 0 ? feedOpenC : feedC, c.x, c.y, c.w, c.h); // after a knock it is never shut again
     g.globalAlpha = 1;
     if (BLAST.t0 > -1e8) { // the camera outside sees the light before anything else: the picture whites out
       const bt = t - BLAST.t0, bF = blastF(bt);
@@ -3375,7 +3376,7 @@ function drawDeadCRT(c, d) {
     const k = 1 - d / 0.2, hh = Math.max(2, c.h * k);
     g.globalAlpha = 0.85;
     if (BLAST.radT > -1e8) { g.save(); g.translate(0, cy); g.scale(1, hh / c.h); g.translate(0, -cy); drawRadCard(c, 1, 1); g.restore(); }
-    else g.drawImage(STORY.doorOpen ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
+    else g.drawImage(STORY.doorOpen || STORY.knocked >= 0 ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
     g.globalAlpha = 1; g.fillStyle = "rgba(230,236,255," + (0.5 * (1 - k)).toFixed(3) + ")"; g.fillRect(c.x, cy - hh / 2, c.w, hh);
   } else if (d < 0.5) { // the line draws in to a point
     const ww = Math.max(3, c.w * (1 - (d - 0.2) / 0.3));
@@ -3458,6 +3459,11 @@ function stepStory(t, dt) {
   // 1. the knock, never on top of a shutter slam or thunder
   if (st.knock && st.knocked < 0 && st.clk >= st.knockAt) {
     if (!built || shutterMoving || thunderNear || blastBusy(t)) st.knockAt = st.clk + 3;
+    else if (!st.doorOpen && radioOn && crtShown() && st.deadT < 0 && pwrLvl > 0.5) {
+      // the camera is on: the picture breaks up and the door is open, and only then the knock comes
+      st.doorOpen = true; st.glitchT = t; playStaticBurst(0, 0.35, 0.03);
+      st.knockAt = st.clk + (st.fast ? 4 : 5 + Math.random() * 3);
+    }
     else {
       st.knocked = t; playKnock();
       st.cardAt = st.clk + 20 + (st.fast ? 0 : Math.random() * 4);
@@ -3475,7 +3481,8 @@ function stepStory(t, dt) {
   if (st.knocked >= 0 && !st.doorOpen && st.cardT >= 0 && t - st.cardT >= CARD_LEN - 0.3) st.doorOpen = true;
   // the blackout: in a knock visit it waits until the door has been seen open
   if (st.doorOpen && st.openClk < 0) { st.openClk = st.clk; st.boAt = Math.max(st.boAt, st.clk + (st.fast ? 8 : 20 + Math.random() * 15)); }
-  if (st.blackout && st.boT < 0 && st.clk >= st.boAt && (!st.knock || st.doorOpen || st.darkForce) && !(st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) && !blastBusy(t)) {
+  if (st.blackout && st.boT < 0 && st.clk >= st.boAt && (!st.knock || st.doorOpen || st.darkForce) && !(st.knock && st.card && st.cardT < 0 && !st.darkForce) &&
+    !(st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) && !blastBusy(t)) {
     st.boT = t; playBrownout();
   }
   if (st.boT >= 0) {
