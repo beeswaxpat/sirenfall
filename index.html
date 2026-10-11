@@ -382,7 +382,7 @@ function ensureAudio() {
     try { build(); }
     catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = "Audio failed: " + e.message; }
   }
-  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); rumbleCatchUp(performance.now() / 1000); }
+  if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); rumbleCatchUp(performance.now() / 1000); doorAsk(); }
 }
 let hintSwapped = false, breakerHint = "";
 function hintAfterSound() {
@@ -914,7 +914,7 @@ let pwrLvl = 1, roomDark = 0; // the shelter's power: 1 is normal, it stutters a
   STORY.card = STORY.knock || Math.random() < 0.25; // the message sometimes comes with no knock after it
   // a knock visit: knock, about twenty seconds of nothing, the broadcast, then the door is open
   if (STORY.fast) { STORY.knockAt = 8; STORY.cardAt = 1e9; }
-  else if (STORY.knock) { STORY.knockAt = 40 + Math.random() * 30; STORY.cardAt = 1e9; } // most visits are short: the knock comes early
+  else if (STORY.knock) { STORY.knockAt = 15 + Math.random() * 10; STORY.cardAt = 1e9; } // most visits are short: the knock comes early, while people are still here
   else { STORY.cardAt = 50 + Math.random() * 50; } // the broadcast alone; the door stays shut
   // one visit in ten the power fails for good, never in the first two minutes; in a knock visit, only after the door is open
   STORY.fastDark = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]dark\b/.test(location.search);
@@ -941,6 +941,38 @@ const BL_DROP = 0.85, BL_WAVE = 2.05, BL_LIFT = 7.6, BL_BUSY = 14; // after the 
   if ((BLAST.at >= 0 || BLAST.jump >= 0) && !STORY.fast) { STORY.knock = false; STORY.card = false; }
   BLAST.at0 = BLAST.at;
 }
+/* the door: a visiting agent can leave a knock (sirenfall.live/door). When the sound comes on the scene asks once whether one is
+   waiting, and if so this visit carries it: the knock story early on, or in a visit the bomb goes off, a knock once it is over.
+   The scene is never told who knocked, and if anything fails it does exactly what it would have done anyway. */
+const DOOR = { on: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? /[?&]doorq\b/.test(location.search) : location.protocol === "https:",
+  asked: false, id: "", hold: "", done: false, after: false, step: 0, at: 0, cam: false, camT: -9, backT: -9 };
+function doorPost(path, body) {
+  return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(() => {});
+}
+function doorAsk() {
+  if (!DOOR.on || DOOR.asked) return;
+  DOOR.asked = true;
+  const ac = typeof AbortController === "function" ? new AbortController() : null;
+  if (ac) setTimeout(() => ac.abort(), 3000);
+  fetch("/door/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", signal: ac ? ac.signal : undefined })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !j.id) return;
+      if (STORY.deadT >= 0 || STORY.boT >= 0) { doorPost("/door/release", { id: j.id, hold: j.hold }); return; }
+      DOOR.id = j.id; DOOR.hold = j.hold;
+      const st = STORY;
+      if (BLAST.at < 0 && BLAST.jump < 0 && BLAST.t0 < -1e8) { // no bomb this visit: the knock story, early
+        if (!st.knock) { st.knock = true; st.card = true; st.knocked = -1; st.cardAt = 1e9; st.knockAt = Math.max(st.clk + 3, 15 + Math.random() * 10); }
+      } else DOOR.after = true; // the bomb: a knock once it is over
+    }).catch(() => {});
+}
+function doorDone(heard) { // heard means the knock played with the sound running and the page in front; otherwise it goes back in line
+  if (!DOOR.id || DOOR.done) return;
+  DOOR.done = true;
+  doorPost(heard ? "/door/heard" : "/door/release", { id: DOOR.id, hold: DOOR.hold });
+}
+const heardNow = () => !!ctx && ctx.state === "running" && document.visibilityState === "visible";
+addEventListener("pagehide", () => { doorDone(false); DOOR.after = false; });
 // every gap between the slats lets through its own amount of light; a few holes go right through the steel
 // (a hash-based generator here: the simple one above lines its values up in diagonals across a grid like this)
 const SLATS = [], HOLES = [];
@@ -3334,11 +3366,11 @@ function drawCRT(t) {
   if (inCard && ct > CARD_LEN - 0.3) drawSnow(c);
   else if (inCard) drawCard(c, ct, flick);
   else if (bwv >= 0 && bwv < 0.35) drawSnow(c); // the air hits the camera outside
-  else if (BLAST.radT > -1e8) { if (t - BLAST.radT < 0.25) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
-  else if (t - STORY.glitchT < 0.35) drawSnow(c); // the picture breaks up; when it comes back the door is open
+  else if (BLAST.radT > -1e8 && !DOOR.cam) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
+  else if (t - STORY.glitchT < 0.35 || t - DOOR.camT < 0.35) drawSnow(c); // the picture breaks up; when it comes back the door is open
   else {
     g.globalAlpha = flick;
-    g.drawImage(STORY.doorOpen || STORY.knocked >= 0 ? feedOpenC : feedC, c.x, c.y, c.w, c.h); // after a knock it is never shut again
+    g.drawImage(STORY.doorOpen || STORY.knocked >= 0 || DOOR.cam ? feedOpenC : feedC, c.x, c.y, c.w, c.h); // after a knock it is never shut again
     g.globalAlpha = 1;
     if (BLAST.t0 > -1e8) { // the camera outside sees the light before anything else: the picture whites out
       const bt = t - BLAST.t0, bF = blastF(bt);
@@ -3375,8 +3407,8 @@ function drawDeadCRT(c, d) {
   if (d < 0.2) { // the picture squashes into a bright line
     const k = 1 - d / 0.2, hh = Math.max(2, c.h * k);
     g.globalAlpha = 0.85;
-    if (BLAST.radT > -1e8) { g.save(); g.translate(0, cy); g.scale(1, hh / c.h); g.translate(0, -cy); drawRadCard(c, 1, 1); g.restore(); }
-    else g.drawImage(STORY.doorOpen || STORY.knocked >= 0 ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
+    if (BLAST.radT > -1e8 && !DOOR.cam) { g.save(); g.translate(0, cy); g.scale(1, hh / c.h); g.translate(0, -cy); drawRadCard(c, 1, 1); g.restore(); }
+    else g.drawImage(STORY.doorOpen || STORY.knocked >= 0 || DOOR.cam ? feedOpenC : feedC, c.x, cy - hh / 2, c.w, hh);
     g.globalAlpha = 1; g.fillStyle = "rgba(230,236,255," + (0.5 * (1 - k)).toFixed(3) + ")"; g.fillRect(c.x, cy - hh / 2, c.w, hh);
   } else if (d < 0.5) { // the line draws in to a point
     const ww = Math.max(3, c.w * (1 - (d - 0.2) / 0.3));
@@ -3465,10 +3497,30 @@ function stepStory(t, dt) {
       st.knockAt = st.clk + (st.fast ? 4 : 5 + Math.random() * 3);
     }
     else {
-      st.knocked = t; playKnock();
+      st.knocked = t; playKnock(); doorDone(heardNow());
       st.cardAt = st.clk + 20 + (st.fast ? 0 : Math.random() * 4);
       try { localStorage.setItem("sf.knock", "1"); } catch (e) {}
     }
+  }
+  // 1b. a knock left by an agent, in a visit the bomb went off: when it is all over, someone is at the door
+  if (DOOR.after && DOOR.step === 0 && BLAST.lifted) { DOOR.step = 1; DOOR.at = st.clk + 17 + Math.random() * 2; }
+  if (DOOR.step >= 1 && DOOR.step <= 2 && st.clk >= DOOR.at) {
+    if (st.deadT >= 0 || st.boT >= 0) { DOOR.step = 9; DOOR.cam = false; doorDone(false); }
+    else if (shutterMoving || thunderNear || blastBusy(t)) DOOR.at = st.clk + 3;
+    else if (DOOR.step === 1 && radioOn && crtShown() && pwrLvl > 0.5) {
+      // the warning breaks up, and when the picture comes back the door is open; only then the knock
+      DOOR.cam = true; DOOR.camT = t; playStaticBurst(0, 0.35, 0.03);
+      DOOR.step = 2; DOOR.at = st.clk + 5 + Math.random() * 3;
+    } else {
+      st.knocked = t; playKnock(); doorDone(heardNow());
+      try { localStorage.setItem("sf.knock", "1"); } catch (e) {}
+      DOOR.step = DOOR.cam ? 3 : 9; DOOR.at = st.clk + 10;
+    }
+  }
+  if (DOOR.step === 3 && st.clk >= DOOR.at) { // and the warning comes back
+    DOOR.step = 9;
+    if (DOOR.cam && radioOn && BLAST.radT > -1e8 && crtShown() && st.deadT < 0 && st.boT < 0) { DOOR.backT = t; playStaticBurst(0, 0.35, 0.03); }
+    DOOR.cam = false;
   }
   // 2. the broadcast: the monitor turns itself on if it has to, and the words are there with the first buzz
   if (st.card && st.cardT < 0 && st.deadT < 0 && st.clk >= st.cardAt) {
@@ -3822,7 +3874,7 @@ window.__sirens = {
     else if (what === "dark") { STORY.blackout = true; STORY.darkForce = true; STORY.boAt = STORY.clk; }
   },
   playKnock, playAttention, playBlastWave,
-  get blast() { return BLAST; }, mushGeom, playShutterRun, playRelease,
+  get blast() { return BLAST; }, get door() { return DOOR; }, mushGeom, playShutterRun, playRelease,
   blastNow(sec) { BLAST.at = BLAST.at0 = BLAST.on + (sec || 0); BLAST.t0 = -1e9; BLAST.swapped = false; BLAST.radAt = BLAST.radT = -1e9; resize(); },
   strikeNow(kind) { if (!strike) newStrike(performance.now() / 1000, kind); },
   setWeather(k) { WX.k = k; WX.target = k; WX.state = k > 0.6 ? "squall" : "calm"; WX.tState = performance.now() / 1000; WX.dwell = 900; }

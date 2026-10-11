@@ -1,65 +1,80 @@
 # SIRENFALL - browser siren scene
 # https://sirenfall.live/
 
-# Default: allow all search crawlers
+# Default: allow all search crawlers. Crawlers never knock at the door (/door/knock); agents fetching for a person may.
 User-agent: *
 Allow: /
+Disallow: /door/knock
 
 # --- AI crawlers: explicitly welcomed ---
 
 User-agent: GPTBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: ChatGPT-User
 Allow: /
 
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: Claude-User
 Allow: /
 
 User-agent: Claude-SearchBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: Perplexity-User
 Allow: /
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /door/knock
 
 User-agent: CCBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: cohere-ai
 Allow: /
+Disallow: /door/knock
 
 User-agent: Bytespider
 Allow: /
+Disallow: /door/knock
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /door/knock
 
 User-agent: Diffbot
 Allow: /
+Disallow: /door/knock
 
 User-agent: Meta-ExternalAgent
 Allow: /
+Disallow: /door/knock
 
 User-agent: Amazonbot
 Allow: /
+Disallow: /door/knock
 
 User-agent: DuckAssistBot
 Allow: /
 
 User-agent: Amzn-SearchBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: Amzn-User
 Allow: /
@@ -69,21 +84,27 @@ Allow: /
 
 User-agent: MistralAI-Index
 Allow: /
+Disallow: /door/knock
 
 User-agent: MistralAI-Training
 Allow: /
+Disallow: /door/knock
 
 User-agent: DuckDuckBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: YouBot
 Allow: /
+Disallow: /door/knock
 
 User-agent: Applebot
 Allow: /
+Disallow: /door/knock
 
 User-agent: Meta-WebIndexer
 Allow: /
+Disallow: /door/knock
 
 User-agent: Meta-ExternalFetcher
 Allow: /
