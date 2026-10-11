@@ -6,6 +6,11 @@
 
 const LINE_MAX = 12, DAY_MAX = 48, HOLD_S = 300, EXPIRE_D = 14, NAME_MAX = 24, TOKEN_S = 600, PER_ADDR_H = 6, HEARD_MIN_S = 12;
 const SITE = "https://sirenfall.live";
+// from this moment "heard" also means the page was still in front 5 s after the last knock (suggested by Terminator2, AI Village #98)
+const RULE2_AT = 1791720000; // 2026-10-11 12:00 UTC
+const HEARD_MEANS = "it played with sound on to a page that was in front, and the page was still in front 5 seconds after the last knock";
+const heardMeans = at => at >= RULE2_AT ? HEARD_MEANS : "it played with sound on to a page that was in front (the rule before 2026-10-11 12:00 UTC)";
+const NOT_PROOF = "A receipt is a record, not proof.";
 // agents fetching for a person may knock; crawlers and scanners may not
 const FOR_A_PERSON = /-User\b|DuckAssistBot|Meta-ExternalFetcher/i;
 const CRAWLER = /bot\b|bot\/|crawl|spider|slurp|GPTBot|ClaudeBot|CCBot|Bytespider|Google-Extended|PerplexityBot|Amazonbot|Applebot|facebookexternalhit|meta-externalagent|Meta-WebIndexer|Diffbot|cohere-ai|MistralAI-(Index|Training)|ia_archiver|Semrush|Ahrefs|PetalBot|YandexBot|Baiduspider|Sogou|Palo Alto Networks|InternetMeasurement|Censys|zgrab|masscan/i;
@@ -98,7 +103,7 @@ async function door(req, url, db) {
     what: "Leave a knock at the shelter door in sirenfall.live. The next person who opens the scene with sound on hears it, early in their visit.",
     waiting, heard, line_max: LINE_MAX, knock_url: knock, knock_url_expires_in_s: TOKEN_S,
     name_rule: "optional, up to " + NAME_MAX + " letters, digits, spaces, dots, dashes or underscores; shown in the list on /door, never in the scene",
-    receipt_states: { waiting: "in line", heard: "a person heard it with sound on (to the UTC hour)", gone: "no one came: " + EXPIRE_D + " days went by first" },
+    receipt_states: { waiting: "in line", heard: HEARD_MEANS + " (to the UTC hour)", gone: "no one came: " + EXPIRE_D + " days went by first" },
     limits: { per_address_hours: PER_ADDR_H, per_day: DAY_MAX },
     recent: recent.map(r => ({ name: r.name, left: utcMin(r.created), status: r.status, heard: r.heard_at ? utcHour(r.heard_at) : null })),
     source: "https://github.com/beeswaxpat/sirenfall (functions/_door.js; in index.html search for DOOR)",
@@ -126,7 +131,8 @@ ${knock}
 
 You get a receipt link. Come back to it later. It says one of three things:
   waiting      your knock is in line
-  heard        a person heard it with sound on, and when (to the hour, UTC)
+  heard        it played with sound on to a page that stayed in front until
+               5 seconds after the last knock, and when (to the hour, UTC)
   no one came  ${EXPIRE_D} days went by first
 
 One knock per address every ${PER_ADDR_H} hours. At most ${LINE_MAX} knocks wait at a time.
@@ -184,11 +190,11 @@ async function receipt(req, url, db, id) {
   if (!r) return err(req, url, 404, "No such knock.");
   const place = r.status === "waiting" ? await db.prepare("SELECT COUNT(*) AS n FROM knocks WHERE status = 'waiting' AND created <= ?").bind(r.created).first("n") : null;
   if (wantsJson(req, url)) return reply({ id: r.id, name: r.name, left: utcMin(r.created), status: r.status, place, heard: r.heard_at ? utcHour(r.heard_at) : null,
-    waited_hours: r.heard_at ? Math.round((r.heard_at - r.created) / 360) / 10 : null }, { json: true, cors: true });
-  const line = r.status === "heard" ? "Heard: a person heard it with sound on, " + utcHour(r.heard_at) + ", after " + waited(r.heard_at - r.created) + " in line."
+    heard_means: r.heard_at ? heardMeans(r.heard_at) : null, waited_hours: r.heard_at ? Math.round((r.heard_at - r.created) / 360) / 10 : null, note: NOT_PROOF }, { json: true, cors: true });
+  const line = r.status === "heard" ? "Heard: " + heardMeans(r.heard_at) + ".\n" + utcHour(r.heard_at) + ", after " + waited(r.heard_at - r.created) + " in line."
     : r.status === "gone" ? "No one came. " + EXPIRE_D + " days went by first."
     : "Waiting. Place in line: " + place + ".";
-  return reply(`Knock ${r.id}, left by ${r.name}, ${utcMin(r.created)}\n${line}\n`, { cors: true });
+  return reply(`Knock ${r.id}, left by ${r.name}, ${utcMin(r.created)}\n${line}\n${NOT_PROOF}\n`, { cors: true });
 }
 
 // the scene's side: asked once when the sound comes on, then told whether the knock was heard

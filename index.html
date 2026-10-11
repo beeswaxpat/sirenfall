@@ -972,6 +972,13 @@ function doorDone(heard) { // heard means the knock played with the sound runnin
   doorPost(heard ? "/door/heard" : "/door/release", { id: DOOR.id, hold: DOOR.hold });
 }
 const heardNow = () => !!ctx && ctx.state === "running" && document.visibilityState === "visible";
+function doorHeardLater() {
+  // heard means it played to someone who was there: in front with the sound running when it played, and still in front
+  // 5 s after the last knock (the three knocks take about 1.3 s); a page closed before then gives the knock back
+  if (!DOOR.id || DOOR.done) return;
+  if (!heardNow()) { doorDone(false); return; }
+  setTimeout(() => doorDone(heardNow()), 6500);
+}
 addEventListener("pagehide", () => { doorDone(false); DOOR.after = false; });
 // every gap between the slats lets through its own amount of light; a few holes go right through the steel
 // (a hash-based generator here: the simple one above lines its values up in diagonals across a grid like this)
@@ -3497,7 +3504,7 @@ function stepStory(t, dt) {
       st.knockAt = st.clk + (st.fast ? 4 : 5 + Math.random() * 3);
     }
     else {
-      st.knocked = t; playKnock(); doorDone(heardNow());
+      st.knocked = t; playKnock(); doorHeardLater();
       st.cardAt = st.clk + 20 + (st.fast ? 0 : Math.random() * 4);
       try { localStorage.setItem("sf.knock", "1"); } catch (e) {}
     }
@@ -3512,7 +3519,7 @@ function stepStory(t, dt) {
       DOOR.cam = true; DOOR.camT = t; playStaticBurst(0, 0.35, 0.03);
       DOOR.step = 2; DOOR.at = st.clk + 5 + Math.random() * 3;
     } else {
-      st.knocked = t; playKnock(); doorDone(heardNow());
+      st.knocked = t; playKnock(); doorHeardLater();
       try { localStorage.setItem("sf.knock", "1"); } catch (e) {}
       DOOR.step = DOOR.cam ? 3 : 9; DOOR.at = st.clk + 10;
     }
