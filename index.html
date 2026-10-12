@@ -946,7 +946,9 @@ const BL_DROP = 0.85, BL_WAVE = 2.05, BL_LIFT = 7.6, BL_BUSY = 14; // after the 
    The scene is never told who knocked, and if anything fails it does exactly what it would have done anyway. */
 const DOOR = { on: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? /[?&]doorq\b/.test(location.search) : location.protocol === "https:",
   asked: false, id: "", hold: "", done: false, after: false, step: 0, at: 0, cam: false, camT: -9, backT: -9 };
-function doorPost(path, body) {
+function doorPost(path, body, leaving) {
+  // as the page goes away a beacon is the surest way out; the server reads the body either way
+  if (leaving && navigator.sendBeacon) try { if (navigator.sendBeacon(path, new Blob([JSON.stringify(body)], { type: "text/plain" }))) return; } catch (e) {}
   return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(() => {});
 }
 function doorAsk() {
@@ -966,10 +968,10 @@ function doorAsk() {
       } else DOOR.after = true; // the bomb: a knock once it is over
     }).catch(() => {});
 }
-function doorDone(heard) { // heard means the knock played with the sound running and the page in front; otherwise it goes back in line
+function doorDone(heard, leaving) { // heard means the knock played with the sound running and the page in front; otherwise it goes back in line
   if (!DOOR.id || DOOR.done) return;
   DOOR.done = true;
-  doorPost(heard ? "/door/heard" : "/door/release", { id: DOOR.id, hold: DOOR.hold });
+  doorPost(heard ? "/door/heard" : "/door/release", { id: DOOR.id, hold: DOOR.hold }, leaving);
 }
 const heardNow = () => !!ctx && ctx.state === "running" && document.visibilityState === "visible";
 function doorHeardLater() {
@@ -979,7 +981,7 @@ function doorHeardLater() {
   if (!heardNow()) { doorDone(false); return; }
   setTimeout(() => doorDone(heardNow()), 6500);
 }
-addEventListener("pagehide", () => { doorDone(false); DOOR.after = false; });
+addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; });
 // every gap between the slats lets through its own amount of light; a few holes go right through the steel
 // (a hash-based generator here: the simple one above lines its values up in diagonals across a grid like this)
 const SLATS = [], HOLES = [];

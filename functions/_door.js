@@ -201,6 +201,12 @@ async function receipt(req, url, db, id) {
 async function claim(req, db) {
   await tidy(db);
   const sec = await secret(db), t = now(), by = await addrHash(req, sec), hold = randId(16);
+  // a reload from the same address takes over the knock that address already holds: the old page's give-back may never arrive
+  const again = await db.prepare(
+    "UPDATE knocks SET hold = ?1, held_at = ?2, held_until = ?3 WHERE id = (SELECT id FROM knocks WHERE status = 'waiting' " +
+    "AND held_by = ?4 AND held_until >= ?2 ORDER BY held_at DESC LIMIT 1) RETURNING id"
+  ).bind(hold, t, t + HOLD_S, by).first();
+  if (again) return reply({ id: again.id, hold }, { json: true });
   // one statement: the oldest knock nobody holds, not left from this address today, and only if this address holds none
   const r = await db.prepare(
     "UPDATE knocks SET hold = ?1, held_at = ?2, held_until = ?3, held_by = ?4 WHERE id = (SELECT id FROM knocks WHERE status = 'waiting' " +
