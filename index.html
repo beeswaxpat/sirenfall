@@ -823,6 +823,11 @@ function playBrownout() {
 function killPower(t) {
   // everything inside dies, and the siren with it: no signal leaves the shelter now
   STORY.deadT = t;
+  // one cookieless count when it happens (the stats show it as /blackout), never from a local test
+  if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+    const px = document.querySelector('img[src*="/v1/px?site=sirenfall"]'); // the page-count pixel at the foot of the page
+    if (px) new Image().src = px.src.split("?")[0] + "?site=sirenfall&p=/blackout&r=" + Date.now();
+  }
   STORY.deadCrt = radioOn || (STORY.cardT >= 0 && t - STORY.cardT < CARD_LEN);
   if (BLAST.alarmG && ctx) { // a dead monitor says nothing more
     const p = BLAST.alarmG.gain, n = ctx.currentTime;
@@ -916,10 +921,10 @@ let pwrLvl = 1, roomDark = 0; // the shelter's power: 1 is normal, it stutters a
   if (STORY.fast) { STORY.knockAt = 8; STORY.cardAt = 1e9; }
   else if (STORY.knock) { STORY.knockAt = 15 + Math.random() * 10; STORY.cardAt = 1e9; } // most visits are short: the knock comes early, while people are still here
   else { STORY.cardAt = 50 + Math.random() * 50; } // the broadcast alone; the door stays shut
-  // one visit in ten the power fails for good, never in the first two minutes; in a knock visit, only after the door is open
+  // one visit in five the power fails for good, two minutes after the sound comes on; in a knock visit, only after the door is open
   STORY.fastDark = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]dark\b/.test(location.search);
-  STORY.blackout = STORY.fastDark || Math.random() < 0.1;
-  STORY.boAt = STORY.fastDark ? 15 : 120 + Math.random() * 90;
+  STORY.blackout = STORY.fastDark || Math.random() < 0.2;
+  STORY.boAt = STORY.fastDark ? 15 : 120;
 }
 /* the blast: early in a first visit a bomb goes off beyond the city. The shelter shuts itself; when it opens again the city
    is broken, the streets are burning, a cloud is climbing into the sky, and the monitor says what it is. */
