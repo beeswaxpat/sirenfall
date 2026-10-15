@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How Sirenfall works: a siren synthesized live in Web Audio</title>
-<meta name="description" content="How Sirenfall synthesizes a civil-defense siren in the browser: a 5:6 dual tone at 515 and 618 Hz, a chopper at 103 revolutions per second, a horn turning at 4 RPM, and why it is not a recording.">
+<meta name="description" content="How Sirenfall works: a civil-defense siren synthesized live in Web Audio at 515 and 618 Hz, a nuclear blast on every first visit, a door knock that AI agents can leave for the next visitor and a power failure on about 1 visit in 5.">
 <link rel="canonical" href="https://sirenfall.live/how-it-works">
 <meta property="og:type" content="article">
 <meta property="og:title" content="How Sirenfall works">
-<meta property="og:description" content="A civil-defense siren synthesized live in Web Audio: the physics, the numbers, and why nothing is a recording.">
+<meta property="og:description" content="A civil-defense siren synthesized live in Web Audio, a nuclear blast on every first visit, a knock that AI agents can leave at the shelter door and a power failure on some visits.">
 <meta property="og:url" content="https://sirenfall.live/how-it-works">
 <meta property="og:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
 <meta property="og:image:width" content="1920">
@@ -25,11 +25,11 @@
       "@type": "TechArticle",
       "@id": "https://sirenfall.live/how-it-works#article",
       "headline": "How Sirenfall works",
-      "description": "How Sirenfall synthesizes a civil-defense siren in the browser: a 5:6 dual tone at 515 and 618 Hz, a chopper at 103 revolutions per second, a horn turning at 4 RPM, and why it is not a recording.",
+      "description": "How Sirenfall works: a civil-defense siren synthesized live in Web Audio at 515 and 618 Hz, a nuclear blast on every first visit, a door knock that AI agents can leave for the next visitor and a power failure on about 1 visit in 5.",
       "url": "https://sirenfall.live/how-it-works",
       "inLanguage": "en",
       "datePublished": "2026-09-02",
-      "dateModified": "2026-09-25",
+      "dateModified": "2026-10-14",
       "author": { "@id": "https://sirenfall.live/#creator" },
       "publisher": { "@id": "https://sirenfall.live/#organization" },
       "about": { "@id": "https://sirenfall.live/#webapp" },
@@ -48,7 +48,7 @@
         {
           "@type": "Question",
           "name": "Which parts are recordings?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the AUDIO-CREDITS document in the source repository. Every console sound is synthesized." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the AUDIO-CREDITS document in the source repository. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble. Every console sound is synthesized." }
         },
         {
           "@type": "Question",
@@ -107,6 +107,7 @@
   .foot2 { font-size: 13px; color: rgba(160,150,135,0.7); margin: 8px 0 16px; }
   .powered-by { display: inline-block; line-height: 0; margin-bottom: 24px; }
   .powered-by img { display: block; width: 174px; height: 52px; }
+  .dates { margin: -6px 0 16px; font-size: 13px; color: rgba(160,150,135,0.8); }
   .foot { margin-top: 48px; padding-top: 16px; border-top: 1px solid rgba(214,196,166,0.12); font-size: 13px; color: rgba(160,150,135,0.7); }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
@@ -115,7 +116,9 @@
 <div class="top"><a class="wm" href="/">SIRENFALL</a><a class="back" href="/">Back to the window</a></div>
 <main>
 <h1>How Sirenfall works</h1>
+<p class="dates">Published September 2, 2026. Updated October 14, 2026.</p>
 <p>Sirenfall is a browser scene: a shelter window over a dead city in the rain. Pull the breaker and a siren tower across the blocks spins up. The siren is synthesized live in your browser. It is not a recording.</p>
+<p>Some things happen on their own. Every first visit brings a nuclear blast beyond the city. AI agents can leave a knock at the shelter door for the next person who comes in. On about 1 visit in 5 the power fails.</p>
 <a href="/"><img class="card" src="/og.jpg?v=8e6f9feb" width="1920" height="1005" alt="The Sirenfall shelter window: a rainy dead city, sheet lightning in low cloud, a siren tower facing the viewer, smoke from a burning building, the breaker thrown on."></a>
 <p class="cap">The scene at full power, during a sheet flash.</p>
 
@@ -131,7 +134,7 @@
 <h2>The city</h2>
 <ul>
   <li>The skyline is painted once per window size onto an offscreen canvas at up to twice the screen resolution, then reused every frame. Five depth rows dissolve into cold haze. Buildings get floor lines, bays, side faces in perspective, and their damage: burned profiles, collapses, blast holes, boarded glass. One tower is still burning; the smoke rises from it and bends with the wind.</li>
-  <li>Weather runs on a slow random walk through calm, building, squall, and passing. Rain speed, density, lean, the fog, the smoke, and the rain bed's gain all follow it. Lightning is mostly sheet flashes inside the low cloud, sometimes a far bolt, rarely a double strike. Thunder arrives late by distance.</li>
+  <li>Weather runs on a slow random walk through calm, building, squall and passing. Rain speed, density, lean, the fog, the smoke and the rain bed's gain all follow it. Lightning is mostly sheet flashes inside the low cloud, sometimes a far bolt, rarely a double strike. Thunder arrives late by distance.</li>
   <li>The scene draws at 30 frames per second on one canvas with no framework and no build step.</li>
 </ul>
 
@@ -142,12 +145,24 @@
   <li>Click the wall monitor, or press S, to save a picture of the current frame.</li>
 </ul>
 
+<h2>What happens on a first visit?</h2>
+<p>A nuclear blast. About 15 seconds after the page opens, a flash lights the sky beyond the far rows. A wall of dust crosses the city and breaks it row by row, the blast shutter slams shut and the boom hits the shelter. When the shutter lifts, the city is ruined and burning. A mushroom cloud climbs out of sight over the next few minutes, and the wall monitor switches itself on to read RADIATION DETECTED over a faint Geiger counter. The blast waits a few seconds for the sound to come on. Return visits get it again about 1 time in 5.</p>
+
+<h2>Can AI agents interact with Sirenfall?</h2>
+<p>Yes. On some visits there is a knock at the shelter door, and the wall monitor shows the door. Any AI agent can leave that knock through <a href="/door">sirenfall.live/door</a>, a plain-text page written for agents. The next person who opens the scene with the sound on hears three knocks on a steel door early in their visit. The knock carries no words, and the agent's name never appears in the scene. The agent comes back later for a receipt that says waiting, heard (to the hour, UTC) or no one came. The first knock from an outside agent was heard on October 12, 2026, after about 33 hours in line.</p>
+
+<h2>Does the power ever fail?</h2>
+<p>Sometimes. On about 1 visit in 5 the shelter loses power two minutes after the sound comes on, and it stays out for the rest of the visit. The lamp stutters, the bulb pops, the monitor dies and the siren winds down with nothing left to turn it.</p>
+
+<h2>Will there be more events?</h2>
+<p>Yes. New events are being added, so a return visit may not play out like the last one.</p>
+
 <h2>Questions</h2>
 <dl>
   <dt>Is the siren a recording?</dt>
   <dd>No. The siren is generated in real time by the Web Audio API in your browser. Two port rings chopped at 103 revolutions per second produce a 5:6 dual tone at 515 and 618 Hz. Nothing about the siren is sampled.</dd>
   <dt>Which parts are recordings?</dt>
-  <dd>Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the <a href="https://github.com/beeswaxpat/sirenfall/blob/main/AUDIO-CREDITS.md">AUDIO-CREDITS</a> document in the source repository. Every console sound is synthesized.</dd>
+  <dd>Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the <a href="https://github.com/beeswaxpat/sirenfall/blob/main/AUDIO-CREDITS.md">AUDIO-CREDITS</a> document in the source repository. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble. Every console sound is synthesized.</dd>
   <dt>Is Sirenfall free?</dt>
   <dd>Yes. No account, no signup, no download, no cookies. Besides audio, the page sends anonymous, cookieless counts to the author's own service (page views and how long the page stays open). When the sound comes on, it also checks in with sirenfall.live itself, with no cookies.</dd>
   <dt>Does it work on phones?</dt>
