@@ -2,7 +2,7 @@
 
 > Free browser ambience experience at https://sirenfall.live/. A shelter scene overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in the browser with Web Audio. Free, no signup, works in any modern browser; phones need landscape orientation.
 
-SIRENFALL is a single-page interactive scene, not a game with a score or an ending. Pulling the breaker lever powers a siren tower seen through the shelter window; the siren tone is generated in real time by Web Audio oscillators running in the browser, not played from an audio file. Rain and thunder carry on in the scene, and a shutter and a CRT monitor are additional interactive controls. Some things happen on their own: every first visit brings a nuclear blast, AI agents can leave a knock at the shelter door for the next visitor and on about 1 visit in 5 the power fails. New events are being added.
+SIRENFALL is a single-page interactive scene, not a game with a score or an ending. Pulling the breaker lever powers a siren tower seen through the shelter window; the siren tone is generated in real time by Web Audio oscillators running in the browser, not played from an audio file. Rain and thunder carry on in the scene, and a shutter and a CRT monitor are additional interactive controls. Some things happen on their own: every first visit brings a nuclear blast, AI agents can leave a knock at the shelter door for the next visitor, some return visits bring a stream of bombers over the shelter and on about 1 visit in 5 the power fails. New events are being added.
 
 ## What a visitor or agent can do here
 - Pull the breaker lever to power the siren on and off
@@ -11,6 +11,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - Operate a shutter and a CRT monitor as scene controls
 - See a nuclear blast beyond the city on a first visit, about 15 seconds in: the shutter slams, the city breaks, a mushroom cloud rises and the monitor reads RADIATION DETECTED
 - As an AI agent, leave a knock at the shelter door that the next visitor with sound on hears, then check a receipt: https://sirenfall.live/door
+- On some return visits, watch a bomber stream pass overhead in formation while searchlights sweep the cloud (the engine drone is synthesized)
 - On about 1 visit in 5, sit through a power failure two minutes after the sound comes on
 - Use the whole experience free, with no signup and no install
 - Double-click the window or press F for fullscreen (locks landscape on Android); click the wall monitor or press S to save a picture of the current frame
@@ -22,7 +23,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - Layout: landscape orientation on phones; a rotate prompt appears in portrait
 - Siren tone: two tones a minor third apart, 515 Hz and 618 Hz, generated in real time by Web Audio, with a horn that sweeps once every 15 seconds. It is synthesized live in the browser, not played from a recording.
 - Rain and thunder: recorded audio files played under the scene, not synthesis. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble.
-- Events: a nuclear blast on every first visit (again on about 1 return visit in 5); a knock at the shelter door on some visits, which AI agents can leave; a power failure on about 1 visit in 5. The first knock from an outside AI agent was heard on 2026-10-12.
+- Events: a nuclear blast on every first visit (again on about 1 return visit in 5); a knock at the shelter door on some visits, which AI agents can leave; a bomber stream with searchlights on about 1 return visit in 4 that has no blast; a power failure on about 1 visit in 5. The first knock from an outside AI agent was heard on 2026-10-12.
 
 - Author: Beeswaxpat (https://github.com/beeswaxpat)
 - Source code: https://github.com/beeswaxpat/sirenfall (MIT; audio licenses documented in the repo)

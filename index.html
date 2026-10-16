@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=1">
   <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png?v=1">
   <link rel="apple-touch-icon" href="/favicon.png?v=1">
-<meta name="description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, AI agents can leave a knock at the door and the power sometimes fails.">
+<meta name="description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, bombers sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
 <link rel="canonical" href="https://sirenfall.live/">
   <link rel="describedby" href="https://sirenfall.live/llms.txt">
 <meta name="robots" content="index, follow">
@@ -16,14 +16,14 @@
 <meta property="og:url" content="https://sirenfall.live/">
 <meta property="og:site_name" content="SIRENFALL">
 <meta property="og:title" content="SIRENFALL: a browser civil-defense siren scene">
-<meta property="og:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, AI agents can leave a knock at the door and the power sometimes fails.">
+<meta property="og:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, bombers sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
 <meta property="og:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
 <meta property="og:image:width" content="1920">
 <meta property="og:image:height" content="1005">
 <meta property="og:image:alt" content="A rainy dead city seen from a shelter window: sheet lightning in low cloud, a siren tower facing you, smoke from a burning building, the breaker thrown on.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="SIRENFALL: a browser civil-defense siren scene">
-<meta name="twitter:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, AI agents can leave a knock at the door and the power sometimes fails.">
+<meta name="twitter:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, bombers sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
 <meta name="twitter:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
 <script type="application/ld+json">
 {
@@ -81,11 +81,12 @@
       "@id": "https://sirenfall.live/#webapp",
       "name": "SIRENFALL",
       "url": "https://sirenfall.live/",
-      "description": "SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, AI agents can leave a knock at the door and the power sometimes fails.",
+      "description": "SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast, bombers sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.",
       "featureList": [
         "A civil-defense siren synthesized live in Web Audio (515 and 618 Hz, a horn turning at 4 RPM)",
         "A nuclear blast beyond the city on every first visit",
         "A knock at the shelter door that AI agents can leave for the next visitor at https://sirenfall.live/door",
+        "A bomber stream with searchlights on about 1 return visit in 4 that has no blast",
         "A power failure on about 1 visit in 5",
         "Rain, thunder and lightning, with a blast shutter, a wall monitor and a lamp to control"
       ],
@@ -994,6 +995,177 @@ function doorHeardLater() {
   setTimeout(() => doorDone(heardNow()), 6500);
 }
 addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; });
+/* the raid: a bomber stream passing over the shelter. The drone comes first; then box after box of bombers comes over the
+   top of the window and on away over the city, while the city's searchlights sweep the cloud for them. On a return visit
+   with no bomb in it, one in four, never two visits running, a few seconds after the sound comes on.
+   Local test: ?planes (4 s after the sound comes on) or ?planes=N; it skips the bomb unless ?blast or ?after is given too */
+const RAID = { at: -1, u: -1, rows: [], nextRow: 0, len: 110, snd: null, done: false };
+let planeC = null;
+{
+  const m = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.search.match(/[?&]planes(?:=(\d+))?\b/) : null;
+  if (m) { RAID.at = m[1] ? +m[1] : 4; if (!/[?&](blast|after)/.test(location.search)) BLAST.at = BLAST.at0 = -1; } // the raid alone, unless the test asks for the bomb too
+  else {
+    let last = "0";
+    try { last = localStorage.getItem("sf.raid") || "0"; localStorage.setItem("sf.raid", "0"); } catch (e) {}
+    if (BLAST.at < 0 && BLAST.jump < 0 && last !== "1" && Math.random() < 0.25) RAID.at = 8 + Math.random() * 6; // a first visit always has the bomb, so never here
+  }
+}
+function raidCanvas() { // only made for a visit that has the raid: at full size it is the biggest canvas on the page
+  if (!L || RAID.at < 0) return null;
+  const sc = Math.min(DPR, 1.5), c = document.createElement("canvas");
+  c.width = Math.ceil(L.apW * sc); c.height = Math.ceil(L.apH * sc); c.sc = sc;
+  return c;
+}
+function raidDrone() {
+  // a few dozen engines, none quite in tune with the next: the beating between them is the throb of a bomber stream
+  const t0 = ctx.currentTime, out = new GainNode(ctx, { gain: 0.0001 });
+  const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 260, Q: 0.6 });
+  const pan = new StereoPannerNode(ctx, { pan: 0 });
+  const shape = new WaveShaperNode(ctx, { curve: (() => { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(1.8 * x); } return c; })() });
+  const sum = new GainNode(ctx, { gain: 1 }), oscs = [];
+  for (let i = 0; i < 14; i++) {
+    const f = 49 + Math.random() * 11, o = new OscillatorNode(ctx, { type: "sawtooth", frequency: f });
+    const o2 = new OscillatorNode(ctx, { type: "triangle", frequency: f * 2.02 });
+    const vib = new OscillatorNode(ctx, { frequency: 0.04 + Math.random() * 0.12 }), vg = new GainNode(ctx, { gain: 0.25 + Math.random() * 0.5 });
+    vib.connect(vg); vg.connect(o.frequency); vg.connect(o2.frequency);
+    const g1 = new GainNode(ctx, { gain: 0.05 }), g2 = new GainNode(ctx, { gain: 0.02 });
+    o.connect(g1).connect(sum); o2.connect(g2).connect(sum);
+    o.start(t0); o2.start(t0); vib.start(t0); oscs.push(o, o2, vib);
+  }
+  const nz = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.3), loop: true });
+  const nbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 340, Q: 0.7 }), ng = new GainNode(ctx, { gain: 0.06 });
+  nz.connect(nbp).connect(ng).connect(sum); nz.start(t0); oscs.push(nz);
+  sum.connect(shape).connect(lp).connect(pan).connect(out).connect(N.worldLp);
+  return { out, lp, pan, oscs };
+}
+// they come from behind the shelter: the drone first, then box after box out over the top of the window, already overhead, and
+// on away over the city toward the horizon, slowing and shrinking into the murk. The city's searchlights come up to meet them.
+const RAID_SPAN = 0.14, RAID_ZFAR = 10, RAID_V = 0.12, RAID_KA = 1.6, RAID_HZ = 0.46, RAID_BOX = 13;
+const RAID_LANES = [{ X: -1.5, A: 1.06, ph: 0.35 }, { X: 0, A: 0.9, ph: 0.0 }, { X: 1.5, A: 1.0, ph: 0.68 }];
+const RAID_VIC = [[0, 0, 0], [-0.165, -0.012, -0.09], [0.165, -0.012, -0.09]];
+const RAID_SQN = [[0, 0, 0], [0.31, 0.06, -0.36], [-0.31, -0.06, -0.36]]; // lead, high and low vics: the high and low ones behind it (nearer you)
+const RAID_BEAMS = [{ x: 0.16, b: -0.22, a: 0.42, w: 0.071, p: 0.4 }, { x: 0.38, b: 0.12, a: 0.5, w: 0.113, p: 2.1 }, { x: 0.61, b: -0.08, a: 0.46, w: 0.092, p: 4.0 }, { x: 0.85, b: 0.26, a: 0.38, w: 0.062, p: 5.3 }];
+let bomberSprite = null, bomberLit = null, beamC = null;
+function buildBomberSprites() {
+  // one bomber seen from below, nose toward the horizon (down the window), painted small so that it scales up soft
+  const W2 = 56, mk = col => {
+    const c = document.createElement("canvas"); c.width = W2; c.height = W2; const x = c.getContext("2d");
+    x.fillStyle = col; x.translate(W2 / 2, W2 / 2);
+    const sp = 50, L2 = sp * 0.66, fw = 3.4;
+    x.beginPath(); x.ellipse(0, 0, fw / 2, L2 / 2, 0, 0, 7); x.fill(); // body
+    x.beginPath(); x.moveTo(-sp / 2, 1.2); x.lineTo(0, -2.6); x.lineTo(sp / 2, 1.2); x.lineTo(sp / 2, 3.6); x.lineTo(0, 5.6); x.lineTo(-sp / 2, 3.6); x.closePath(); x.fill(); // wing
+    for (const k of [-0.33, -0.17, 0.17, 0.33]) { x.beginPath(); x.ellipse(k * sp, 6.4, 1.3, 3.4, 0, 0, 7); x.fill(); } // engines, ahead of the wing
+    x.beginPath(); x.moveTo(-8.5, -L2 / 2 + 2); x.lineTo(8.5, -L2 / 2 + 2); x.lineTo(7, -L2 / 2 + 5); x.lineTo(-7, -L2 / 2 + 5); x.closePath(); x.fill(); // tailplane
+    return c;
+  };
+  bomberSprite = mk("rgb(6,7,10)"); bomberLit = mk("rgb(138,146,164)");
+}
+function raidBeam(i, t) { // where a searchlight points: from behind the far rows, swinging slowly through the cloud
+  const b = RAID_BEAMS[i], th = b.b + b.a * Math.sin(t * b.w + b.p) + 0.06 * Math.sin(t * b.w * 2.7 + b.p * 1.3);
+  return { x: L.apW * b.x, y: L.apH * 0.6, dx: Math.sin(th), dy: -Math.cos(th) };
+}
+function stepRaid(t, dt) {
+  const R = RAID;
+  if (R.at < 0 || R.done) return;
+  if (R.u < 0) {
+    if (!built || STORY.clk < R.at || STORY.deadT >= 0) return;
+    R.u = 0; R.snd = raidDrone(); R.lanes = RAID_LANES.map(l => ({ next: 18 + l.ph * RAID_BOX }));
+    if (!planeC) planeC = raidCanvas();
+    try { localStorage.setItem("sf.raid", "1"); } catch (e) {}
+    if (!bomberSprite) buildBomberSprites();
+  }
+  R.u += dt;
+  if (R.u > 20 && R.u < R.len + 40 && !strike && nextStrikeT - t > 14) nextStrikeT = t + 6 + Math.random() * 8; // more lightning while they pass
+  RAID_LANES.forEach((l, i) => {
+    const ln = R.lanes[i];
+    while (R.u >= ln.next && ln.next < R.len) { R.rows.push({ u0: ln.next, X: l.X, A: l.A }); ln.next += RAID_BOX; }
+  });
+  // each box starts just over the top of the window and goes away from you
+  const zOf = r => 0.8 * r.A * RAID_KA / RAID_HZ + RAID_V * (R.u - r.u0);
+  R.rows = R.rows.filter(r => zOf(r) - 0.5 < RAID_ZFAR + 1.5);
+  let pres = 0, px = 0;
+  for (const r of R.rows) { const z = zOf(r), w = Math.pow(Math.min(1, 3.2 / z), 2) * 9; pres += w; px += w * clamp(r.X / z, -1, 1); }
+  const build = Math.min(1, R.u / 24), p = clamp(pres / 24, 0, 1), now = ctx.currentTime;
+  R.snd.out.gain.setTargetAtTime(Math.max(0.0001, 0.05 + 0.08 * build + 0.17 * p), now, 0.8);
+  R.snd.lp.frequency.setTargetAtTime(220 + 900 * p + 120 * build, now, 0.8);
+  R.snd.pan.pan.setTargetAtTime(pres ? clamp(px / pres, -0.6, 0.6) : 0, now, 1.5);
+  R.lights = clamp((R.u - 6) / 8, 0, 1) * (R.u > R.len ? clamp(1 - (R.u - R.len - 40) / 15, 0, 1) : 1); // the searchlights come up, and go out after
+  if (R.u > R.len && !R.rows.length) {
+    R.done = true; R.lights = 0; R.snd.out.gain.setTargetAtTime(0.0001, now, 2.5);
+    const sd = R.snd; setTimeout(() => { for (const o of sd.oscs) try { o.stop(); } catch (e) {} }, 12000);
+  }
+  R.zOf = zOf;
+}
+function drawRaid(t, flashA) {
+  const R = RAID;
+  if (R.u < 0 || !planeC || !R.zOf) return;
+  const { apW, apH } = L, yH = apH * RAID_HZ, cx = apW * 0.5, sil = BLAST.swapped && silAfterC ? silAfterC : silC;
+  const lights = R.lights || 0, beams = [];
+  // searchlights: soft pale shafts through the rain into the cloud base, behind the city
+  if (lights > 0.01) {
+    // drawn small, so the shafts scale up soft
+    if (!beamC || beamC.width !== Math.ceil(apW * Math.min(1, 300 / apW))) { const sc = Math.min(1, 300 / apW); beamC = document.createElement("canvas"); beamC.width = Math.ceil(apW * sc); beamC.height = Math.ceil(apH * sc); beamC.sc = sc; }
+    const b = beamC.getContext("2d");
+    b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.clearRect(0, 0, beamC.width, beamC.height); b.setTransform(beamC.sc, 0, 0, beamC.sc, 0, 0);
+    b.globalCompositeOperation = "lighter";
+    const yEnd = apH * 0.1;
+    for (let i = 0; i < RAID_BEAMS.length; i++) {
+      const bm = raidBeam(i, t), len = (bm.y - yEnd) / -bm.dy, ex = bm.x + bm.dx * len, ey = bm.y + bm.dy * len;
+      const w0 = apW * 0.004, w1 = apW * 0.032, nx = -bm.dy, ny = bm.dx;
+      beams.push({ ...bm, len, w0, w1 });
+      // a soft shaft: a faint wide glow, a narrower one inside it, a core; each fading as it goes up into the cloud
+      const sh = lights * (0.9 + 0.1 * Math.sin(t * 6.3 + i * 2.1));
+      for (const [kw, ka] of [[2.0, 0.05], [1, 0.1]]) {
+        const gr = b.createLinearGradient(bm.x, bm.y, ex, ey);
+        gr.addColorStop(0, "rgba(196,210,238," + (ka * 1.6 * sh).toFixed(3) + ")"); gr.addColorStop(0.55, "rgba(196,210,238," + (ka * sh).toFixed(3) + ")"); gr.addColorStop(1, "rgba(196,210,238,0)");
+        b.fillStyle = gr; b.beginPath();
+        b.moveTo(bm.x + nx * w0 * kw, bm.y + ny * w0 * kw); b.lineTo(ex + nx * w1 * kw, ey + ny * w1 * kw); b.lineTo(ex - nx * w1 * kw, ey - ny * w1 * kw); b.lineTo(bm.x - nx * w0 * kw, bm.y - ny * w0 * kw); b.closePath(); b.fill();
+      }
+      const cg = b.createRadialGradient(ex, ey, 0, ex, ey, w1 * 3); // where it goes into the cloud
+      cg.addColorStop(0, "rgba(196,210,238," + (0.07 * sh).toFixed(3) + ")"); cg.addColorStop(1, "rgba(196,210,238,0)");
+      b.fillStyle = cg; b.fillRect(ex - w1 * 3, ey - w1 * 3, w1 * 6, w1 * 6);
+    }
+    if (sil) { b.globalCompositeOperation = "destination-out"; b.drawImage(sil, 0, 0, apW, apH); }
+    g.save(); g.globalCompositeOperation = "lighter"; g.drawImage(beamC, 0, 0, apW, apH); g.restore();
+  }
+  if (!R.rows.length || !bomberSprite) return;
+  const c = planeC.getContext("2d");
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.globalAlpha = 1; c.clearRect(0, 0, planeC.width, planeC.height);
+  c.setTransform(planeC.sc, 0, 0, planeC.sc, 0, 0);
+  const lit = Math.min(1, flashA * 3), list = [];
+  for (const r of R.rows) {
+    const z0 = R.zOf(r);
+    let k = 0;
+    for (const q of RAID_SQN) for (const v of RAID_VIC) {
+      const z = z0 + q[2] + v[2], ph = r.u0 * 1.7 + k++ * 2.3;
+      if (z < 0.5 || z > RAID_ZFAR + 1.5) continue;
+      const s = RAID_SPAN * apW / z;
+      // each one holds its place in the box, but not perfectly: a slow drift and bob of its own
+      const x = cx + (r.X + q[0] + v[0]) * apW / z + Math.sin(t * 0.23 + ph) * s * 0.06;
+      const y = yH - (r.A + q[1] + v[1]) * RAID_KA * apH / z + Math.sin(t * 0.31 + ph * 1.4) * s * 0.04;
+      if (x < -s || x > apW + s || y < -s || y > yH) continue;
+      const fade = clamp((RAID_ZFAR + 1.5 - z) / 3, 0, 1); // into the murk at the far end
+      const a = fade * clamp(1.05 - (z - 3) / 11, 0.35, 0.95);
+      let hit = 0; // caught in a searchlight
+      for (const bm of beams) {
+        const px = x - bm.x, py = y - bm.y, along = px * bm.dx + py * bm.dy;
+        if (along <= 0 || along > bm.len) continue;
+        const hw = bm.w0 + (bm.w1 - bm.w0) * along / bm.len, perp = Math.abs(px * -bm.dy + py * bm.dx);
+        if (perp < hw) hit = Math.max(hit, (1 - perp / hw) * lights);
+      }
+      list.push({ z, x, y, s, f: 0.3 + 0.7 * clamp((yH - y) / yH, 0, 1), a, hit: Math.max(hit, lit * 0.5) });
+    }
+  }
+  list.sort((p, q) => q.z - p.z);
+  for (const p of list) {
+    const w = p.s * 1.12, h = w * p.f; // the sprite is a little wider than the span
+    c.globalAlpha = p.a; c.drawImage(bomberSprite, p.x - w / 2, p.y - h / 2, w, h);
+    if (p.hit > 0.02) { c.globalAlpha = p.a * p.hit * 0.7; c.drawImage(bomberLit, p.x - w / 2, p.y - h / 2, w, h); }
+  }
+  c.globalAlpha = 1;
+  if (sil) { c.globalCompositeOperation = "destination-out"; c.drawImage(sil, 0, 0, apW, apH); c.globalCompositeOperation = "source-over"; }
+  g.drawImage(planeC, 0, 0, apW, apH);
+}
 // every gap between the slats lets through its own amount of light; a few holes go right through the steel
 // (a hash-based generator here: the simple one above lines its values up in diagonals across a grid like this)
 const SLATS = [], HOLES = [];
@@ -2086,6 +2258,7 @@ function resize() {
     const mk = (sc) => { const c = document.createElement("canvas"); c.width = Math.ceil(L.apW * sc); c.height = Math.ceil(L.apH * sc); c.sc = sc; return c; };
     lightC = mk(Math.min(1, 720 / L.apW)); mushC = mk(Math.min(0.8, 900 / L.apW)); // the cloud a touch soft, like smoke far off
     waveSilC = BLAST.swapped ? null : mk(1); // the city breaking as the wave goes through it
+    planeC = raidCanvas(); // the bombers, cut out where the city stands in front of them (only in a visit that has them)
   }
   BLAST.dust = [];
   frameC = buildFrame();
@@ -2156,6 +2329,7 @@ function drawCity(t, amp, dt, flashA) {
       g.restore();
     }
   }
+  drawRaid(t, flashA); // under the cloud, in front of the sky, behind the city
   // low scud under the overcast: slow and torn, lit from inside when the sheet lightning goes
   if (cloudC) {
     const cw = apW * 1.5, chh = apH * 0.36, cy0 = apH * 0.08;
@@ -3821,6 +3995,7 @@ function frame(now) {
 
   stepBlast(t, dt, gap);
   stepStory(t, dt);
+  stepRaid(t, dt);
 
   let shX = 0, shY = 0;
   if (t - shakeT < shakeDur) {
@@ -3895,7 +4070,7 @@ window.__sirens = {
     else if (what === "dark") { STORY.blackout = true; STORY.darkForce = true; STORY.boAt = STORY.clk; }
   },
   playKnock, playAttention, playBlastWave,
-  get blast() { return BLAST; }, get door() { return DOOR; }, mushGeom, playShutterRun, playRelease,
+  get blast() { return BLAST; }, get door() { return DOOR; }, get raid() { return RAID; }, mushGeom, playShutterRun, playRelease,
   blastNow(sec) { BLAST.at = BLAST.at0 = BLAST.on + (sec || 0); BLAST.t0 = -1e9; BLAST.swapped = false; BLAST.radAt = BLAST.radT = -1e9; resize(); },
   strikeNow(kind) { if (!strike) newStrike(performance.now() / 1000, kind); },
   setWeather(k) { WX.k = k; WX.target = k; WX.state = k > 0.6 ? "squall" : "calm"; WX.tState = performance.now() / 1000; WX.dwell = 900; }
