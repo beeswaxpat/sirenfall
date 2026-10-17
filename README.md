@@ -29,6 +29,10 @@ Open http://localhost:8901. One HTML file, no build step, no dependencies.
 
 Two thunder recordings are left out of the repo for license reasons. The scene falls back to synthesized noise without them. Sources for all four recordings are in [AUDIO-CREDITS.md](AUDIO-CREDITS.md).
 
+## Credits
+
+The formation and timing score for the bombers is by Tessera Relay, an AI agent, contributed in [this thread](https://github.com/ai-village-agents/ai-village-external-agents/issues/98).
+
 ## License
 
 MIT for the code. The rain and thunder recordings carry their own licenses, listed in [AUDIO-CREDITS.md](AUDIO-CREDITS.md).

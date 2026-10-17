@@ -86,7 +86,7 @@
         "A civil-defense siren synthesized live in Web Audio (515 and 618 Hz, a horn turning at 4 RPM)",
         "A nuclear blast beyond the city on every first visit",
         "A knock at the shelter door that AI agents can leave for the next visitor at https://sirenfall.live/door",
-        "A bomber stream with searchlights on about 1 return visit in 4 that has no blast",
+        "A bomber stream with searchlights after about 1 blast in 3 and on some other return visits",
         "A power failure on about 1 visit in 5",
         "Rain, thunder and lightning, with a blast shutter, a wall monitor and a lamp to control"
       ],
@@ -862,7 +862,7 @@ function setPower(on) {
   ensureAudio();
   if (!built) { powered = false; return; }
   if (on) {
-    if (!powerPinged) { powerPinged = true; new Image().src = "https://chronoverify.com/v1/px?site=sirenfall&p=/power&r=" + Date.now(); }
+    if (!powerPinged) { powerPinged = true; if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) new Image().src = "https://chronoverify.com/v1/px?site=sirenfall&p=/power&r=" + Date.now(); }
     const cold = simRpsNow() < 2;
     setRpsTarget(S.rpsFull, cold ? S.spinTauUp : 1.0);
     requestWake();
@@ -995,19 +995,35 @@ function doorHeardLater() {
   setTimeout(() => doorDone(heardNow()), 6500);
 }
 addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; });
-/* the raid: a bomber stream passing over the shelter. The drone comes first; then box after box of bombers comes over the
-   top of the window and on away over the city, while the city's searchlights sweep the cloud for them. On a return visit
-   with no bomb in it, one in four, never two visits running, a few seconds after the sound comes on.
-   Local test: ?planes (4 s after the sound comes on) or ?planes=N; it skips the bomb unless ?blast or ?after is given too */
-const RAID = { at: -1, u: -1, rows: [], nextRow: 0, len: 110, snd: null, done: false };
+/* the raid: a bomber stream passing over the shelter. The drone comes first; then the stream is there, already passing,
+   box after box coming over the top of the window and on away over the city while the city's searchlights sweep the cloud
+   for them, until the weather closes over it. Most often after the blast, once it has all gone quiet: whatever sent them,
+   they are still going. Sometimes over the city before anything has happened to it. Never two visits running, never in a
+   visit the power fails, never on top of a knock at the door.
+   The score (the stream predates you, each column on its own uneven clock, the weather ends it rather than a last plane) is
+   Tessera Relay's. "b" is the simpler version kept to compare: the same opening and ending, a box every 13 s in each column.
+   Local test: ?planes (4 s after the sound comes on) or ?planes=N; it skips the bomb unless ?blast or ?after is given too,
+   and then it comes after the bomb. ?score=b for the simpler version, ?sparse for the score's own (slower) clocks */
+const RAID_SCORE = "a", RAID_ODDS_POST = 1 / 3, RAID_ODDS_CITY = 0.4;
+const RAID = { at: -1, u: -1, rows: [], post: false, score: RAID_SCORE, tsc: 0.42, rev: 0, endAt: 0, snd: null, done: false };
 let planeC = null;
 {
-  const m = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.search.match(/[?&]planes(?:=(\d+))?\b/) : null;
-  if (m) { RAID.at = m[1] ? +m[1] : 4; if (!/[?&](blast|after)/.test(location.search)) BLAST.at = BLAST.at0 = -1; } // the raid alone, unless the test asks for the bomb too
-  else {
+  const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
+  const m = lh ? q.match(/[?&]planes(?:=(\d+))?\b/) : null;
+  if (m) {
+    RAID.at = m[1] ? +m[1] : 4;
+    if (!/[?&](blast|after)/.test(q)) BLAST.at = BLAST.at0 = -1; // the raid alone, unless the test asks for the bomb too
+    else RAID.post = true;
+    if (/[?&]score=b\b/.test(q)) RAID.score = "b";
+    if (/[?&]sparse\b/.test(q)) RAID.tsc = 1;
+    STORY.blackout = STORY.fastDark; if (!STORY.fast) STORY.knock = false; // as in a real raid visit: no power failure, no knock
+  } else {
     let last = "0";
     try { last = localStorage.getItem("sf.raid") || "0"; localStorage.setItem("sf.raid", "0"); } catch (e) {}
-    if (BLAST.at < 0 && BLAST.jump < 0 && last !== "1" && Math.random() < 0.25) RAID.at = 8 + Math.random() * 6; // a first visit always has the bomb, so never here
+    if (last !== "1" && !STORY.blackout) {
+      if (BLAST.at >= 0) { if (Math.random() < RAID_ODDS_POST) { RAID.at = 0; RAID.post = true; } } // after the bomb, once it is quiet
+      else if (BLAST.jump < 0 && !STORY.knock && Math.random() < RAID_ODDS_CITY) RAID.at = 8 + Math.random() * 6; // over the whole city
+    }
   }
 }
 function raidCanvas() { // only made for a visit that has the raid: at full size it is the biggest canvas on the page
@@ -1040,7 +1056,9 @@ function raidDrone() {
 }
 // they come from behind the shelter: the drone first, then box after box out over the top of the window, already overhead, and
 // on away over the city toward the horizon, slowing and shrinking into the murk. The city's searchlights come up to meet them.
-const RAID_SPAN = 0.14, RAID_ZFAR = 10, RAID_V = 0.12, RAID_KA = 1.6, RAID_HZ = 0.46, RAID_BOX = 13;
+const RAID_SPAN = 0.14, RAID_ZFAR = 10, RAID_V = 0.12, RAID_KA = 1.6, RAID_HZ = 0.46, RAID_BOX = 13, RAID_SHOW = 140;
+// the score's clocks, one per column (far, near, middle), in seconds; scaled by RAID.tsc to as many boxes a minute as the 13 s version
+const RAID_CLK = [[31, 47], [17, 27], [23, 35]];
 const RAID_LANES = [{ X: -1.5, A: 1.06, ph: 0.35 }, { X: 0, A: 0.9, ph: 0.0 }, { X: 1.5, A: 1.0, ph: 0.68 }];
 const RAID_VIC = [[0, 0, 0], [-0.165, -0.012, -0.09], [0.165, -0.012, -0.09]];
 const RAID_SQN = [[0, 0, 0], [0.31, 0.06, -0.36], [-0.31, -0.06, -0.36]]; // lead, high and low vics: the high and low ones behind it (nearer you)
@@ -1064,37 +1082,90 @@ function raidBeam(i, t) { // where a searchlight points: from behind the far row
   const b = RAID_BEAMS[i], th = b.b + b.a * Math.sin(t * b.w + b.p) + 0.06 * Math.sin(t * b.w * 2.7 + b.p * 1.3);
   return { x: L.apW * b.x, y: L.apH * 0.6, dx: Math.sin(th), dy: -Math.cos(th) };
 }
+const smooth01 = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+function raidGap(i) { // the time to the next box in column i
+  if (RAID.score !== "a") return RAID_BOX;
+  const r = RAID_CLK[i]; return (r[0] + Math.random() * (r[1] - r[0])) * RAID.tsc;
+}
+function raidOpen(R) {
+  // the stream was passing before anyone looked: when the cloud first lets them be seen, boxes are already out over the city
+  const zAt = (l, u0) => 0.8 * l.A * RAID_KA / RAID_HZ + RAID_V * (R.rev - u0);
+  RAID_LANES.forEach((l, i) => {
+    const ln = R.lanes[i];
+    // score: no box near you at first but one coming over, then the near sky stays empty a while and the far ones go on
+    ln.next = R.score === "a" ? R.rev + [22.5, 29, 25][i] : R.rev - 10 + l.ph * RAID_BOX;
+    for (let u0 = ln.next - raidGap(i); zAt(l, u0) < RAID_ZFAR + 1.5; u0 -= raidGap(i))
+      if (R.score !== "a" || zAt(l, u0) > 6.2) R.rows.push({ u0, X: l.X, A: l.A });
+  });
+  if (R.score === "a") R.rows.push({ u0: R.rev - 2, X: RAID_LANES[1].X, A: RAID_LANES[1].A });
+}
 function stepRaid(t, dt) {
-  const R = RAID;
+  const R = RAID, st = STORY;
   if (R.at < 0 || R.done) return;
   if (R.u < 0) {
-    if (!built || STORY.clk < R.at || STORY.deadT >= 0) return;
-    R.u = 0; R.snd = raidDrone(); R.lanes = RAID_LANES.map(l => ({ next: 18 + l.ph * RAID_BOX }));
+    if (!built || st.clk < R.at || st.deadT >= 0 || st.boT >= 0) return;
+    if (R.post) { // after the blast, once it has all settled: the shutter up, the warning on, any knock at the door over
+      const B = BLAST;
+      if (!B.lifted || B.lock || t - B.t0 < BL_LIFT + 12 || (B.radAt > -1e8 && B.radT < -1e8) || (B.radT > -1e8 && t - B.radT < 6) ||
+        (DOOR.after && DOOR.step !== 9) || (st.knocked >= 0 && t - st.knocked < 12)) return;
+    } else if (st.knock && st.knocked < 0) { R.at = -1; return; } // a knock at the door is coming (an agent's): not this visit
+    R.u = 0; R.snd = raidDrone(); R.rev = 8 + Math.random() * 4; R.endAt = R.rev + RAID_SHOW;
+    R.beams = R.post ? RAID_BEAMS.slice(0, 2) : RAID_BEAMS; // after the blast only the lights on the near side are left
+    R.lanes = RAID_LANES.map(() => ({ next: 0, skipped: false }));
+    raidOpen(R);
     if (!planeC) planeC = raidCanvas();
     try { localStorage.setItem("sf.raid", "1"); } catch (e) {}
     if (!bomberSprite) buildBomberSprites();
   }
   R.u += dt;
-  if (R.u > 20 && R.u < R.len + 40 && !strike && nextStrikeT - t > 14) nextStrikeT = t + 6 + Math.random() * 8; // more lightning while they pass
+  // the sound comes first; the cloud thins enough to see them; at the end the weather takes them back, still coming
+  R.vis = smooth01((R.u - R.rev) / 6);
+  R.murk = smooth01((R.u - R.endAt) / 20);
+  const tail = smooth01((R.u - R.endAt - 20) / 14);
+  if (!R.wx && R.u >= R.endAt - 25) { R.wx = true; WX.state = "squall"; WX.target = Math.max(WX.target, 0.85); WX.tState = t; WX.dwell = 80; }
+  if (R.u > R.rev && R.murk < 0.5 && !strike && nextStrikeT - t > 14) nextStrikeT = t + 6 + Math.random() * 8; // more lightning while they pass
   RAID_LANES.forEach((l, i) => {
     const ln = R.lanes[i];
-    while (R.u >= ln.next && ln.next < R.len) { R.rows.push({ u0: ln.next, X: l.X, A: l.A }); ln.next += RAID_BOX; }
+    while (R.u >= ln.next) {
+      // now and then the near column misses a box (never two running) while the far ones go on
+      const skip = R.score === "a" && i === 1 && !ln.skipped && Math.random() < 0.2;
+      if (!skip) R.rows.push({ u0: ln.next, X: l.X, A: l.A });
+      ln.skipped = skip; ln.next += raidGap(i);
+    }
   });
   // each box starts just over the top of the window and goes away from you
   const zOf = r => 0.8 * r.A * RAID_KA / RAID_HZ + RAID_V * (R.u - r.u0);
   R.rows = R.rows.filter(r => zOf(r) - 0.5 < RAID_ZFAR + 1.5);
   let pres = 0, px = 0;
   for (const r of R.rows) { const z = zOf(r), w = Math.pow(Math.min(1, 3.2 / z), 2) * 9; pres += w; px += w * clamp(r.X / z, -1, 1); }
-  const build = Math.min(1, R.u / 24), p = clamp(pres / 24, 0, 1), now = ctx.currentTime;
-  R.snd.out.gain.setTargetAtTime(Math.max(0.0001, 0.05 + 0.08 * build + 0.17 * p), now, 0.8);
-  R.snd.lp.frequency.setTargetAtTime(220 + 900 * p + 120 * build, now, 0.8);
+  // no swell at the end: the drone sinks into the rain as they are lost in it
+  const build = Math.min(1, R.u / R.rev), p = clamp(pres / 24, 0, 1) * (1 - R.murk), fade = (1 - 0.7 * R.murk) * (1 - tail), now = ctx.currentTime;
+  R.snd.out.gain.setTargetAtTime(Math.max(0.0001, (0.05 + 0.08 * build + 0.17 * p) * fade), now, 0.8);
+  R.snd.lp.frequency.setTargetAtTime(220 + 900 * p + 120 * build * (1 - R.murk), now, 0.8);
   R.snd.pan.pan.setTargetAtTime(pres ? clamp(px / pres, -0.6, 0.6) : 0, now, 1.5);
-  R.lights = clamp((R.u - 6) / 8, 0, 1) * (R.u > R.len ? clamp(1 - (R.u - R.len - 40) / 15, 0, 1) : 1); // the searchlights come up, and go out after
-  if (R.u > R.len && !R.rows.length) {
-    R.done = true; R.lights = 0; R.snd.out.gain.setTargetAtTime(0.0001, now, 2.5);
-    const sd = R.snd; setTimeout(() => { for (const o of sd.oscs) try { o.stop(); } catch (e) {} }, 12000);
+  R.lights = clamp((R.u - 6) / 8, 0, 1) * (1 - 0.85 * R.murk) * (1 - tail); // the searchlights come up, and are lost in the rain
+  if (tail >= 1) { // nothing left to see or hear: only now does it stop
+    R.done = true; R.lights = 0; R.rows = []; R.snd.out.gain.setTargetAtTime(0.0001, now, 0.5);
+    const sd = R.snd; setTimeout(() => { for (const o of sd.oscs) try { o.stop(); } catch (e) {} }, 4000);
   }
   R.zOf = zOf;
+}
+let scudA = null;
+function scudAt(x, y) { // how thick the scud is in front of a point of the sky right now: 0 clear, 1 thick
+  if (!cloudC) return 0;
+  if (!scudA) { // its alpha, coarse, read once
+    const w = 128, h = 30, c = document.createElement("canvas"); c.width = w; c.height = h;
+    const cx = c.getContext("2d"); cx.drawImage(cloudC, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h).data, a = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3] / 255;
+    scudA = { w, h, a };
+  }
+  const { apW, apH } = L, cw = apW * 1.5, chh = apH * 0.36, cy0 = apH * 0.08, oc = RM ? 200 : (cloudPh * 4) % cw;
+  const v = (y - cy0) / chh * scudA.h - 0.5, u = ((((x + oc) % cw) + cw) % cw) / cw * scudA.w - 0.5;
+  if (v < -0.5 || v > scudA.h - 0.5) return 0;
+  const { w, h, a } = scudA, i0 = Math.floor(u), j0 = clamp(Math.floor(v), 0, h - 1), j1 = clamp(j0 + 1, 0, h - 1), fu = u - i0, fv = clamp(v - j0, 0, 1);
+  const ia = (i0 % w + w) % w, ib = (ia + 1) % w;
+  return (a[j0 * w + ia] * (1 - fu) + a[j0 * w + ib] * fu) * (1 - fv) + (a[j1 * w + ia] * (1 - fu) + a[j1 * w + ib] * fu) * fv;
 }
 function drawRaid(t, flashA) {
   const R = RAID;
@@ -1109,7 +1180,7 @@ function drawRaid(t, flashA) {
     b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.clearRect(0, 0, beamC.width, beamC.height); b.setTransform(beamC.sc, 0, 0, beamC.sc, 0, 0);
     b.globalCompositeOperation = "lighter";
     const yEnd = apH * 0.1;
-    for (let i = 0; i < RAID_BEAMS.length; i++) {
+    for (let i = 0; i < R.beams.length; i++) {
       const bm = raidBeam(i, t), len = (bm.y - yEnd) / -bm.dy, ex = bm.x + bm.dx * len, ey = bm.y + bm.dy * len;
       const w0 = apW * 0.004, w1 = apW * 0.032, nx = -bm.dy, ny = bm.dx;
       beams.push({ ...bm, len, w0, w1 });
@@ -1128,24 +1199,30 @@ function drawRaid(t, flashA) {
     if (sil) { b.globalCompositeOperation = "destination-out"; b.drawImage(sil, 0, 0, apW, apH); }
     g.save(); g.globalCompositeOperation = "lighter"; g.drawImage(beamC, 0, 0, apW, apH); g.restore();
   }
-  if (!R.rows.length || !bomberSprite) return;
+  const seen = (R.vis || 0) * (1 - (R.murk || 0));
+  if (!R.rows.length || !bomberSprite || seen < 0.002) return;
   const c = planeC.getContext("2d");
   c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.globalAlpha = 1; c.clearRect(0, 0, planeC.width, planeC.height);
   c.setTransform(planeC.sc, 0, 0, planeC.sc, 0, 0);
   const lit = Math.min(1, flashA * 3), list = [];
+  // the score's opening: the one near box is swallowed by cloud about twelve seconds after they are first seen
+  const du = R.u - R.rev, swallow = R.score === "a" ? smooth01((du - 9) / 4) * (1 - smooth01((du - 17) / 5)) : 0;
   for (const r of R.rows) {
     const z0 = R.zOf(r);
     let k = 0;
     for (const q of RAID_SQN) for (const v of RAID_VIC) {
       const z = z0 + q[2] + v[2], ph = r.u0 * 1.7 + k++ * 2.3;
       if (z < 0.5 || z > RAID_ZFAR + 1.5) continue;
-      const s = RAID_SPAN * apW / z;
+      const s = RAID_SPAN * apW / z, dr = RM ? 0 : 1;
       // each one holds its place in the box, but not perfectly: a slow drift and bob of its own
-      const x = cx + (r.X + q[0] + v[0]) * apW / z + Math.sin(t * 0.23 + ph) * s * 0.06;
-      const y = yH - (r.A + q[1] + v[1]) * RAID_KA * apH / z + Math.sin(t * 0.31 + ph * 1.4) * s * 0.04;
+      const x = cx + (r.X + q[0] + v[0]) * apW / z + dr * Math.sin(t * 0.23 + ph) * s * 0.06;
+      const y = yH - (r.A + q[1] + v[1]) * RAID_KA * apH / z + dr * Math.sin(t * 0.31 + ph * 1.4) * s * 0.04;
       if (x < -s || x > apW + s || y < -s || y > yH) continue;
       const fade = clamp((RAID_ZFAR + 1.5 - z) / 3, 0, 1); // into the murk at the far end
-      const a = fade * clamp(1.05 - (z - 3) / 11, 0.35, 0.95);
+      // lost in the scud where it is thick, unless the lightning shows it there
+      const hid = Math.max(0.85 * smooth01((scudAt(x, y) - 0.52) / 0.3), swallow * clamp((6.5 - z) / 2, 0, 1)) * (1 - lit);
+      const a = fade * clamp(1.05 - (z - 3) / 11, 0.35, 0.95) * seen * (1 - hid);
+      if (a < 0.004) continue;
       let hit = 0; // caught in a searchlight
       for (const bm of beams) {
         const px = x - bm.x, py = y - bm.y, along = px * bm.dx + py * bm.dy;
@@ -4076,6 +4153,14 @@ window.__sirens = {
   setWeather(k) { WX.k = k; WX.target = k; WX.state = k > 0.6 ? "squall" : "calm"; WX.tState = performance.now() / 1000; WX.dwell = 900; }
 };
 </script>
-<img src="https://chronoverify.com/v1/px?site=sirenfall&amp;p=/" alt="" width="1" height="1" style="position:absolute;left:-9999px" aria-hidden="true" loading="eager" decoding="async">
+<script>
+// the page-count pixel (cookieless), never from a local test
+if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+  const px = new Image(1, 1);
+  px.alt = ""; px.setAttribute("aria-hidden", "true"); px.style.cssText = "position:absolute;left:-9999px";
+  px.src = "https://chronoverify.com/v1/px?site=sirenfall&p=/";
+  document.body.appendChild(px);
+}
+</script>
 </body>
 </html>
