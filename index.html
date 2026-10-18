@@ -402,6 +402,8 @@ function hintAfterSound() {
   if (powered || h.classList.contains("gone")) return;
   h.classList.add("swap");
   setTimeout(() => { if (powered) return; h.textContent = breakerHint; h.classList.remove("swap"); h.classList.add("back"); }, 450);
+  // the breaker is a choice, not a chore: someone here for the rain alone is left the rain, the tips gone after twenty seconds
+  setTimeout(() => { h.classList.remove("back"); h.classList.add("gone"); document.getElementById("hp").classList.add("gone"); }, 20450);
 }
 function setVolume(v) {
   S.vol = Math.min(1, Math.max(0, v));
