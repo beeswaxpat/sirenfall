@@ -349,9 +349,12 @@ function build() {
   N.worldLp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 16000, Q: 0.5 });
   N.worldG = new GainNode(ctx, { gain: 1 });
   N.sirenVol = new GainNode(ctx, { gain: S.vol });
+  // everything that is not the siren passes one of two gates, so ONLY SIREN can close them: the weather and the world
+  // outside (still muffled by the shutter with the siren), and the room's own sounds
+  N.ambW = new GainNode(ctx, { gain: stormVol }); N.ambR = new GainNode(ctx, { gain: stormVol });
   N.dry.connect(N.sirenVol); N.wet.connect(N.sirenVol); N.sirenVol.connect(N.worldLp);
-  N.windVol.connect(N.worldLp);
-  N.worldLp.connect(N.worldG).connect(N.comp);
+  N.windVol.connect(N.ambW); N.ambW.connect(N.worldLp);
+  N.worldLp.connect(N.worldG).connect(N.comp); N.ambR.connect(N.comp);
   N.comp.connect(N.master).connect(N.ana).connect(ctx.destination);
 
   applyDistance(); applyRotation();
@@ -393,6 +396,17 @@ function ensureAudio() {
   if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); rumbleCatchUp(performance.now() / 1000); doorAsk(); }
 }
 let hintSwapped = false, breakerHint = "";
+// STORM: how loud everything that is not the siren is (rain, thunder, wind, the room). All the way down, the siren alone;
+// the picture goes on as before. Remembered per browser
+let stormVol = 1;
+try { const v = parseFloat(localStorage.getItem("sf.storm")); if (v >= 0 && v <= 1) stormVol = v; } catch (e) {}
+const STORM_HEAR = 0.15; // below this an agent's knock could not really be heard
+function setStorm(v) {
+  stormVol = clamp(v, 0, 1);
+  try { localStorage.setItem("sf.storm", stormVol.toFixed(2)); } catch (e) {}
+  if (built) { const now = ctx.currentTime; for (const n of [N.ambW, N.ambR]) n.gain.setTargetAtTime(stormVol, now, 0.05); }
+  if (stormVol < STORM_HEAR && DOOR.id && !DOOR.done) doorDone(false); // an agent's knock nobody can hear goes back in line
+}
 function hintAfterSound() {
   // the sound is up: the one thing left to ask is the breaker
   if (hintSwapped) return;
@@ -414,7 +428,7 @@ function playClack(on) {
   const src = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.09) });
   const f = new BiquadFilterNode(ctx, { type: "lowpass", frequency: on ? 1500 : 950, Q: 1.1 });
   const gn = new GainNode(ctx, { gain: 0.0001 });
-  src.connect(f).connect(gn).connect(N.comp);
+  src.connect(f).connect(gn).connect(N.ambR);
   const t0 = ctx.currentTime;
   gn.gain.setValueAtTime(0.22, t0);
   gn.gain.exponentialRampToValueAtTime(0.001, t0 + 0.09);
@@ -429,7 +443,7 @@ function startRain() {
   const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 240, Q: 0.5 });
   const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 5200, Q: 0.4 });
   N.rainG = new GainNode(ctx, { gain: 0.0001 });
-  src.connect(hp).connect(lp).connect(N.rainG).connect(N.worldLp);
+  src.connect(hp).connect(lp).connect(N.rainG).connect(N.ambW);
   src.start();
   N.rainG.gain.setTargetAtTime(powered ? 0.09 : 0.165, ctx.currentTime, 2.0);
   N.rainSrc = src;
@@ -464,7 +478,7 @@ function playThunder(mag) {
   const src = new AudioBufferSourceNode(ctx, { buffer: b });
   const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 500 + mag * 1700, Q: 0.5 });
   const gn = new GainNode(ctx, { gain: (powered ? 0.55 : 1) * (0.10 + 0.30 * mag) });
-  src.connect(lp).connect(gn).connect(N.worldLp);
+  src.connect(lp).connect(gn).connect(N.ambW);
   src.start();
 }
 function applyShutterAudio() {
@@ -485,24 +499,24 @@ function playSlam(k = 1) {
   thump.frequency.exponentialRampToValueAtTime(38, t0 + 0.22);
   const tg = new GainNode(ctx, { gain: 0.5 * k });
   tg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
-  thump.connect(tg).connect(N.comp);
+  thump.connect(tg).connect(N.ambR);
   thump.start(t0); thump.stop(t0 + 0.32);
   const body = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.3) });
   const blp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 750, Q: 0.7 });
   const bg = new GainNode(ctx, { gain: 0.4 * k });
   bg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
-  body.connect(blp).connect(bg).connect(N.comp);
+  body.connect(blp).connect(bg).connect(N.ambR);
   body.start(t0);
   const ring = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(0.7) });
   const rbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1250, Q: 14 });
   const rg = new GainNode(ctx, { gain: 0.14 * k });
   rg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.7);
-  ring.connect(rbp).connect(rg).connect(N.comp);
+  ring.connect(rbp).connect(rg).connect(N.ambR);
   ring.start(t0 + 0.01);
   if (slatBuf) for (const [d, v] of [[0.06, 1], [0.13, 0.7], [0.19, 0.5], [0.27, 0.32], [0.36, 0.2]]) { // the slats settle
     const src = new AudioBufferSourceNode(ctx, { buffer: slatBuf, playbackRate: 0.7 + Math.random() * 0.4 });
     const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: SLAT_F[Math.floor(Math.random() * SLAT_F.length)], Q: 8 }), gn = new GainNode(ctx, { gain: 0.13 * v * k });
-    src.connect(bp).connect(gn).connect(N.comp); src.start(t0 + d);
+    src.connect(bp).connect(gn).connect(N.ambR); src.start(t0 + d);
   }
 }
 const nbKeep = {}; // the blast's longer noise, made once so the moment itself never waits on it
@@ -577,7 +591,7 @@ function playBlastWave() {
     const src = new AudioBufferSourceNode(ctx, { buffer: boomBuf, playbackRate: 0.5 });
     const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 260, Q: 0.6 }), gn = new GainNode(ctx, { gain: BOOM_GAIN });
     gn.gain.setValueAtTime(BOOM_GAIN, t0 + 2.5); gn.gain.exponentialRampToValueAtTime(0.001, t0 + 7.5);
-    src.connect(lp).connect(gn).connect(N.worldLp); src.start(t0, boomOff); src.stop(t0 + 7.6);
+    src.connect(lp).connect(gn).connect(N.ambW); src.start(t0, boomOff); src.stop(t0 + 7.6);
     // the part small speakers can carry: the same boom, higher, as the steel and the walls take it
     const mid = new AudioBufferSourceNode(ctx, { buffer: boomBuf, playbackRate: 0.8 });
     const mbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 520, Q: 0.8 }), mg = new GainNode(ctx, { gain: MID_GAIN });
@@ -588,7 +602,7 @@ function playBlastWave() {
     const at = t0 + 0.3, src = new AudioBufferSourceNode(ctx, { buffer: rollBuf, playbackRate: 0.6 });
     const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 200, Q: 0.6 }), gn = new GainNode(ctx, { gain: ROLL_GAIN });
     gn.gain.setValueAtTime(ROLL_GAIN, at + 2.2); gn.gain.exponentialRampToValueAtTime(0.001, at + 7.2);
-    src.connect(lp).connect(gn).connect(N.worldLp); src.start(at, rollOff); src.stop(at + 7.3);
+    src.connect(lp).connect(gn).connect(N.ambW); src.start(at, rollOff); src.stop(at + 7.3);
   }
   const out = interiorOut(0), nb = noiseKept(4.8);
   const sub = new OscillatorNode(ctx, { frequency: 48 }), sg = new GainNode(ctx, { gain: 0.0001 });
@@ -606,7 +620,7 @@ function playBlastWave() {
     rl.connect(rlg).connect(ram.gain);
     rog.gain.setValueAtTime(0.0001, t0 + 0.1); rog.gain.exponentialRampToValueAtTime(ROAR2_GAIN, t0 + 0.9);
     rog.gain.exponentialRampToValueAtTime(ROAR2_GAIN * 0.3, t0 + 3); rog.gain.exponentialRampToValueAtTime(0.0005, t0 + 7);
-    ro.connect(rol).connect(ram).connect(rog).connect(N.worldLp); ro.start(t0 + 0.1, Math.random() * 3); rl.start(t0); ro.stop(t0 + 7.1); rl.stop(t0 + 7.1);
+    ro.connect(rol).connect(ram).connect(rog).connect(N.ambW); ro.start(t0 + 0.1, Math.random() * 3); rl.start(t0); ro.stop(t0 + 7.1); rl.stop(t0 + 7.1);
   }
   const rum = new AudioBufferSourceNode(ctx, { buffer: nb }), rlp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 110, Q: 0.7 }), rgn = new GainNode(ctx, { gain: 0.0001 });
   const rumLen = boomBuf ? 4 : 5; // no boom file yet: the structure carries the whole weight of it
@@ -676,7 +690,7 @@ function startRoar() {
   const sw = new OscillatorNode(ctx, { frequency: 0.07 }), swg = new GainNode(ctx, { gain: 0.025 });
   sw.connect(swg).connect(gn.gain); sw.start(t0);
   gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(ROAR_GAIN, t0 + 14);
-  src.connect(lp).connect(gn).connect(N.worldLp); src.start(t0);
+  src.connect(lp).connect(gn).connect(N.ambW); src.start(t0);
 }
 const ROAR_GAIN = 0.1;
 let clickBuf = null, geigerOut = null, geigerNext = 0;
@@ -707,7 +721,7 @@ function playTick() {
   const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1600, Q: 2 });
   const gn = new GainNode(ctx, { gain: 0.07 });
   gn.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-  s.connect(bp).connect(gn).connect(N.comp);
+  s.connect(bp).connect(gn).connect(N.ambR);
   s.start(); s.stop(ctx.currentTime + 0.06);
 }
 function playSwash() {
@@ -717,14 +731,14 @@ function playSwash() {
   bp.frequency.setTargetAtTime(1500, ctx.currentTime, 0.35);
   const gn = new GainNode(ctx, { gain: 0.05 });
   gn.gain.setTargetAtTime(0.0001, ctx.currentTime + 0.45, 0.15);
-  src.connect(bp).connect(gn).connect(N.comp);
+  src.connect(bp).connect(gn).connect(N.ambR);
   src.start(); src.stop(ctx.currentTime + 0.7);
 }
 
 /* ---- the door: knocks, the monitor's speaker; interior sounds, never muffled by the shutter ---- */
 function interiorOut(pan) {
   const p2 = new StereoPannerNode(ctx, { pan });
-  p2.connect(N.comp);
+  p2.connect(N.ambR);
   return p2;
 }
 let knockIR = null, knockNB = null;
@@ -827,7 +841,7 @@ function playBrownout() {
   const th = new OscillatorNode(ctx, { frequency: 72 }), thg = new GainNode(ctx, { gain: 0.0001 }); // the relay drops out behind the panel
   th.frequency.setValueAtTime(72, at + 0.06); th.frequency.exponentialRampToValueAtTime(40, at + 0.24);
   thg.gain.setValueAtTime(0.0001, at + 0.06); thg.gain.exponentialRampToValueAtTime(0.35, at + 0.065); thg.gain.exponentialRampToValueAtTime(0.0005, at + 0.26);
-  th.connect(thg).connect(N.comp); th.start(at + 0.06); th.stop(at + 0.3);
+  th.connect(thg).connect(N.ambR); th.start(at + 0.06); th.stop(at + 0.3);
   burst(at + 0.06, 500, "lowpass", 0.28, 0.1);
 }
 function killPower(t) {
@@ -969,6 +983,7 @@ function doorPost(path, body, leaving) {
 function doorAsk() {
   if (!DOOR.on || DOOR.asked) return;
   DOOR.asked = true;
+  if (stormVol < STORM_HEAR) return; // the room's sounds are down: an agent's knock waits for someone who can hear it
   const ac = typeof AbortController === "function" ? new AbortController() : null;
   if (ac) setTimeout(() => ac.abort(), 3000);
   fetch("/door/claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", signal: ac ? ac.signal : undefined })
@@ -988,7 +1003,7 @@ function doorDone(heard, leaving) { // heard means the knock played with the sou
   DOOR.done = true;
   doorPost(heard ? "/door/heard" : "/door/release", { id: DOOR.id, hold: DOOR.hold }, leaving);
 }
-const heardNow = () => !!ctx && ctx.state === "running" && document.visibilityState === "visible";
+const heardNow = () => !!ctx && ctx.state === "running" && document.visibilityState === "visible" && stormVol >= STORM_HEAR;
 function doorHeardLater() {
   // heard means it played to someone who was there: in front with the sound running when it played, and still in front
   // 5 s after the last knock (the three knocks take about 1.3 s); a page closed before then gives the knock back
@@ -1053,7 +1068,7 @@ function raidDrone() {
   const nz = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.3), loop: true });
   const nbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 340, Q: 0.7 }), ng = new GainNode(ctx, { gain: 0.06 });
   nz.connect(nbp).connect(ng).connect(sum); nz.start(t0); oscs.push(nz);
-  sum.connect(shape).connect(lp).connect(pan).connect(out).connect(N.worldLp);
+  sum.connect(shape).connect(lp).connect(pan).connect(out).connect(N.ambW);
   return { out, lp, pan, oscs };
 }
 // they come from behind the shelter: the drone first, then box after box out over the top of the window, already overhead, and
@@ -1314,7 +1329,7 @@ function computeLayout() {
   const sillY = apY + apH;
   const cy = (sillY + h) / 2 + h * 0.045;
   const arm = clamp(m * 0.105, 42, 74);
-  const knobR = Math.min(clamp(m * 0.058, 20, 40), apW * 0.05); // upright tablets: the knobs keep a gap between them
+  const knobR = Math.min(clamp(m * 0.058, 20, 40), apW * 0.044); // upright tablets: the knobs keep a gap between them
   // short landscape screens: keep the console label row clear of the fixed
   // disclosure line, and keep the hint lines off the console face
   const labelDrop = Math.max(knobR + 16, arm * 0.52);
@@ -1326,12 +1341,13 @@ function computeLayout() {
   return {
     w, h, portrait, apX, apY, apW, apH, sillY,
     lever: { x: apX + apW * 0.845, y: cyC, arm },
-    shutter: { x: apX + apW * 0.665, y: cyC, arm: arm * 0.72 },
-    vol: { x: apX + apW * 0.135, y: cyC, r: knobR },
-    dist: { x: apX + apW * 0.275, y: cyC, r: knobR },
-    dim: { x: apX + apW * 0.40, y: cyC, r: knobR * 0.85 },
-    radio: { x: apX + apW * 0.505, y: cyC },
-    wipe: { x: apX + apW * 0.578, y: cyC },
+    shutter: { x: apX + apW * 0.68, y: cyC, arm: arm * 0.72 },
+    vol: { x: apX + apW * 0.115, y: cyC, r: knobR },
+    dist: { x: apX + apW * 0.225, y: cyC, r: knobR },
+    storm: { x: apX + apW * 0.335, y: cyC, r: knobR },
+    dim: { x: apX + apW * 0.435, y: cyC, r: knobR * 0.85 },
+    radio: { x: apX + apW * 0.53, y: cyC },
+    wipe: { x: apX + apW * 0.6, y: cyC },
     hintY
   };
 }
@@ -2126,7 +2142,7 @@ function buildFrame() {
   }
   x.fillStyle = "#8a7f6d"; x.textAlign = "center";
   const labelY = py + Math.max(p.vol.r + 16, p.lever.arm * 0.52);
-  const LABS = [["VOLUME", p.vol.x], ["DISTANCE", p.dist.x], ["LAMP", p.dim.x], ["CAMERA", p.radio.x], ["WIPE", p.wipe.x], ["SHUTTER", p.shutter.x], ["BREAKER", lx]];
+  const LABS = [["SIREN", p.vol.x], ["DISTANCE", p.dist.x], ["STORM", p.storm.x], ["LAMP", p.dim.x], ["CAMERA", p.radio.x], ["WIPE", p.wipe.x], ["SHUTTER", p.shutter.x], ["BREAKER", lx]];
   let fpx = p.portrait ? 7.5 : 9, lsp = p.portrait ? 1 : 2, lws = [];
   for (let pass = 0; pass < 14; pass++) { // narrow screens: less letter spacing first, then a smaller size
     try { x.letterSpacing = "0px"; } catch (e) {}
@@ -3837,6 +3853,15 @@ function leverHandlePos() {
   const a = leverTh * Math.PI / 180;
   return { x: L.lever.x + Math.sin(a) * L.lever.arm, y: L.lever.y - Math.cos(a) * L.lever.arm };
 }
+// the knobs, all one way: each reads and sets a fraction from 0 (fully left) to 1 (fully right) of its 270 degree sweep
+const KNOBS = {
+  vol: { get: () => S.vol, set: f => setVolume(f) },
+  dist: { get: () => (S.dist - 150) / 2650, set: f => { S.dist = 150 + 2650 * clamp(f, 0, 1); if (built) applyDistance(); } },
+  storm: { get: () => stormVol, set: f => setStorm(f) },
+  dim: { get: () => (lampDim - 0.15) / 0.85, set: f => { lampDim = 0.15 + 0.85 * clamp(f, 0, 1); } }
+};
+const KNOB_KEYS = Object.keys(KNOBS);
+const knobAngle = (k, px, py) => Math.atan2(px - L[k].x, -(py - L[k].y)) * 180 / Math.PI; // 0 straight up, clockwise positive
 function hitTest(px, py) {
   if (!L) return null; // pointer events can arrive before the first layout on a hidden tab
   const hp = leverHandlePos();
@@ -3846,7 +3871,7 @@ function hitTest(px, py) {
   const zone = (k, d) => { if (d < 1 && d < bestD) { best = k; bestD = d; } };
   zone("lever", Math.hypot(px - L.lever.x, py - L.lever.y) / (L.lever.arm * 1.05));
   zone("shutter", Math.hypot(px - L.shutter.x, py - L.shutter.y) / (L.shutter.arm * 1.1));
-  for (const k of ["vol", "dist", "dim"]) zone(k, Math.hypot(px - L[k].x, py - L[k].y) / (L[k].r + 16));
+  for (const k of KNOB_KEYS) zone(k, Math.hypot(px - L[k].x, py - L[k].y) / (L[k].r + 18));
   zone("radio", Math.max(Math.abs(px - L.radio.x) / 23, Math.abs(py - L.radio.y) / 17));
   zone("wipe", Math.hypot(px - L.wipe.x, py - L.wipe.y) / 14);
   if (best) return best;
@@ -3861,8 +3886,12 @@ cv.addEventListener("pointerdown", e => {
   const k = hitTest(e.clientX, e.clientY);
   if (!k) return;
   cv.setPointerCapture(e.pointerId);
-  const v0 = k === "vol" ? S.vol : k === "dist" ? S.dist : k === "dim" ? lampDim : 0;
-  grab = { kind: k, x0: e.clientX, y0: e.clientY, v0, th0: leverTh, moved: 0 };
+  grab = { kind: k, x0: e.clientX, y0: e.clientY, th0: leverTh, moved: 0 };
+  if (KNOBS[k]) { // grabbed by its rim it turns like a knob; grabbed in the middle, drag up or right for more
+    grab.f0 = KNOBS[k].get(); grab.turn = 0;
+    grab.rim = Math.hypot(e.clientX - L[k].x, e.clientY - L[k].y) > L[k].r * 0.5;
+    grab.a = knobAngle(k, e.clientX, e.clientY);
+  }
   document.body.classList.add("grabbing");
 });
 // some phones only let the sound start as the finger lifts
@@ -3875,11 +3904,17 @@ cv.addEventListener("pointermove", e => {
   }
   const dy = e.clientY - grab.y0;
   grab.moved = Math.max(grab.moved, Math.abs(dy), Math.abs(e.clientX - grab.x0));
-  if ((grab.kind === "vol" || grab.kind === "dist" || grab.kind === "dim") && grab.moved < 5) return;
+  const kn = KNOBS[grab.kind];
+  if (kn) {
+    if (grab.rim) { // follow the hand round, one turn of the hand for one turn of the knob
+      const a = knobAngle(grab.kind, e.clientX, e.clientY);
+      let d = a - grab.a; if (d > 180) d -= 360; if (d < -180) d += 360;
+      grab.a = a; grab.turn += d;
+      if (grab.moved >= 3) kn.set(clamp(grab.f0 + grab.turn / 270, 0, 1));
+    } else if (grab.moved >= 3) kn.set(clamp(grab.f0 + (e.clientX - grab.x0 - dy) / 200, 0, 1));
+    return;
+  }
   if (grab.kind === "lever") leverTh = clamp(grab.th0 + dy * 0.85, ON_TH, OFF_TH);
-  else if (grab.kind === "vol") setVolume(grab.v0 - dy / 160);
-  else if (grab.kind === "dist") { S.dist = clamp(grab.v0 - dy * 2650 / 160, 150, 2800); if (built) applyDistance(); }
-  else if (grab.kind === "dim") lampDim = clamp(grab.v0 - dy * 0.85 / 160, 0.15, 1);
 });
 function endGrab(e) {
   if (!grab) return;
@@ -3903,12 +3938,11 @@ function endGrab(e) {
     playSwash();
   } else if (grab.kind === "crt" && grab.moved < 7) {
     snapshot();
-  } else if ((grab.kind === "vol" || grab.kind === "dist" || grab.kind === "dim") && grab.moved < 12) {
-    // a tap steps the knob: right side up, left side down
-    const up = grab.x0 > L[grab.kind].x;
-    if (grab.kind === "vol") setVolume(S.vol + (up ? 0.05 : -0.05));
-    else if (grab.kind === "dist") { S.dist = clamp(S.dist + (up ? 150 : -150), 150, 2800); if (built) applyDistance(); }
-    else lampDim = clamp(lampDim + (up ? 0.1 : -0.1), 0.15, 1);
+  } else if (KNOBS[grab.kind] && grab.moved < 6) {
+    // a tap on the rim turns the pointer to where you tapped; a tap in the middle steps it, right side up, left side down
+    const kn = KNOBS[grab.kind];
+    if (grab.rim) kn.set(clamp((knobAngle(grab.kind, grab.x0, grab.y0) + 135) / 270, 0, 1));
+    else kn.set(clamp(kn.get() + (grab.x0 > L[grab.kind].x ? 0.1 : -0.1), 0, 1));
     playTick();
   }
   grab = null;
@@ -3919,19 +3953,13 @@ cv.addEventListener("pointerup", endGrab);
 cv.addEventListener("pointercancel", endGrab);
 cv.addEventListener("wheel", e => {
   const k = hitTest(e.clientX, e.clientY);
-  if (k !== "vol" && k !== "dist" && k !== "dim") return;
+  if (!KNOBS[k]) return;
   e.preventDefault();
-  const up = e.deltaY < 0;
-  if (k === "vol") setVolume(S.vol + (up ? 0.05 : -0.05));
-  else if (k === "dist") { S.dist = clamp(S.dist + (up ? 100 : -100), 150, 2800); if (built) applyDistance(); }
-  else lampDim = clamp(lampDim + (up ? 0.06 : -0.06), 0.15, 1);
+  KNOBS[k].set(clamp(KNOBS[k].get() + (e.deltaY < 0 ? 0.05 : -0.05), 0, 1));
 }, { passive: false });
 cv.addEventListener("dblclick", e => {
   const k = hitTest(e.clientX, e.clientY);
-  if (k === "vol") setVolume(0.85);
-  else if (k === "dist") { S.dist = 450; if (built) applyDistance(); }
-  else if (k === "dim") lampDim = 1;
-  else if (!k) toggleFullscreen();
+  if (!k) toggleFullscreen();
 });
 
 /* ---------- fullscreen, idle cursor, snapshot ---------- */
@@ -4114,6 +4142,7 @@ function frame(now) {
   if (flashA > 0.01) { g.fillStyle = "rgba(180,200,255," + (flashA * 0.10).toFixed(3) + ")"; g.fillRect(0, 0, W, H); }
   drawKnobAt(L.vol, S.vol, "vol");
   drawKnobAt(L.dist, (S.dist - 150) / 2650, "dist");
+  drawKnobAt(L.storm, stormVol, "storm");
   drawKnobAt(L.dim, (lampDim - 0.15) / 0.85, "dim");
   drawShutterLever();
   drawRadio(t);
