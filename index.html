@@ -1105,7 +1105,7 @@ function blimpInit() { // tables for the hull and the rain in the beam, made onc
   blNx = new Float32Array(NG); blNy = new Float32Array(NG); blNz = new Float32Array(NG);
   blPal = []; for (let k = 0; k < 72; k++) { const v = k * 0.6; blPal.push("rgb(" + Math.round(v * 0.92) + "," + Math.round(v) + "," + Math.round(v * 1.28 + 0.5) + ")"); }
   blLn = []; for (let k = 0; k < 24; k++) blLn.push("rgba(150,168,204," + (k / 23 * 0.9).toFixed(3) + ")");
-  const N = 84; blSa = new Float32Array(N); blSb = new Float32Array(N); blSp = new Float32Array(N); blSv = new Float32Array(N); blSl = new Float32Array(N);
+  const N = 120; blSa = new Float32Array(N); blSb = new Float32Array(N); blSp = new Float32Array(N); blSv = new Float32Array(N); blSl = new Float32Array(N);
   for (let i = 0; i < N; i++) { blSa[i] = hr(); blSb[i] = hr() * 2 - 1; blSp[i] = hr(); blSv[i] = 0.9 + hr() * 0.9; blSl[i] = 0.6 + hr() * 1.0; }
   // its path, once: over the roof lengthwise, crossing in front of the window close and slow, then turning away over the city
   const n = 820; blPX = new Float32Array(n); blPZ = new Float32Array(n); blPP = new Float32Array(n);
@@ -1232,7 +1232,9 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   const B = BLIMP, { apW, apH } = L, k = B.beamI, bc = B.bc, b = bc.getContext("2d"), sc = bc.sc;
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.globalAlpha = 1; b.clearRect(0, 0, bc.width, bc.height); b.setTransform(sc, 0, 0, sc, 0, 0);
   // the lamp and where the beam lands, as points in space
-  let x0 = B.lx, y0 = B.ly, z0 = B.lz, x1 = B.tx, y1 = B.ty, z1 = B.tz;
+  // the shaft does not stop where it lands: lit rain and haze carry it on past the ground, thinner and thinner, until it is gone
+  const EX = 0.9;
+  let x0 = B.lx, y0 = B.ly, z0 = B.lz, x1 = B.tx + (B.tx - B.lx) * EX, y1 = B.ty + (B.ty - B.ly) * EX, z1 = B.tz + (B.tz - B.lz) * EX;
   const dist = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0)), r0 = 2.5;
   let s0 = 0, s1 = dist;
   if (z0 < BL_ZN && z1 < BL_ZN) return;
@@ -1240,23 +1242,30 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   else if (z1 < BL_ZN) { const q = (BL_ZN - z1) / (z0 - z1); x1 += (x0 - x1) * q; y1 += (y0 - y1) * q; z1 = BL_ZN; s1 = dist * (1 - q); }
   const lx = bCX + bFF * x0 / z0, ly = bHZ - bFF * y0 / z0, ex = bCX + bFF * x1 / z1, ey = bHZ - bFF * y1 / z1;
   let ax = ex - lx, ay = ey - ly; const al = Math.hypot(ax, ay) + 1e-3; ax /= al; ay /= al;
-  const nx = -ay, ny = ax, NS = 8;
+  const nx = -ay, ny = ax, NS = 10;
+  const px0 = bCX + bFF * B.tx / Math.max(B.tz, BL_ZN), py0 = bHZ - bFF * B.ty / Math.max(B.tz, BL_ZN); // where it lands
+  const ft = B.tz > BL_ZN * 2 ? clamp(((px0 - lx) * ax + (py0 - ly) * ay) / al, 0.2, 0.92) : 0.55; // how far along the shaft the ground is
   // the ruins the pool falls on: their own picture, lit, only where the city stands
-  const pool = B.tz > BL_ZN * 2 && ex > -apW * 0.5 && ex < apW * 1.5 && ey < apH * 1.4;
+  const pool = B.tz > BL_ZN * 2 && px0 > -apW * 0.5 && px0 < apW * 1.5 && py0 < apH * 1.4;
   const sil = B.sil;
   if (pool) {
-    const rp = bFF * (r0 + dist * BL_TA * 1.1) / z1, ry = rp * clamp(1.7 * -BL_GY / z1, 0.12, 0.9), pk = k * (0.55 + 0.45 * clamp(150 / B.rho, 0, 1));
-    b.save(); b.translate(ex, ey); b.scale(1, ry / rp);
+    const rp = bFF * (r0 + dist / (1 + EX) * BL_TA * 1.1) / B.tz, ry = rp * clamp(1.7 * -BL_GY / B.tz, 0.12, 0.9), pk = k * (0.55 + 0.45 * clamp(150 / B.rho, 0, 1));
+    b.save(); b.translate(px0, py0); b.scale(1, ry / rp);
     const pg = b.createRadialGradient(0, 0, 0, 0, 0, rp);
     pg.addColorStop(0, "rgba(255,255,255," + pk.toFixed(3) + ")"); pg.addColorStop(0.55, "rgba(255,255,255," + (pk * 0.5).toFixed(3) + ")"); pg.addColorStop(1, "rgba(255,255,255,0)");
     b.fillStyle = pg; b.fillRect(-rp, -rp, rp * 2, rp * 2); b.restore();
     b.globalCompositeOperation = "source-in"; b.drawImage(cityC, 0, 0, apW, apH); // the city's own picture inside the pool
     b.globalCompositeOperation = "lighter"; b.drawImage(bc, 0, 0, apW, apH); b.drawImage(bc, 0, 0, apW, apH); // brighter, three times over
-    b.save(); b.translate(ex, ey); b.scale(1, ry / rp);
+    b.save(); b.translate(px0, py0); b.scale(1, ry / rp);
     const pg2 = b.createRadialGradient(0, 0, 0, 0, 0, rp);
     pg2.addColorStop(0, "rgba(176,190,222," + (pk * 0.34).toFixed(3) + ")"); pg2.addColorStop(1, "rgba(176,190,222,0)");
     b.fillStyle = pg2; b.fillRect(-rp, -rp, rp * 2, rp * 2); b.restore(); // and a flat wash of wet light
     if (sil) { b.globalCompositeOperation = "destination-in"; b.drawImage(sil, 0, 0, apW, apH); }
+    b.globalCompositeOperation = "lighter"; // and a wide haze round the pool: the light dies out slowly in the wet air, not at an edge
+    b.save(); b.translate(px0, py0); b.scale(1, Math.max(0.3, ry / rp));
+    const pg3 = b.createRadialGradient(0, 0, 0, 0, 0, rp * 3.2);
+    pg3.addColorStop(0, "rgba(168,184,220," + (pk * 0.2).toFixed(3) + ")"); pg3.addColorStop(0.4, "rgba(150,168,206," + (pk * 0.08).toFixed(3) + ")"); pg3.addColorStop(1, "rgba(140,160,200,0)");
+    b.fillStyle = pg3; b.fillRect(-rp * 3.2, -rp * 3.2, rp * 6.4, rp * 6.4); b.restore();
   }
   b.globalCompositeOperation = "lighter";
   // the shaft: wider as it goes (the beam spreads), brightest at the lamp, thinning toward the ground
@@ -1268,19 +1277,23 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   }
   b.closePath();
   const gr = b.createLinearGradient(lx, ly, ex, ey), sh = k * (0.92 + 0.08 * Math.sin(t * 7.1));
-  gr.addColorStop(0, "rgba(206,220,250," + (0.34 * sh).toFixed(3) + ")"); gr.addColorStop(0.45, "rgba(200,214,246," + (0.17 * sh).toFixed(3) + ")"); gr.addColorStop(1, "rgba(196,210,240," + (0.09 * sh).toFixed(3) + ")");
+  gr.addColorStop(0, "rgba(206,220,250," + (0.34 * sh).toFixed(3) + ")"); gr.addColorStop(ft * 0.5, "rgba(200,214,246," + (0.18 * sh).toFixed(3) + ")"); gr.addColorStop(ft, "rgba(196,210,240," + (0.1 * sh).toFixed(3) + ")"); gr.addColorStop(Math.min(1, ft + (1 - ft) * 0.5), "rgba(190,204,236," + (0.045 * sh).toFixed(3) + ")"); gr.addColorStop(1, "rgba(186,200,232,0)");
   b.fillStyle = gr; b.fill();
   // rain in the beam: every streak caught in it shows, falling through; a few hundred drops that are nowhere else
   b.save(); b.clip();
-  b.lineCap = "round"; b.strokeStyle = "rgba(236,244,255," + (0.62 * sh).toFixed(3) + ")";
+  b.lineCap = "round"; b.lineWidth = 1;
   const dxr = -0.16, N = blSa.length, span = al * 0.55;
-  b.beginPath();
-  for (let i = 0; i < N; i++) {
-    const f = blSa[i], qz = z0 + (z1 - z0) * f, hw = bFF * (r0 + (s0 + (s1 - s0) * f) * BL_TA) / qz, cx = lx + (ex - lx) * f + nx * hw * blSb[i] * 1.1, cy = ly + (ey - ly) * f + ny * hw * blSb[i] * 1.1;
-    const ph = ((t * blSv[i] * 0.55 + blSp[i]) % 1) - 0.5, ln = clamp(bFF * 3.2 * blSl[i] / qz, 2, 26), px = cx + dxr * ph * span, py = cy + ph * span;
-    b.moveTo(px, py); b.lineTo(px + dxr * ln, py - ln);
+  for (let pass = 0; pass < 2; pass++) { // streaks up to the ground, then fewer and fainter beyond it
+    b.strokeStyle = "rgba(236,244,255," + ((pass ? 0.26 : 0.62) * sh).toFixed(3) + ")"; b.beginPath();
+    for (let i = 0; i < N; i++) {
+      const f = blSa[i]; if ((f > ft) !== (pass === 1) || (pass && f > 0.93)) continue;
+      const qz = z0 + (z1 - z0) * f, hw = bFF * (r0 + (s0 + (s1 - s0) * f) * BL_TA) / qz, cx = lx + (ex - lx) * f + nx * hw * blSb[i] * 1.1, cy = ly + (ey - ly) * f + ny * hw * blSb[i] * 1.1;
+      const ph = ((t * blSv[i] * 0.55 + blSp[i]) % 1) - 0.5, ln = clamp(bFF * 3.2 * blSl[i] / qz, 2, 26), px = cx + dxr * ph * span, py = cy + ph * span;
+      b.moveTo(px, py); b.lineTo(px + dxr * ln, py - ln);
+    }
+    b.stroke();
   }
-  b.lineWidth = 1; b.stroke(); b.restore();
+  b.restore();
   // the lamp's own glow in the rain around it
   if (lx > -90 && lx < apW + 90 && ly > -90 && ly < apH + 60) {
     const gl = clamp(bFF * 34 / z0, 6, 140), lg = b.createRadialGradient(lx, ly, 0, lx, ly, gl);
