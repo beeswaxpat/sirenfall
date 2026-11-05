@@ -1050,10 +1050,11 @@ let planeC = null;
    the upper third, too big to see an end of. The room goes darker as it blocks the sky; the lightning shows its whole outline for a
    split second. A searchlight on its belly feels across the ruins through the rain, once crosses the window (the room flashes cold
    for a second) and moves on, never stopping on you. It drifts away over the city into the murk, the engines fading last.
-   Local test: ?blimp (4 s after the sound comes on) or ?blimp=N; on the live site only with &evtest=1. Natural odds: 1 in 6 return
-   visits, only once NEW_EVENTS_LIVE is true; never with the bomb, the raid, the power failure or a knock; never two visits running. */
-const BLIMP_ODDS = 1 / 6, BL_CUT = 0.45, BL_GAIN = 0.075; // odds of a return visit; how far a tower in front cuts the beam (0 none, 1 hides it); loudness of the engines (far under the bombers: the quiet is the point)
-const BLIMP = { at: -1, u: -1, done: false, snd: null, c: null, bc: null, sil: null, silL: null, init: false, dk: 0, F: 0, pump: 0, lamp: 0, beamI: 0, sx: 0, sy: 0, fl1: false, fl2: false, creakAt: 0, whAt: 40, gl: new Float32Array(22), gk: 0, gf: [0, 0], sizzled: false, tc: null, dd: 500, vis: 0, murk: 0, rumble: 0, prevDd: -1, dopT: 0, lx: 0, ly: 0, lz: 0, tx: 0, ty: 0, tz: 0, lampOn: false, rho: 100, spill: { x: 0, y: 0, k: 0, r: 0 } };
+   Local test: ?blimp (4 s after the sound comes on) or ?blimp=N; on the live site only with &evtest=1. Natural odds: about 1 in 6
+   return visits (0.6 of those with no bomb, raid, power failure or knock; the broadcast then waits until it has gone), only once
+   NEW_EVENTS_LIVE is true; never two visits running. Two lights far off in the city find its belly (the first early, the second as it recedes). */
+const BLIMP_ODDS_ELIG = 0.6, BL_CUT = 0.45, BL_GAIN = 0.062; // odds on a return visit that is free of the bomb, the raid, the power failure and a knock (about 1 in 6 of all return visits); how far a tower in front cuts the beam (0 none, 1 hides it); loudness of the engines (far under the bombers: the quiet is the point)
+const BLIMP = { at: -1, u: -1, done: false, snd: null, c: null, bc: null, sil: null, silL: null, init: false, dk: 0, F: 0, pump: 0, lamp: 0, beamI: 0, sx: 0, sy: 0, fl1: false, fl2: false, creakAt: 0, whAt: 40, gl: new Float32Array(22), gk: 0, gf: [0, 0], sizzled: false, hush: 0, cityS: null, cityL: null, silH: null, silHK: null, silS: null, silK: null, rg: null, rgL: null, hf: 0, hl: -9, hr: false, tc: null, dd: 500, vis: 0, murk: 0, rumble: 0, prevDd: -1, dopT: 0, lx: 0, ly: 0, lz: 0, tx: 0, ty: 0, tz: 0, lampOn: false, rho: 100, spill: { x: 0, y: 0, k: 0, r: 0 } };
 {
   const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
   const m = (lh || /[?&]evtest=1\b/.test(q)) ? q.match(/[?&]blimp(?:=(\d+))?\b/) : null;
@@ -1064,11 +1065,11 @@ const BLIMP = { at: -1, u: -1, done: false, snd: null, c: null, bc: null, sil: n
   } else {
     let last = "0";
     try { last = localStorage.getItem("sf.blimp") || "0"; localStorage.setItem("sf.blimp", "0"); } catch (e) {}
-    if (NEW_EVENTS_LIVE && last !== "1" && BLAST.at < 0 && BLAST.jump < 0 && RAID.at < 0 && !STORY.knock && !STORY.card && !STORY.blackout && Math.random() < BLIMP_ODDS) BLIMP.at = 10 + Math.random() * 10;
+    if (NEW_EVENTS_LIVE && last !== "1" && BLAST.at < 0 && BLAST.jump < 0 && RAID.at < 0 && !STORY.knock && !STORY.blackout && Math.random() < BLIMP_ODDS_ELIG) { BLIMP.at = 10 + Math.random() * 10; STORY.cardAt = Math.max(STORY.cardAt, BLIMP.at + 175); } // the broadcast waits until it has gone
   }
 }
 // the hull: length, radius, rings, girders around, rib lines, height of its middle above the eye, the ground below the eye, the beam's half angle
-const BL_L = 640, BL_R = 52, BL_NR = 34, BL_NG = 26, BL_NB = 60, BL_YC = 84, BL_GY = -12, BL_TA = 0.062, BL_ZN = 8, BL_FK = 0.95, BL_UC = 77;
+const BL_L = 640, BL_R = 52, BL_NR = 52, BL_NG = 36, BL_NB = 60, BL_YC = 84, BL_GY = -12, BL_TA = 0.062, BL_ZN = 8, BL_FK = 0.95, BL_UC = 77;
 // where the searchlight is aimed on the ground: [seconds, bearing in degrees, range in meters]. It feels across the ruins from the left,
 // slows and swings in toward the shelter, crosses the window at BL_UC, goes on out of sight, and comes back far off, thin, searching
 const BL_KU = [47, 55, 64, 71, 75.5, BL_UC, 80.5, 86, 93, 101, 112, 132, 155, 180];
@@ -1101,7 +1102,7 @@ function blimpInit() { // tables for the hull and the rain in the beam, made onc
   for (let k = 0; k < NB; k++) { const u = k / (NB - 1); blSB[k] = BL_L / 2 - u * BL_L; blRB[k] = BL_R * blProf(u); }
   blSn = new Float32Array(NG); blCs = new Float32Array(NG);
   for (let j = 0; j < NG; j++) { blSn[j] = Math.sin(j * 2 * Math.PI / NG); blCs[j] = Math.cos(j * 2 * Math.PI / NG); }
-  blTone = new Float32Array(NR * NG); for (let i = 0; i < blTone.length; i++) blTone[i] = hr() * 2 - 1;
+  blTone = new Float32Array(NR * NG); for (let i = 0; i < blTone.length; i++) blTone[i] = (hr() * 2 - 1) * 0.35;
   blX = new Float32Array(NR * NG); blY = new Float32Array(NR * NG); blZ = new Float32Array(NR * NG);
   blXb = new Float32Array(NB * NG); blYb = new Float32Array(NB * NG); blZb = new Float32Array(NB * NG);
   blNx = new Float32Array(NG); blNy = new Float32Array(NG); blNz = new Float32Array(NG);
@@ -1127,7 +1128,8 @@ function blimpPose(u) { // where it is: out of sight behind the shelter, then ov
   B.dd = Math.sqrt(bcx * bcx + bcy * bcy + bcz * bcz);
 }
 function bpt(s, lat, dn, i) { btx[i] = bcx + s * bdX + lat * bsX - dn * buX; bty[i] = bcy + s * bdY + lat * bsY - dn * buY; btz[i] = bcz + s * bdZ + lat * bsZ - dn * buZ; }
-function blPath(c, n, qx, qy, qz) { // a polygon in space, cut at the near plane (the part behind you is not there), laid on the screen
+const bpX = new Float32Array(16), bpY = new Float32Array(16);
+function blPath(c, n, qx, qy, qz) { // a polygon in space, cut at the near plane (the part behind you is not there), laid on the screen; skipped when it is wholly off the glass, and grown a hair so the panels meet with no gaps
   let m = 0;
   for (let i = 0; i < n; i++) {
     const j = i + 1 === n ? 0 : i + 1, z0 = qz[i], z1 = qz[j], in0 = z0 >= BL_ZN, in1 = z1 >= BL_ZN;
@@ -1135,15 +1137,20 @@ function blPath(c, n, qx, qy, qz) { // a polygon in space, cut at the near plane
     if (in0 !== in1) { const k = (BL_ZN - z0) / (z1 - z0); bwx[m] = qx[i] + (qx[j] - qx[i]) * k; bwy[m] = qy[i] + (qy[j] - qy[i]) * k; bwz[m++] = BL_ZN; }
   }
   if (m < 3) return false;
-  c.beginPath();
-  for (let i = 0; i < m; i++) { const px = bCX + bFF * bwx[i] / bwz[i], py = bHZ - bFF * bwy[i] / bwz[i]; if (i) c.lineTo(px, py); else c.moveTo(px, py); }
+  let sx = 0, sy = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (let i = 0; i < m; i++) { const px = bCX + bFF * bwx[i] / bwz[i], py = bHZ - bFF * bwy[i] / bwz[i]; bpX[i] = px; bpY[i] = py; sx += px; sy += py; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; }
+  if (x1 < -20 || x0 > bCX * 2 + 20 || y1 < -20 || y0 > bHZ / 0.52 + 20) return false;
+  sx /= m; sy /= m; c.beginPath();
+  for (let i = 0; i < m; i++) { const dx = bpX[i] - sx, dy = bpY[i] - sy, d = 0.45 / (Math.sqrt(dx * dx + dy * dy) + 1e-3), px = bpX[i] + dx * d, py = bpY[i] + dy * d; if (i) c.lineTo(px, py); else c.moveTo(px, py); }
   c.closePath(); return true;
 }
 function blSeg(c, x0, y0, z0, x1, y1, z1) { // a line in space, cut at the near plane, added to the path
   if (z0 < BL_ZN && z1 < BL_ZN) return;
   if (z0 < BL_ZN) { const k = (BL_ZN - z0) / (z1 - z0); x0 += (x1 - x0) * k; y0 += (y1 - y0) * k; z0 = BL_ZN; }
   else if (z1 < BL_ZN) { const k = (BL_ZN - z1) / (z0 - z1); x1 += (x0 - x1) * k; y1 += (y0 - y1) * k; z1 = BL_ZN; }
-  c.moveTo(bCX + bFF * x0 / z0, bHZ - bFF * y0 / z0); c.lineTo(bCX + bFF * x1 / z1, bHZ - bFF * y1 / z1);
+  const ax = bCX + bFF * x0 / z0, ay = bHZ - bFF * y0 / z0, bx = bCX + bFF * x1 / z1, by = bHZ - bFF * y1 / z1, w = bCX * 2 + 20, h = bHZ / 0.52 + 20;
+  if ((ax < -20 && bx < -20) || (ax > w && bx > w) || (ay < -20 && by < -20) || (ay > h && by > h)) return; // wholly off the glass
+  c.moveTo(ax, ay); c.lineTo(bx, by);
 }
 function blPoly(c, n, fill) { // btx/bty/btz[0..n) as a filled shape
   for (let i = 0; i < n; i++) { bqx[i & 3] = btx[i]; bqy[i & 3] = bty[i]; bqz[i & 3] = btz[i]; }
@@ -1159,26 +1166,24 @@ function blimpHull(c, lit) { // the hull from below, dark, flat panels under a f
   }
   for (let i = 0; i < NR; i++) for (let j = 0; j < NG; j++) { const k = i * NG + j; bpt(blSR[i], blRR[i] * blSn[j], blRR[i] * blCs[j], 0); blX[k] = btx[0]; blY[k] = bty[0]; blZ[k] = btz[0]; }
   for (let i = 0; i < NB; i++) for (let j = 0; j < NG; j++) { const k = i * NG + j; bpt(blSB[i], blRB[i] * blSn[j], blRB[i] * blCs[j], 0); blXb[k] = btx[0]; blYb[k] = bty[0]; blZb[k] = btz[0]; }
-  // the top fin first (the hull hides most of it), then the panels
+  // the top fin first (the hull hides most of it), then the panels. Far off, every other ring and girder is enough
   blFin(c, 2, lit);
-  for (let ph = 0; ph < 2; ph++) for (let i = 0; i < NR - 1; i++) for (let j = 0; j < NG; j++) { // the far side first, then the near side over it
-    const j1 = j + 1 === NG ? 0 : j + 1, a = i * NG + j, b = i * NG + j1, cc = (i + 1) * NG + j1, d = (i + 1) * NG + j;
+  const sj = B.dd > 450 ? 2 : 1, si = sj;
+  for (let ph = 0; ph < 2; ph++) for (let i = 0; i < NR - 1; i += si) for (let j = 0; j < NG; j += sj) { // the far side first, then the near side over it
+    const i1 = Math.min(i + si, NR - 1), j1 = j + sj >= NG ? j + sj - NG : j + sj, a = i * NG + j, b = i * NG + j1, cc = i1 * NG + j1, d = i1 * NG + j;
+    const nx = sj === 1 ? blNx[j] : blNx[j] + blNx[j + 1 === NG ? 0 : j + 1], ny = sj === 1 ? blNy[j] : blNy[j] + blNy[j + 1 === NG ? 0 : j + 1], nz = sj === 1 ? blNz[j] : blNz[j] + blNz[j + 1 === NG ? 0 : j + 1], nl = sj === 1 ? 1 : 0.5;
     const mx = (blX[a] + blX[cc]) * 0.5, my = (blY[a] + blY[cc]) * 0.5, mz = (blZ[a] + blZ[cc]) * 0.5, pl = Math.sqrt(mx * mx + my * my + mz * mz) + 1e-3;
-    const dp = (blNx[j] * mx + blNy[j] * my + blNz[j] * mz) / pl;
+    const dp = (nx * mx + ny * my + nz * mz) * nl / pl;
     if ((dp > 0.06) !== (ph === 0)) continue;
-    if (ph === 0) { // turned away: dark, under the rest, so the outline has no gaps
-      bqx[0] = blX[a]; bqy[0] = blY[a]; bqz[0] = blZ[a]; bqx[1] = blX[b]; bqy[1] = blY[b]; bqz[1] = blZ[b]; bqx[2] = blX[cc]; bqy[2] = blY[cc]; bqz[2] = blZ[cc]; bqx[3] = blX[d]; bqy[3] = blY[d]; bqz[3] = blZ[d];
-      if (blPath(c, 4, bqx, bqy, bqz)) { c.fillStyle = blPal[5]; c.fill(); c.lineWidth = 0.7; c.strokeStyle = blPal[5]; c.stroke(); }
-      continue;
-    }
-    const rim = clamp(1 + dp, 0, 1), tone = blTone[i * NG + j], dn = Math.max(0, -blNy[j]);
-    // flat shading by the angle of each panel to the wet streets below: almost black, a little cold light on the panels that face down and on the flanks
-    let gl = 0; for (let q = 0; q < 22; q += 11) if (B.gl[q + 3] > 0.01) { const ex = mx - B.gl[q], ey = my - B.gl[q + 1], ez = mz - B.gl[q + 2]; gl += B.gl[q + 3] * Math.exp(-(ex * ex + ey * ey + ez * ez) / 2600); } // a ground light on this panel
-    const lum = 2.4 + 5.4 * rim * rim + 1.6 * dn * dn + 1.2 * tone + lit * (8 + 22 * dn * dn + 6 * tone) + gl * (26 + 52 * dn * dn + 12 * tone);
-    bqx[0] = blX[a]; bqy[0] = blY[a]; bqz[0] = blZ[a]; bqx[1] = blX[b]; bqy[1] = blY[b]; bqz[1] = blZ[b];
-    bqx[2] = blX[cc]; bqy[2] = blY[cc]; bqz[2] = blZ[cc]; bqx[3] = blX[d]; bqy[3] = blY[d]; bqz[3] = blZ[d];
-    if (blPath(c, 4, bqx, bqy, bqz)) { c.fillStyle = blPal[clamp(Math.round(lum / 0.6), 0, 149)]; c.fill(); c.lineWidth = 0.7; c.strokeStyle = c.fillStyle; c.stroke(); }
+    bqx[0] = blX[a]; bqy[0] = blY[a]; bqz[0] = blZ[a]; bqx[1] = blX[b]; bqy[1] = blY[b]; bqz[1] = blZ[b]; bqx[2] = blX[cc]; bqy[2] = blY[cc]; bqz[2] = blZ[cc]; bqx[3] = blX[d]; bqy[3] = blY[d]; bqz[3] = blZ[d];
+    if (ph === 0) { if (blPath(c, 4, bqx, bqy, bqz)) { c.fillStyle = blPal[5]; c.fill(); } continue; } // turned away: dark, under the rest, so the outline has no gaps
+    const rim = clamp(1 + dp, 0, 1), tone = blTone[i * NG + j], dn = Math.max(0, -ny * nl);
+    // flat shading by the angle of each panel to the wet streets below: almost black, a little cold light on the panels that face down and on the flanks. A ground light is carried by a soft glow, not by the panels (so it never shows as tiles)
+    let gl = 0; if (B.gk > 0.01) for (let q = 0; q < 22; q += 11) if (B.gl[q + 3] > 0.01) { const ex = mx - B.gl[q], ey = my - B.gl[q + 1], ez = mz - B.gl[q + 2]; gl += B.gl[q + 3] * Math.exp(-(ex * ex + ey * ey + ez * ez) / 2600); }
+    const lum = 2.4 + 5.4 * rim * rim + 1.6 * dn * dn + 1.2 * tone + lit * (1.5 + 5 * dn * dn) + gl * (4 + 8 * dn * dn);
+    if (blPath(c, 4, bqx, bqy, bqz)) { c.fillStyle = blPal[clamp(Math.round(lum / 0.6), 0, 149)]; c.fill(); }
   }
+  blimpGlow(c); // the ground lights on the belly, under the seams so the ribs show through
   // seams: dark, soft, at low alpha (never bright lines): the ribs (a heavier one every fourth), the girders, the keel; fainter with distance
   const fa = clamp(1.2 - B.dd / 900, 0.3, 1), lit2 = Math.max(lit, B.gk * 0.8); // a ground light on the belly shows the seams too
   for (let pass = 0; pass < 4; pass++) {
@@ -1195,7 +1200,7 @@ function blimpHull(c, lit) { // the hull from below, dark, flat panels under a f
     } else {
       for (let j = 0; j < NG; j += 3) {
         if ((j === 0) !== (pass === 3)) continue;
-        if (j !== 0 && (blNx[j] * blX[14 * NG + j] + blNy[j] * blY[14 * NG + j] + blNz[j] * blZ[14 * NG + j]) > 0) continue; // on the far side
+        if (j !== 0 && (blNx[j] * blX[21 * NG + j] + blNy[j] * blY[21 * NG + j] + blNz[j] * blZ[21 * NG + j]) > 0) continue; // on the far side
         for (let i = 0; i < NR - 1; i++) blSeg(c, blX[i * NG + j], blY[i * NG + j], blZ[i * NG + j], blX[(i + 1) * NG + j], blY[(i + 1) * NG + j], blZ[(i + 1) * NG + j]);
       }
     }
@@ -1203,13 +1208,23 @@ function blimpHull(c, lit) { // the hull from below, dark, flat panels under a f
     c.strokeStyle = blDk[clamp(Math.round((pass === 1 ? 0.26 + 0.2 * lit2 : pass === 3 ? 0.42 : pass === 2 ? 0.12 + 0.16 * lit2 : 0.08 + 0.14 * lit2) * fa * 23), 0, 23)]; c.stroke();
     if (pass === 3) { c.lineWidth = 1; c.strokeStyle = blLn[clamp(Math.round((0.03 + 0.1 * lit2) * 23), 0, 23)]; c.stroke(); } // a trace of light along the keel
   }
-  blFin(c, 0, lit); blFin(c, 1, lit); blFin(c, 3, lit);
+  if (B.dd >= 320) blFin(c, 0, lit); // the fin that hangs down is not seen while it is overhead (no tail while it is close)
+  blFin(c, 1, lit); blFin(c, 3, lit);
 }
-const BL_FINP = [[0.73, 0], [0.8, 0.8], [0.97, 0.68], [0.93, 0]]; // a fin's corners: how far back along the hull (0 nose, 1 tail), how far out in hull radii: a swept trapezoid
+function blimpGlow(c) { // a ground light on the belly: a wide soft glow stretched along the hull, falling off smoothly
+  const B = BLIMP;
+  for (let q = 0; q < 22; q += 11) {
+    const k = B.gl[q + 3], px = B.gl[q], py = B.gl[q + 1], pz = B.gl[q + 2]; if (k < 0.02 || pz < BL_ZN) continue;
+    const sx = bCX + bFF * px / pz, sy = bHZ - bFF * py / pz, e = bdZ >= 0 ? 30 : -30, qx = px + bdX * e, qy = py + bdY * e, qz = pz + bdZ * e;
+    const ang = Math.atan2(bHZ - bFF * qy / qz - sy, bCX + bFF * qx / qz - sx), r = clamp(bFF * 100 / pz, 36, 340);
+    c.save(); c.globalCompositeOperation = "source-atop"; c.globalAlpha = 0.85 * k; c.translate(sx, sy); c.rotate(ang); c.scale(r * 1.8, r * 0.8); c.fillStyle = BLG.sp; c.fillRect(-1, -1, 2, 2); c.restore();
+  }
+}
+const BL_FINP = [[0.84, 0], [0.89, 0.42], [0.985, 0.36], [0.975, 0]]; // a fin's corners: how far back along the hull (0 nose, 1 tail), how far out in hull radii: short and stubby, as on a real rigid ship
 function blFin(c, q, lit) { // one of four fins at the tail, in a cross: 0 straight down at you, 1 and 3 out to the sides, 2 up behind the hull
   const ph = q * Math.PI / 2, sn = Math.sin(ph), cs = Math.cos(ph);
   for (let i = 0; i < 4; i++) { const p = BL_FINP[i], r = BL_R * (blProf(p[0]) + p[1]); bpt(BL_L / 2 - p[0] * BL_L, r * sn, r * cs, i); }
-  blPoly(c, 4, blPal[clamp(Math.round((3.2 + lit * 9) / 0.6), 0, 149)]);
+  blPoly(c, 4, blPal[clamp(Math.round((3.2 + lit * 2) / 0.6), 0, 149)]);
 }
 // a car hung from the hull, seen from below: its underside and the sides that face the window, flat-shaded. Faces: corner indexes, which axis, which side
 const BL_BF = [[0, 2, 6, 4, 0, -1], [1, 3, 7, 5, 0, 1], [0, 1, 5, 4, 1, -1], [2, 3, 7, 6, 1, 1], [0, 1, 3, 2, 2, -1], [4, 5, 7, 6, 2, 1]];
@@ -1218,7 +1233,7 @@ function blBox(c, cs, cl, cd, hs, hl, hd, fb, fs) {
   for (let k = 0; k < 6; k++) {
     const f = BL_BF[k], ax = f[4];
     if (((ax === 0 ? bcS - cs : ax === 1 ? bcL - cl : bcD - cd) * f[5]) <= (ax === 0 ? hs : ax === 1 ? hl : hd)) continue; // turned away from the window
-    c.fillStyle = k === 5 ? fb : fs; c.beginPath(); c.moveTo(bpx[f[0]], bpy[f[0]]); c.lineTo(bpx[f[1]], bpy[f[1]]); c.lineTo(bpx[f[2]], bpy[f[2]]); c.lineTo(bpx[f[3]], bpy[f[3]]); c.closePath(); c.fill(); c.strokeStyle = blDk[12]; c.lineWidth = 1; c.stroke();
+    c.fillStyle = k === 5 ? fb : fs; c.beginPath(); c.moveTo(bpx[f[0]], bpy[f[0]]); c.lineTo(bpx[f[1]], bpy[f[1]]); c.lineTo(bpx[f[2]], bpy[f[2]]); c.lineTo(bpx[f[3]], bpy[f[3]]); c.closePath(); c.fill();
   }
 }
 function blimpCables(c, t, lit) { // lines hanging from the belly, swaying: dark, seen only against the lit cloud
@@ -1233,15 +1248,15 @@ function blimpCables(c, t, lit) { // lines hanging from the belly, swaying: dark
   c.stroke();
 }
 function blimpCars(c, lit) { // the control car forward on the keel, the lamp housing, four engine cars out on the flanks on struts, their propellers behind
-  const fb = blPal[clamp(Math.round((3.4 + lit * 12) / 0.6), 0, 149)], fs = blPal[clamp(Math.round((7 + lit * 22) / 0.6), 0, 149)];
-  blBox(c, BL_L * 0.30, 0, BL_R * blProf(0.2) + 6, 24, 6.5, 5.8, fb, fs);
+  const fb = blPal[clamp(Math.round((3.4 + lit * 2) / 0.6), 0, 149)], fs = blPal[clamp(Math.round((4.5 + lit * 2) / 0.6), 0, 149)];
+  blBox(c, BL_L * 0.30, 0, BL_R * blProf(0.2) + 6, 20, 5.5, 5, fb, fs);
   blBox(c, BL_L * 0.11, 0, BL_R * blProf(0.39) + 3, 6.5, 3.2, 2.8, fb, fs);
   for (let e = 0; e < 4; e++) {
     const u = e < 2 ? 0.5 : 0.66, sd = e % 2 ? 1 : -1, s = BL_L / 2 - u * BL_L, r = BL_R * blProf(u), lat = sd * (r * 0.9 + 9), dn = r * 0.5 + 9;
-    c.strokeStyle = blDk[16]; c.lineWidth = 1.3; c.beginPath(); // the struts from the hull to the car
+    c.strokeStyle = blDk[20]; c.lineWidth = 2; c.beginPath(); // the struts from the hull to the car
     for (let q = 0; q < 2; q++) { const w = q ? 8 : -8; bpt(s + w, sd * r * 0.8, r * 0.52, 0); bpt(s + w, lat, dn, 1); blSeg(c, btx[0], bty[0], btz[0], btx[1], bty[1], btz[1]); }
     c.stroke();
-    blBox(c, s, lat, dn, 17, 6.4, 5.6, fb, fs);
+    blBox(c, s, lat, dn, 13, 4.5, 4.5, fb, fs);
     let ok = true; // the propeller turning: a faint disc of air
     for (let q = 0; q < 10 && ok; q++) { const a = q * Math.PI / 5; bpt(s - 24, lat + 10 * Math.cos(a), dn + 10 * Math.sin(a), q); if (btz[q] < BL_ZN) ok = false; }
     if (ok) { c.beginPath(); c.moveTo(bCX + bFF * btx[0] / btz[0], bHZ - bFF * bty[0] / btz[0]); for (let q = 1; q < 10; q++) c.lineTo(bCX + bFF * btx[q] / btz[q], bHZ - bFF * bty[q] / btz[q]); c.closePath(); c.fillStyle = blLn[clamp(Math.round((0.04 + lit * 0.14) * 23), 0, 23)]; c.fill(); }
@@ -1251,13 +1266,23 @@ function blimpGrads(c) { // the soft round lights, made once as unit gradients: 
   const mk = (r, g2, b2, st) => { const q = c.createRadialGradient(0, 0, 0, 0, 0, 1); for (const s of st) q.addColorStop(s[0], "rgba(" + r + "," + g2 + "," + b2 + "," + s[1] + ")"); return q; };
   BLG = { sp: mk(214, 226, 252, [[0, 0.5], [0.45, 0.2], [1, 0]]), pool: mk(255, 255, 255, [[0, 1], [0.55, 0.5], [1, 0]]), wash: mk(176, 190, 222, [[0, 1], [1, 0]]), haze: mk(158, 176, 214, [[0, 0.2], [0.4, 0.08], [1, 0]]), lamp: mk(214, 226, 252, [[0, 0.5], [0.4, 0.14], [1, 0]]), cg: null, cgH: 0 };
 }
+function blMu(f, nf) { return 1 - (1 - nf) * smooth01((f - 0.4) / 0.35); }
+function blimpDS(x, img, sc) { x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(img, 0, 0); x.setTransform(sc, 0, 0, sc, 0, 0); } // a small copy of the city drawn 1:1 into the beam layer
+function blimpSmall() { // the city and its black shape at the beam layer's size, made once (not scaled down again every frame)
+  const B = BLIMP, bc = B.bc, w = bc.width, h = bc.height;
+  if (B.cityL === cityC && B.silK === B.sil && B.cityS && B.cityS.width === w && B.cityS.height === h) return;
+  if (!B.cityS || B.cityS.width !== w || B.cityS.height !== h) { B.cityS = document.createElement("canvas"); B.cityS.width = w; B.cityS.height = h; B.silS = document.createElement("canvas"); B.silS.width = w; B.silS.height = h; }
+  let x = B.cityS.getContext("2d"); x.clearRect(0, 0, w, h); if (cityC) x.drawImage(cityC, 0, 0, w, h);
+  x = B.silS.getContext("2d"); x.clearRect(0, 0, w, h); if (B.sil) x.drawImage(B.sil, 0, 0, w, h);
+  B.cityL = cityC; B.silK = B.sil;
+}
 function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a pool on the ruins. Drawn small so it scales up soft
   const B = BLIMP, { apW, apH } = L, k = B.beamI, bc = B.bc, b = bc.getContext("2d"), sc = bc.sc, s = B.tc.getContext("2d");
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.globalAlpha = 1; b.clearRect(0, 0, bc.width, bc.height); b.setTransform(sc, 0, 0, sc, 0, 0);
   s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = "source-over"; s.globalAlpha = 1; s.clearRect(0, 0, bc.width, bc.height); s.setTransform(sc, 0, 0, sc, 0, 0);
   // the lamp and where the beam lands, as points in space
   // the shaft does not stop where it lands: lit rain and haze carry it on past the ground, thinner and thinner, until it is gone
-  const EX = 0.9;
+  const EX = 0.9 * clamp((B.rho - 70) / 90, 0, 1); // close to the shelter the shaft ends at the pool and only the haze goes on
   let x0 = B.lx, y0 = B.ly, z0 = B.lz, x1 = B.tx + (B.tx - B.lx) * EX, y1 = B.ty + (B.ty - B.ly) * EX, z1 = B.tz + (B.tz - B.lz) * EX;
   const dist = Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0)), r0 = 2.5;
   let s0 = 0, s1 = dist;
@@ -1275,25 +1300,30 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   if (pool) {
     const rp = bFF * (r0 + dist / (1 + EX) * BL_TA * 1.1) / B.tz, ry = rp * clamp(1.7 * -BL_GY / B.tz, 0.12, 0.9), pk = k * (0.55 + 0.45 * clamp(150 / B.rho, 0, 1));
     b.save(); b.translate(px0, py0); b.scale(rp, ry); b.globalAlpha = pk; b.fillStyle = G.pool; b.fillRect(-1, -1, 2, 2); b.restore();
-    b.globalCompositeOperation = "source-in"; b.drawImage(cityC, 0, 0, apW, apH); // the city's own picture inside the pool
+    b.globalCompositeOperation = "source-in"; blimpDS(b, B.cityS, sc); // the city's own picture inside the pool
     b.globalCompositeOperation = "lighter"; b.drawImage(bc, 0, 0, apW, apH); b.drawImage(bc, 0, 0, apW, apH); // brighter, three times over
     b.save(); b.translate(px0, py0); b.scale(rp, ry); b.globalAlpha = pk * 0.34; b.fillStyle = G.wash; b.fillRect(-1, -1, 2, 2); b.restore(); // and a flat wash of wet light
-    if (sil) { b.globalCompositeOperation = "destination-in"; b.drawImage(sil, 0, 0, apW, apH); }
+    if (sil) { b.globalCompositeOperation = "destination-in"; blimpDS(b, B.silS, sc); }
     b.globalCompositeOperation = "lighter"; // and a wide haze round the pool: the light dies out slowly in the wet air, not at an edge
     b.save(); b.translate(px0, py0); b.scale(rp * 3.2, rp * 3.2 * Math.max(0.3, ry / rp)); b.globalAlpha = pk; b.fillStyle = G.haze; b.fillRect(-1, -1, 2, 2); b.restore();
   }
   // the shaft, in its own layer so the city can stand in front of it: wider as it goes (the beam spreads), brightest at the lamp, thinning toward the ground
   s.globalCompositeOperation = "lighter";
-  s.beginPath();
-  for (let pass = 0; pass < 2; pass++) for (let i = 0; i < NS; i++) {
-    const ii = pass ? NS - 1 - i : i, f = ii / (NS - 1), qx = x0 + (x1 - x0) * f, qy = y0 + (y1 - y0) * f, qz = z0 + (z1 - z0) * f;
-    const hw = Math.max(0.7, bFF * (r0 + (s0 + (s1 - s0) * f) * BL_TA) / qz), cx = bCX + bFF * qx / qz, cy = bHZ - bFF * qy / qz, sg = pass ? -1 : 1;
-    if (i === 0 && pass === 0) s.moveTo(cx + nx * hw * sg, cy + ny * hw * sg); else s.lineTo(cx + nx * hw * sg, cy + ny * hw * sg);
+  const gr = s.createLinearGradient(lx, ly, ex, ey), sh = k * (0.92 + 0.08 * Math.sin(t * 7.1)), nf = smooth01((B.rho - 45) / 15), hmx = 0.09 * apW; // close to the glass the far third of the shaft dies out (nf) and it never gets wider than a tenth of the window
+  const f3 = Math.min(1, ft + (1 - ft) * 0.5);
+  gr.addColorStop(0, "rgba(206,220,250," + (0.34 * sh).toFixed(3) + ")"); gr.addColorStop(ft * 0.5, "rgba(200,214,246," + (0.18 * sh * blMu(ft * 0.5, nf)).toFixed(3) + ")"); gr.addColorStop(ft, "rgba(196,210,240," + (0.1 * sh * blMu(ft, nf)).toFixed(3) + ")"); gr.addColorStop(f3, "rgba(190,204,236," + (0.045 * sh * blMu(f3, nf)).toFixed(3) + ")"); gr.addColorStop(1, "rgba(186,200,232,0)");
+  s.fillStyle = gr;
+  for (let pk = 0; pk < 3; pk++) { // three passes so the sides are soft: wide and faint, a narrow bright core, then the shaft itself (its path is the one the rain is clipped to)
+    const km = pk === 0 ? 1.35 : pk === 1 ? 0.55 : 1;
+    s.beginPath();
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < NS; i++) {
+      const ii = pass ? NS - 1 - i : i, f = ii / (NS - 1), qx = x0 + (x1 - x0) * f, qy = y0 + (y1 - y0) * f, qz = z0 + (z1 - z0) * f;
+      const hw = Math.min(hmx * km, Math.max(0.7, bFF * (r0 + (s0 + (s1 - s0) * f) * BL_TA) / qz) * km), cx = bCX + bFF * qx / qz, cy = bHZ - bFF * qy / qz, sg = pass ? -1 : 1;
+      if (i === 0 && pass === 0) s.moveTo(cx + nx * hw * sg, cy + ny * hw * sg); else s.lineTo(cx + nx * hw * sg, cy + ny * hw * sg);
+    }
+    s.closePath(); s.globalAlpha = pk === 0 ? 0.3 : pk === 1 ? 0.45 : 0.8; s.fill();
   }
-  s.closePath();
-  const gr = s.createLinearGradient(lx, ly, ex, ey), sh = k * (0.92 + 0.08 * Math.sin(t * 7.1));
-  gr.addColorStop(0, "rgba(206,220,250," + (0.34 * sh).toFixed(3) + ")"); gr.addColorStop(ft * 0.5, "rgba(200,214,246," + (0.18 * sh).toFixed(3) + ")"); gr.addColorStop(ft, "rgba(196,210,240," + (0.1 * sh).toFixed(3) + ")"); gr.addColorStop(Math.min(1, ft + (1 - ft) * 0.5), "rgba(190,204,236," + (0.045 * sh).toFixed(3) + ")"); gr.addColorStop(1, "rgba(186,200,232,0)");
-  s.fillStyle = gr; s.fill();
+  s.globalAlpha = 1;
   // rain in the beam: every streak caught in it shows, falling through; a few hundred drops that are nowhere else
   s.save(); s.clip();
   s.lineCap = "round"; s.lineWidth = 1;
@@ -1311,7 +1341,7 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   s.restore();
   // the city stands in front of the shaft where a tower rises beside it: its black cuts the shaft part of the way (the beam is still there in the rain, dimmer). Not when the beam is at the glass
   const cut = sil ? BL_CUT * clamp((B.rho - 40) / 70, 0, 1) : 0;
-  if (cut > 0.01) { s.globalCompositeOperation = "destination-out"; s.globalAlpha = cut; s.drawImage(sil, 0, 0, apW, apH); s.globalAlpha = 1; s.globalCompositeOperation = "source-over"; }
+  if (cut > 0.01) { s.globalCompositeOperation = "destination-out"; s.globalAlpha = cut; blimpDS(s, B.silS, sc); s.globalAlpha = 1; s.globalCompositeOperation = "source-over"; }
   b.globalCompositeOperation = "lighter"; b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(B.tc, 0, 0); b.setTransform(sc, 0, 0, sc, 0, 0);
   // the lamp's own glow in the rain around it
   if (lx > -90 && lx < apW + 90 && ly > -90 && ly < apH + 60) {
@@ -1321,7 +1351,7 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
 }
 // two lights on the ground far off in the city: each swings up through the rain from behind the skyline, finds the belly for a few seconds (the beam ends ON the hull, which shows its panels lit from below), loses it and goes out.
 // when it comes on, when it finds the hull, when it loses it, when it goes out; where the light stands (across the window, range in meters); where it touches the hull (along it, round it); where it aims before and after
-const BL_GL = [{ u0: 35, uf: 39.5, ul: 43.5, u1: 47, gx: 0.82, gz: 900, sg: 0.27, th: 0.2, pre: [160, -75, 0], post: [-150, -35, 10] }, { u0: 57, uf: 62, ul: 68, u1: 73, gx: 0.4, gz: 640, sg: -0.1, th: 0.2, pre: [-170, -70, -20], post: [150, -40, 20] }];
+const BL_GL = [{ u0: 35, uf: 39.5, ul: 43.5, u1: 47, gx: 0.82, gz: 900, sg: 0.27, th: 0.2, pre: [160, -75, 0], post: [-150, -35, 10] }, { u0: 96, uf: 100.5, ul: 107, u1: 112, gx: 0.3, gz: 640, sg: -0.1, th: 0.2, pre: [-170, -70, -20], post: [150, -40, 20] }];
 function blimpAim(q, u) { // ground light q: how bright it is, where it touches the belly (or sweeps past it, off the hull), written into BLIMP.gl
   const B = BLIMP, G = BL_GL[q], a = B.gl, o = q * 11, f = L.apH * 0.52 * BL_FK;
   const on = u < G.u0 || u > G.u1 ? 0 : smooth01((u - G.u0) / 1.8) * (u > G.u0 + 1 && u < G.u0 + 1.18 ? 0.3 : 1) * (1 - smooth01((u - G.u1 + 2.5) / 2.5)); // comes on with one stutter
@@ -1334,6 +1364,7 @@ function blimpAim(q, u) { // ground light q: how bright it is, where it touches 
   a[o + 7] = gX; a[o + 8] = BL_GY; a[o + 9] = G.gz; a[o + 10] = on;
   if (!B.gf[q] && u >= G.uf) { B.gf[q] = 1; B.creakAt = Math.min(B.creakAt, u + 0.4); } // the hull groans as it is found
 }
+const BL_KW = [1.8, 1, 0.45], BL_KA = [0.5, 0.7, 0.9];
 function blimpGround(t) { // the ground lights' shafts: climb out from behind the skyline through the rain to the belly. Drawn small, soft, into the beam layer
   const B = BLIMP, { apW, apH } = L, bc = B.bc, sc = bc.sc, s = B.tc.getContext("2d"), a = B.gl;
   s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = "source-over"; s.globalAlpha = 1; s.clearRect(0, 0, bc.width, bc.height); s.setTransform(sc, 0, 0, sc, 0, 0);
@@ -1344,13 +1375,13 @@ function blimpGround(t) { // the ground lights' shafts: climb out from behind th
     if (z1 < BL_ZN) { const k = (z0 - BL_ZN) / (z0 - z1); x1 = x0 + (x1 - x0) * k; y1 = y0 + (y1 - y0) * k; z1 = BL_ZN; }
     const lx = bCX + bFF * x0 / z0, ly = bHZ - bFF * y0 / z0, ex = bCX + bFF * x1 / z1, ey = bHZ - bFF * y1 / z1;
     let ax = ex - lx, ay = ey - ly; const al = Math.hypot(ax, ay) + 1e-3; ax /= al; ay /= al;
-    const nx = -ay, ny = ax, w0 = Math.max(0.5, bFF * 1.4 / z0), w1 = Math.max(1.5, bFF * (1.4 + Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0)) * 0.012) / z1);
+    const nx = -ay, ny = ax, w0 = Math.max(0.5, bFF * 1.4 / z0), w1 = Math.min(0.035 * apW, Math.max(1.5, bFF * (1.4 + Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + (z1 - z0) * (z1 - z0)) * 0.006) / z1)); // never wider than a thirtieth of the window, even where it ends close to the glass
     const sh = on * (0.92 + 0.08 * Math.sin(t * 6.3 + q * 2.1)), hit = a[o + 3];
     const gr = s.createLinearGradient(lx, ly, ex, ey);
-    gr.addColorStop(0, "rgba(200,214,244," + (0.2 * sh).toFixed(3) + ")"); gr.addColorStop(0.6, "rgba(200,214,244," + (0.17 * sh).toFixed(3) + ")"); gr.addColorStop(1, "rgba(206,220,250," + ((0.1 + 0.2 * hit) * sh).toFixed(3) + ")");
+    gr.addColorStop(0, "rgba(200,214,244," + (0.3 * sh).toFixed(3) + ")"); gr.addColorStop(0.6, "rgba(200,214,244," + (0.26 * sh).toFixed(3) + ")"); gr.addColorStop(0.85, "rgba(206,220,250," + ((0.14 + 0.2 * hit) * sh).toFixed(3) + ")"); gr.addColorStop(1, "rgba(206,220,250," + ((0.04 + 0.08 * hit) * sh).toFixed(3) + ")"); // the last of it fades into the hull's glow, no hard end
     s.fillStyle = gr;
-    for (const kw of [1.7, 1.3, 1, 0.7, 0.4]) { // stacked, each a little narrower: soft sides, a brighter core
-      s.globalAlpha = 0.32;
+    for (let q2 = 0; q2 < 3; q2++) { // stacked, each narrower: feathered sides, a brighter core
+      const kw = BL_KW[q2]; s.globalAlpha = BL_KA[q2];
       s.beginPath(); s.moveTo(lx + nx * w0 * kw, ly + ny * w0 * kw); s.lineTo(ex + nx * w1 * kw, ey + ny * w1 * kw); s.lineTo(ex - nx * w1 * kw, ey - ny * w1 * kw); s.lineTo(lx - nx * w0 * kw, ly - ny * w0 * kw); s.closePath(); s.fill();
     }
     s.globalAlpha = 1;
@@ -1363,53 +1394,58 @@ function blimpGround(t) { // the ground lights' shafts: climb out from behind th
     }
     s.stroke(); s.restore();
   }
-  if (B.sil) { s.globalCompositeOperation = "destination-out"; s.globalAlpha = 0.93; s.drawImage(B.sil, 0, 0, apW, apH); s.globalAlpha = 1; } // the city stands in front of the lights
+  if (B.sil) { s.globalCompositeOperation = "destination-out"; s.globalAlpha = 0.93; blimpDS(s, B.silS, sc); s.globalAlpha = 1; } // the city stands in front of the lights
   const b = bc.getContext("2d"); b.globalCompositeOperation = "lighter"; b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(B.tc, 0, 0);
 }
 function drawBlimp(t, flashA) { // under the cloud, in front of the sky, behind the city
   const B = BLIMP;
   if (B.u < 0 || !B.init || B.vis < 0.003) return;
-  const { apW, apH } = L, sc = Math.min(DPR, 1.5) * 0.6, w = Math.ceil(apW * sc), h = Math.ceil(apH * sc);
-  if (!B.c || B.c.width !== w || B.c.height !== h) { B.c = document.createElement("canvas"); B.c.width = w; B.c.height = h; B.c.sc = sc; }
+  const { apW, apH } = L, sc = Math.min(DPR, 1.5) * 0.4, w = Math.ceil(apW * sc), h = Math.ceil(apH * sc);
+  if (!B.c || B.c.width !== w || B.c.height !== h) { B.c = document.createElement("canvas"); B.c.width = w; B.c.height = h; B.c.sc = sc; B.hr = true; }
   if (!B.bc || B.bc.sc !== Math.min(1, 340 / apW) || B.bc.width !== Math.ceil(apW * Math.min(1, 340 / apW))) { const s2 = Math.min(1, 340 / apW); B.bc = document.createElement("canvas"); B.bc.width = Math.ceil(apW * s2); B.bc.height = Math.ceil(apH * s2); B.bc.sc = s2; B.tc = document.createElement("canvas"); B.tc.width = B.bc.width; B.tc.height = B.bc.height; }
   if (B.silL !== L) { B.sil = silC || bakeVariant("sil"); B.silL = L; } // the city in black, to cut the airship out where buildings stand in front
+  blimpSmall();
+  if (!B.silH || B.silH.width !== w || B.silH.height !== h || B.silHK !== B.sil) { B.silH = document.createElement("canvas"); B.silH.width = w; B.silH.height = h; B.silH.getContext("2d").drawImage(B.sil, 0, 0, w, h); B.silHK = B.sil; B.hr = true; }
   const sil = B.sil;
   bFF = apH * 0.52 * BL_FK; bCX = apW / 2; bHZ = apH * 0.52;
   const lit = Math.min(1, flashA * 4.6);
   // the sky it is passing: darker as it blocks the glow
   if (B.dk > 0.01) { g.fillStyle = "rgba(0,1,3," + (0.36 * B.dk).toFixed(3) + ")"; g.fillRect(0, 0, apW, apH); }
-  const c = B.c.getContext("2d");
-  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.globalAlpha = 1; c.clearRect(0, 0, w, h); c.setTransform(sc, 0, 0, sc, 0, 0);
-  if (!BLG) blimpGrads(c);
-  const jx = B.sx * 0.5, jy = B.sy * 0.5; // the engines shake it a little
-  c.translate(jx, jy);
-  blimpHull(c, lit); blimpCables(c, t, lit); blimpCars(c, lit);
-  c.translate(-jx, -jy);
-  if (B.beamI > 0.02 && B.lz > BL_ZN) { // the searchlight's spill: it lights the belly near the lamp, soft, only where there is hull
-    const lx = bCX + bFF * B.lx / B.lz, ly = bHZ - bFF * B.ly / B.lz, r = clamp(bFF * 46 / B.lz, 20, 170);
-    c.save(); c.globalCompositeOperation = "source-atop"; c.globalAlpha = B.beamI; c.translate(lx, ly); c.scale(r, r); c.fillStyle = BLG.sp; c.fillRect(-1, -1, 2, 2); c.restore();
+  if ((B.hf++ & 1) === 0 || Math.abs(lit - B.hl) > 0.01 || B.hr) { // the hull moves under two pixels a frame: drawn every other frame (at once when the light changes), the tremble is added when it is laid on the glass
+    B.hr = false; B.hl = lit;
+    const c = B.c.getContext("2d");
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.globalAlpha = 1; c.clearRect(0, 0, w, h); c.setTransform(sc, 0, 0, sc, 0, 0);
+    if (!BLG) blimpGrads(c);
+    blimpHull(c, lit); blimpCables(c, t, lit); blimpCars(c, lit);
+    if (B.beamI > 0.02 && B.lz > BL_ZN) { // the searchlight's spill: it lights the belly near the lamp, soft, only where there is hull
+      const lx = bCX + bFF * B.lx / B.lz, ly = bHZ - bFF * B.ly / B.lz, r = clamp(bFF * 46 / B.lz, 20, 170);
+      c.save(); c.globalCompositeOperation = "source-atop"; c.globalAlpha = B.beamI; c.translate(lx, ly); c.scale(r, r); c.fillStyle = BLG.sp; c.fillRect(-1, -1, 2, 2); c.restore();
+    }
+    if (lit > 0.02) { // the lightning lights the cloud behind it: the hull is the black shape in it, going well past the window
+      if (BLG.cgH !== apH) { const gg = c.createLinearGradient(0, 0, 0, apH * 0.7); gg.addColorStop(0, "rgba(148,168,206,1)"); gg.addColorStop(1, "rgba(120,140,184,0.6)"); BLG.cg = gg; BLG.cgH = apH; }
+      c.save(); c.globalCompositeOperation = "destination-over"; c.globalAlpha = 0.85 * lit; c.fillStyle = BLG.cg; c.fillRect(0, 0, apW, apH); c.restore();
+    }
+    if (sil) { c.globalCompositeOperation = "destination-out"; c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(B.silH, 0, 0); c.globalCompositeOperation = "source-over"; }
   }
-  for (let q = 0; q < 22; q += 11) { // the ground lights' glow where they land on the belly
-    const k = B.gl[q + 3], pz = B.gl[q + 2]; if (k < 0.02 || pz < BL_ZN) continue;
-    c.save(); c.globalCompositeOperation = "source-atop"; c.globalAlpha = 0.55 * k; c.translate(bCX + bFF * B.gl[q] / pz, bHZ - bFF * B.gl[q + 1] / pz); const r = clamp(bFF * 70 / pz, 24, 280); c.scale(r, r); c.fillStyle = BLG.sp; c.fillRect(-1, -1, 2, 2); c.restore();
-  }
-  if (lit > 0.02) { // the lightning lights the cloud behind it: the hull is the black shape in it, going well past the window
-    if (BLG.cgH !== apH) { const gg = c.createLinearGradient(0, 0, 0, apH * 0.7); gg.addColorStop(0, "rgba(148,168,206,1)"); gg.addColorStop(1, "rgba(120,140,184,0.6)"); BLG.cg = gg; BLG.cgH = apH; }
-    c.save(); c.globalCompositeOperation = "destination-over"; c.globalAlpha = 0.5 * lit; c.fillStyle = BLG.cg; c.fillRect(0, 0, apW, apH); c.restore();
-  }
-  if (sil) { c.globalCompositeOperation = "destination-out"; c.setTransform(sc, 0, 0, sc, 0, 0); c.drawImage(sil, 0, 0, apW, apH); c.globalCompositeOperation = "source-over"; }
-  g.globalAlpha = B.vis * (1 - B.murk); g.drawImage(B.c, 0, 0, apW, apH); g.globalAlpha = 1;
+  g.globalAlpha = B.vis * (1 - B.murk); g.drawImage(B.c, B.sx * 0.5, B.sy * 0.5, apW, apH); g.globalAlpha = 1;
   if (B.beamI > 0.01 || B.gl[10] > 0.01 || B.gl[21] > 0.01) {
     if (B.beamI > 0.01) blimpBeam(t); else { const b = B.bc.getContext("2d"); b.setTransform(1, 0, 0, 1, 0, 0); b.globalCompositeOperation = "source-over"; b.globalAlpha = 1; b.clearRect(0, 0, B.bc.width, B.bc.height); }
     blimpGround(t); g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = 1 - 0.6 * B.murk; g.drawImage(B.bc, 0, 0, apW, apH); g.restore();
   }
 }
-function drawBlimpRoom(t, flashA) { // the room: darker (and its lamp glow with it) while the hull is overhead, the beam on the window a cold white flash, then the eye adjusts
+function drawBlimpRoom(t, flashA) { // the room: darker while the hull is overhead, the beam on the window a cold white flash pouring in (through the glass only: a closed shutter keeps it out), then the eye adjusts
   const B = BLIMP;
   if (B.u < 0) return;
-  const dm = 0.15 * B.dk * (1 - Math.min(1, (flashA || 0) * 2)); // the lightning shows the room: no darkening in it
+  const sk = 1 - shutterPos * 0.92, dm = 0.22 * B.dk * sk * (1 - Math.min(1, (flashA || 0) * 2)); // the lightning shows the room: no darkening in it
   if (dm > 0.005) { g.beginPath(); g.rect(0, 0, L.w, L.h); g.rect(L.apX, L.apY, L.apW, L.apH); g.fillStyle = "rgba(2,2,3," + dm.toFixed(3) + ")"; g.fill("evenodd"); }
-  if (B.F > 0.01) { g.fillStyle = "rgba(214,226,252," + (0.9 * B.F * (RM ? 0.4 : 1)).toFixed(3) + ")"; g.fillRect(-40, -40, W + 80, H + 80); }
+  if (B.F > 0.01 && sk > 0.05) {
+    const F = B.F * sk * (RM ? 0.4 : 1), mx = L.apX + L.apW / 2;
+    if (!B.rg || B.rgL !== L) { const cx = mx, cy = L.apY + L.apH / 2, q = g.createRadialGradient(cx, cy, 0, cx, cy, L.w * 1.1); q.addColorStop(0, "rgba(214,226,252,0.6)"); q.addColorStop(1, "rgba(214,226,252,0.18)"); B.rg = q; B.rgL = L; }
+    g.save(); g.globalAlpha = F; g.fillStyle = B.rg; g.fillRect(-40, -40, W + 80, H + 80); // the room, brightest next to the glass
+    g.fillStyle = "rgba(214,226,252,0.85)"; g.fillRect(L.apX, L.apY, L.apW / 2 - 4.5, L.apH); g.fillRect(mx + 4.5, L.apY, L.apW / 2 - 4.5, L.apH); // the glass itself, the mullion left dark
+    for (let q = 0; q < 3; q++) { g.fillStyle = "rgba(2,3,6," + (0.09 - q * 0.02).toFixed(2) + ")"; const hw = 4.5 * (3.2 - q * 0.9); g.fillRect(mx - hw, L.apY + L.apH, hw * 2, H - L.apY - L.apH); } // the mullion's shadow, soft-sided, falling down across the panel
+    g.restore();
+  }
   if (B.pump > 0.01) { g.fillStyle = "rgba(2,3,6," + (0.4 * B.pump).toFixed(3) + ")"; g.fillRect(-40, -40, W + 80, H + 80); }
 }
 function blimpDark(flashA) { return BLIMP.u < 0 ? 0 : 0.3 * BLIMP.dk * (1 - Math.min(1, (flashA || 0) * 2)); } // how much darker the room is as the hull blocks the sky (not in a lightning flash)
@@ -1424,11 +1460,11 @@ function blimpDrone() {
   const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 90, Q: 0.7 }), hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 24, Q: 0.5 });
   const pan = new StereoPannerNode(ctx, { pan: 0 });
   const shape = new WaveShaperNode(ctx, { curve: (() => { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(2.6 * x); } return c; })() });
-  const sum = new GainNode(ctx, { gain: 1 }), oscs = [], det = [], rates = [1.55, 1.7, 1.83, 1.97];
+  const sum = new GainNode(ctx, { gain: 1 }), oscs = [], det = [], rates = [0.8, 0.8, 0.92, 0.92]; // two pairs: one slow, deep beat, drifting
   for (let i = 0; i < 4; i++) {
     const f = 36.5 + i * 2.4 + Math.random() * 1.4;
     const o1 = new OscillatorNode(ctx, { type: "sawtooth", frequency: f }), o2 = new OscillatorNode(ctx, { type: "triangle", frequency: f * 2.01 }), o3 = new OscillatorNode(ctx, { type: "sawtooth", frequency: f * 2.56 });
-    const eg = new GainNode(ctx, { gain: 0.5 }), lfo = new OscillatorNode(ctx, { frequency: rates[i] * (0.96 + Math.random() * 0.08) }), lg = new GainNode(ctx, { gain: 0.46 });
+    const eg = new GainNode(ctx, { gain: 0.5 }), lfo = new OscillatorNode(ctx, { frequency: rates[i] * (0.96 + Math.random() * 0.08) }), lg = new GainNode(ctx, { gain: 0.5 });
     const wob = new OscillatorNode(ctx, { frequency: 0.04 + Math.random() * 0.07 }), wg = new GainNode(ctx, { gain: 0.14 }); // the beat itself drifts
     wob.connect(wg).connect(lfo.frequency); lfo.connect(lg).connect(eg.gain);
     const g1 = new GainNode(ctx, { gain: 0.09 }), g2 = new GainNode(ctx, { gain: 0.04 }), g3 = new GainNode(ctx, { gain: 0.016 });
@@ -1442,9 +1478,11 @@ function blimpDrone() {
   const nz = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.9), loop: true }), nbp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 260, Q: 0.6 }), rush = new GainNode(ctx, { gain: 0.0001 });
   const nam = new OscillatorNode(ctx, { frequency: 1.8 }), nag = new GainNode(ctx, { gain: 0.35 }), nmod = new GainNode(ctx, { gain: 0.65 });
   nam.connect(nag).connect(nmod.gain); nz.connect(nbp).connect(nmod).connect(rush); nz.start(t0); nam.start(t0); oscs.push(nz, nam);
+  const ph = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 240, Q: 1.1 }), phg = new GainNode(ctx, { gain: 0.1 }); // a faint murmur of the same throb an octave and a half up, for phone speakers (headphones barely hear it)
+  shape.connect(ph).connect(phg).connect(pan);
   sum.connect(shape).connect(lp); lp.connect(hp).connect(pan); rush.connect(pan); pan.connect(out).connect(duck).connect(N.ambW);
-  // the hull groaning: a little echo around the creaks
-  const cr = new GainNode(ctx, { gain: 1 }), dly = new DelayNode(ctx, { delayTime: 0.31, maxDelayTime: 1 }), dlp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 1000, Q: 0.4 }), fb = new GainNode(ctx, { gain: 0.5 }), wet = new GainNode(ctx, { gain: 0.5 });
+  // the hull groaning: a short, dull echo around the creaks
+  const cr = new GainNode(ctx, { gain: 1 }), dly = new DelayNode(ctx, { delayTime: 0.12, maxDelayTime: 1 }), dlp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 1000, Q: 0.4 }), fb = new GainNode(ctx, { gain: 0.3 }), wet = new GainNode(ctx, { gain: 0.5 });
   cr.connect(duck); cr.connect(dly); dly.connect(dlp); dlp.connect(fb).connect(dly); dlp.connect(wet).connect(duck);
   const zg = new GainNode(ctx, { gain: 1 }); zg.connect(N.ambW); // the sounds from outside that are not the engines (the lamp's hiss)
   return { out, duck, lp, pan, rush, cr, zg, oscs, det };
@@ -1466,18 +1504,20 @@ function blimpCreak(snd, lv) { // a groan of the hull working, now and then a wi
   }
 }
 function blimpWhump(S, lv) { // one blade of a huge slow propeller going by overhead: a soft low thump with a little air in it, into the hull's echo
-  const t0 = ctx.currentTime, o = new OscillatorNode(ctx, { type: "sine", frequency: 64 }), g = new GainNode(ctx, { gain: 0.0001 }), n = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(1.2) }), lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 170, Q: 0.5 }), ng = new GainNode(ctx, { gain: 0.0001 });
+  const t0 = ctx.currentTime, o = new OscillatorNode(ctx, { type: "sine", frequency: 64 }), g = new GainNode(ctx, { gain: 0.0001 }), n = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(1.2) }), lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 420, Q: 0.5 }), ng = new GainNode(ctx, { gain: 0.0001 });
+  const o2 = new OscillatorNode(ctx, { type: "sine", frequency: 110 }), g2 = new GainNode(ctx, { gain: 0.0001 }); // a body a phone can play
+  g2.gain.setValueAtTime(0.0001, t0); g2.gain.linearRampToValueAtTime(lv * 0.5, t0 + 0.06); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35); o2.connect(g2).connect(S.cr); o2.start(t0); o2.stop(t0 + 0.45);
   o.frequency.setValueAtTime(64, t0); o.frequency.exponentialRampToValueAtTime(36, t0 + 0.8);
   g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(lv, t0 + 0.09); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1);
   ng.gain.setValueAtTime(0.0001, t0); ng.gain.linearRampToValueAtTime(lv * 0.8, t0 + 0.14); ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
   o.connect(g).connect(S.cr); n.connect(lp).connect(ng).connect(S.cr); o.start(t0); o.stop(t0 + 1.1); n.start(t0); n.stop(t0 + 1.1);
 }
-function blimpSizzle(S, k) { // the arc lamp's light comes through the glass: a hot, short hiss (an outside sound: through the shutter and the STORM gate)
-  const t0 = ctx.currentTime, n = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.3), loop: true }), bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 2600, Q: 0.9 }), env = new GainNode(ctx, { gain: 0.0001 });
+function blimpSizzle(S, k) { // the arc lamp's light comes through the glass: a low, short hiss (an outside sound: through the shutter and the STORM gate)
+  const t0 = ctx.currentTime, n = new AudioBufferSourceNode(ctx, { buffer: noiseBuf(2.3), loop: true }), bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 900, Q: 0.9 }), env = new GainNode(ctx, { gain: 0.0001 });
   env.gain.setValueAtTime(0.0001, t0); env.gain.exponentialRampToValueAtTime(k, t0 + 0.25); env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
   n.connect(bp).connect(env).connect(S.zg); n.start(t0); n.stop(t0 + 1.7);
 }
-function blimpStrike(t) { newStrike(t, 0.75); strike.mag = 1; strike.fl = [[0, 0.09, 0.22], [0.2, 0.4, 0.2]]; strike.bolt = false; strike.sheet = true; strike.delay = 0.9; } // a long, bright sheet: the whole outline shows long enough to read
+function blimpStrike(t) { newStrike(t, 0.75); strike.mag = 0.55; strike.fl = [[0, 0.09, 0.3], [0.2, 0.4, 0.28]]; strike.bolt = false; strike.sheet = true; strike.delay = 3.5 + Math.random() * 2; } // a long, bright sheet in the cloud: the whole outline shows long enough to read, the thunder far and late
 function stepBlimp(t, dt) {
   const B = BLIMP, st = STORY;
   if (B.at < 0 || B.done) return;
@@ -1489,29 +1529,30 @@ function stepBlimp(t, dt) {
   }
   B.u += dt;
   const u = B.u, now = ctx.currentTime, S = B.snd;
+  if (u > 30 && u < 95 && st.knock && st.knocked < 0 && st.knockAt < st.clk + 95 - u) st.knockAt = st.clk + 95 - u; // an agent's knock waits until the light has crossed the window
   blimpPose(u);
   const dd = B.dd, near = smooth01((1000 - dd) / 800);
   B.vis = smooth01((u - 15) / 3) * (1 - smooth01((u - 150) / 4)); B.murk = smooth01((u - 112) / 38); // the weather takes it back, still going
   B.dk = smooth01((360 - dd) / 220); B.rumble = smooth01(u / 22) * smooth01((900 - dd) / 700);
   // the searchlight: comes on with a stutter, feels across the ruins, once crosses the window
   B.lampOn = u > 47; const lf = u < 47 ? 0 : u < 47.12 ? 1 : u < 47.3 ? 0 : u < 47.4 ? 0.8 : u < 47.55 ? 0.1 : 1;
-  B.beamI = lf * (1 - smooth01((u - 150) / 14));
+  B.beamI = lf * (1 - smooth01((u - 150) / 14)) * (1 - 0.85 * B.murk);
   const bb = blCR(BL_KB, u) * Math.PI / 180, rho = Math.exp(blCR(BL_KR, u));
   B.rho = rho; B.tx = rho * Math.sin(bb); B.ty = BL_GY; B.tz = rho * Math.cos(bb);
   { const r = BL_L * 0.11, rr = BL_R * blProf(0.5 - 0.11); bpt(r, 0, rr + 4.6, 0); B.lx = btx[0]; B.ly = bty[0]; B.lz = btz[0]; } // lamp in its housing on the keel, a little forward of the middle
   B.gk = 0; for (let q = 0; q < BL_GL.length; q++) { blimpAim(q, u); B.gk = Math.max(B.gk, B.gl[q * 11 + 3]); } // the two lights on the ground
   // one second of white as it crosses the window, then the eye catches up
   const du = u - BL_UC;
-  B.F = smooth01((du + 0.4) / 0.4) * (1 - smooth01((du - 0.35) / 0.9)); B.pump = smooth01((du - 0.6) / 0.3) * (1 - smooth01((du - 1.1) / 1.3));
+  B.F = smooth01((du + 0.4) / 0.4) * (1 - smooth01((du - 0.35) / 0.9)); B.hush = smooth01((du + 2) / 0.5) * (1 - smooth01((du - 0.4) / 0.6)); B.pump = smooth01((du - 0.6) / 0.3) * (1 - smooth01((du - 1.1) / 1.3));
   // lightning while it is overhead: the whole shape for a moment in the cloud (a long bright sheet), once overhead and once as it goes
   if (!B.fl1 && u >= 54 && !strike) { blimpStrike(t); B.fl1 = true; }
   if (!B.fl2 && u >= 122 && !strike) { blimpStrike(t); B.fl2 = true; }
-  if (!B.sizzled && du >= -0.3) { B.sizzled = true; blimpSizzle(S, 0.05); }
+  if (!B.sizzled && du >= -0.3) { B.sizzled = true; if (shutterPos < 0.9) blimpSizzle(S, 0.015 * (1 - shutterPos * 0.92)); } // no light through a closed shutter
   // the sound: from behind, dull, building over twenty seconds, held while it is overhead; a held breath just before the light comes through the glass,
   // then it swells back; opening as it comes round in front; the last thing to go. Below the knock rule's line (STORM 0.15) it is nearly silent
   const sg = stormVol >= STORM_HEAR ? 1 : Math.pow(stormVol / STORM_HEAR, 2);
   const build = smooth01(u / 20), nearK = smooth01((600 - dd) / 450), fade = 1 - smooth01((u - 150) / 40);
-  const duck = 1 - 0.62 * smooth01((du + 2) / 0.5) * (1 - smooth01((du - 0.4) / 0.6)); // the world goes quiet as it looks at you
+  const duck = 1 - 0.62 * B.hush; // the world goes quiet as it looks at you (the rain too: see the hook in frame)
   const swell = 1 + 0.3 * smooth01((du - 0.4) / 0.5) * (1 - smooth01((du - 3.4) / 4));
   S.out.gain.setTargetAtTime(Math.max(0.0001, BL_GAIN * (0.012 + 0.988 * Math.pow(build, 1.6)) * (0.78 + 0.22 * nearK) * swell * fade), now, 0.6);
   S.duck.gain.setTargetAtTime(Math.max(0.0001, sg * duck), now, 0.12);
@@ -1522,10 +1563,10 @@ function stepBlimp(t, dt) {
   if (t - B.dopT > 0.25) { // the pitch falls a little as it passes
     B.dopT = t; if (B.prevDd > 0) { const rv = (dd - B.prevDd) / 0.25, cents = clamp(-rv / 343 * 1731 * 2.2, -140, 140); for (const o of S.det) o.detune.setTargetAtTime(cents, now, 0.4); } B.prevDd = dd;
   }
-  if (u >= B.creakAt && u < 170) { blimpCreak(S, (0.03 + 0.06 * near) * (1 - smooth01((u - 140) / 30))); B.creakAt = u + 8 + Math.random() * 5; }
-  if (u >= B.whAt && u < 68) { const bell = smooth01((u - 38) / 10) * (1 - smooth01((u - 58) / 8)); if (bell > 0.02) blimpWhump(S, 0.05 * bell); B.whAt = u + 2.1 + Math.random() * 0.8; } // as it passes over: a faint soft whump of huge slow propellers
+  if (u >= B.creakAt && u < 170) { blimpCreak(S, (0.03 + 0.06 * near) * (1 - smooth01((u - 140) / 30))); B.creakAt = u + 14 + Math.random() * 10; }
+  if (u >= B.whAt && u < 68) { const bell = smooth01((u - 38) / 10) * (1 - smooth01((u - 58) / 8)); if (bell > 0.02) blimpWhump(S, 0.05 * bell); B.whAt = u + 1.25 + 0.05 * Math.sin(u * 0.3); } // as it passes over: a faint soft whump of huge slow propellers, on a steady clock, in step with the throb
   if (u >= 190) { // nothing left to see or hear: only now does it stop
-    B.done = true; B.vis = 0; B.beamI = 0; B.F = 0; B.pump = 0; B.dk = 0; B.rumble = 0; B.gk = 0; B.gl.fill(0); B.c = B.bc = B.tc = null; S.out.gain.setTargetAtTime(0.0001, now, 0.5);
+    B.done = true; B.vis = 0; B.beamI = 0; B.F = 0; B.pump = 0; B.dk = 0; B.rumble = 0; B.gk = 0; B.gl.fill(0); B.c = B.bc = B.tc = B.cityS = B.silS = B.silH = B.rg = null; B.hush = 0; S.out.gain.setTargetAtTime(0.0001, now, 0.5);
     const sd = S; setTimeout(() => { for (const o of sd.oscs) try { o.stop(); } catch (e) {} }, 4000);
   }
 }
@@ -3961,7 +4002,7 @@ function drawLampAndGlow(t, amp, flashA) {
     jolt = dj < 0.07 ? 0.22 : dj < 0.18 ? 1.12 : dj < 0.5 ? 0.34 : dj < 0.62 ? 0.95 : dj < 1.12 ? 0.4 : dj < 1.27 ? 0.92 : dj < 1.65 ? 0.62 : 0.62 + 0.38 * (dj - 1.65) / 0.3;
   }
   let dk = Math.max(0, (1 - lampDim * Math.min(1, pwrLvl) * jolt) * 0.62) + deadK * 0.24;
-  dk = Math.min(0.92, dk + blimpDark(flashA)); jolt *= 1 - 1.6 * blimpDark(flashA); // darker, and the ceiling lamp's glow dimmed with it
+  dk = Math.min(0.92, dk + blimpDark(flashA)); // the window's spill on the room, darker while the hull blocks the sky (the lamp does not dim: that would read as the power failing)
   if (deadK > 0) dk = Math.max(0.12, dk - (flashA || 0) * 3.2 * deadK); // in the dark, each flash shows you the room
   roomDark = dk;
   const shade = () => {
@@ -4586,7 +4627,7 @@ function frame(now) {
   const wk = stepWeather(t, dt);
   if (built && N.rainG && t - wxAudioT > 0.5) {
     wxAudioT = t;
-    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk), ctx.currentTime, 1.5);
+    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk) * (1 - 0.45 * BLIMP.hush), ctx.currentTime, 1.5);
     if (N.windVol) N.windVol.gain.setTargetAtTime(S.wind * 0.16 * (0.75 + 0.5 * wk), ctx.currentTime, 2.0);
   }
   // storm scheduler: flash first, thunder arrives late by distance, siren stays hero; squalls bring strikes closer together
