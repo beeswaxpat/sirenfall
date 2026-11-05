@@ -957,7 +957,7 @@ const BLAST = { on: 0, at: -1, t0: -1e9, jump: -1, auto: false, dropped: false, 
   gx: NUKE.x, gy: 0.535, waveT: -9, liftT: -9, puffT: -9, dipT: -9, dust: [], swing: 0, swingV: 0, radAt: -1e9, radT: -1e9, roar: false, snd: -1, alarmG: null, rumbled: false, rumEnd: -1 };
 const BL_DROP = 0.85, BL_WAVE = 2.05, BL_LIFT = 7.6, BL_BUSY = 14; // after the light: the shutter trips, the air arrives, the shutter lifts, all quiet
 {
-  const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
+  const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(location.search), q = location.search;
   let seen = "0";
   try { seen = localStorage.getItem("sf.blast") || "0"; } catch (e) {}
   const force = lh ? q.match(/[?&]blast(?:=(\d+))?\b/) : null; // local test: ?blast (at 15 s) or ?blast=4
@@ -1021,6 +1021,7 @@ addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; 
    Tessera Relay's. "b" is the simpler version kept to compare: the same opening and ending, a box every 13 s in each column.
    Local test: ?planes (4 s after the sound comes on) or ?planes=N; it skips the bomb unless ?blast or ?after is given too,
    and then it comes after the bomb. ?score=b for the simpler version, ?sparse for the score's own (slower) clocks */
+const NEW_EVENTS_LIVE = false; // the second blast and the blimp happen on their own only once Patrick has seen them on a real phone
 const RAID_SCORE = "a", RAID_ODDS_POST = 1 / 3, RAID_ODDS_CITY = 0.4;
 const RAID = { at: -1, u: -1, rows: [], post: false, score: RAID_SCORE, tsc: 0.42, rev: 0, endAt: 0, snd: null, done: false };
 let planeC = null;
@@ -1042,6 +1043,176 @@ let planeC = null;
       else if (BLAST.jump < 0 && !STORY.knock && Math.random() < RAID_ODDS_CITY) RAID.at = 8 + Math.random() * 6; // over the whole city
     }
   }
+}
+/* ---- the second blast: a minute or so after the first, another one, far off, below the horizon (only when NEW_EVENTS_LIVE) ----
+   First the light: the cloud above the horizon flares white from below, goes yellow, then a dull orange, and the monitor breaks up
+   and the lamp stutters. Then 15 to 20 seconds of nothing but rain. Then the sound: low, long and muffled, no crack in it, the glass
+   rattling a little and the rain dipping. After that a low orange glow stays on the horizon there for the rest of the visit.
+   A raid after the blast waits until this has rolled away. Local test: ?blast2 (70 s after the first flash) or ?blast2=N, with
+   ?blast or ?after=N (on production add evtest=1) */
+const BLAST2 = { on: false, delay: 70, ph: 0, x: 0.5, t0: -1e9, boomAt: 0, boomT: -1e9, glT: -9, jT: -9, lumps: [], li: 0, duck: null, spr: null, c: null, lastR: -9, w: [1, 0, 0, 0], wf: [0, 0, 0.75, 0.25] };
+{
+  const m = (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(location.search)) ? location.search.match(/[?&]blast2(?:=(\d+))?\b/) : null;
+  if (BLAST.at >= 0 || BLAST.jump >= 0) BLAST2.on = !!m || (NEW_EVENTS_LIVE && BLAST.jump < 0 && Math.random() < 0.5); // half of the visits where the bomb goes off
+  BLAST2.delay = m && m[1] ? +m[1] : m ? 70 : 60 + Math.random() * 30; // after the first flash
+  BLAST2.x = 0.15 + Math.random() * 0.7; if (Math.abs(BLAST2.x - NUKE.x) < 0.12) BLAST2.x = 0.15 + Math.random() * 0.4; // not on top of the first one
+  window.__blast2 = BLAST2;
+}
+const b2s = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+function blast2Hold() { return BLAST2.on && BLAST2.ph < 3; } // the raid after the blast waits for it
+function blast2Glitch(t) { const d = t - BLAST2.glT; return d >= 0 && d < 1 && !(d > 0.42 && d < 0.52); } // the picture breaks up, comes back a moment, breaks again
+function blast2Jolt(t) { // the lamp once: out, back too bright, half out, steady
+  const d = t - BLAST2.jT;
+  return RM || d < 0 || d > 0.8 ? 1 : d < 0.08 ? 0.2 : d < 0.15 ? 1.15 : d < 0.26 ? 0.45 : d < 0.35 ? 0.9 : 0.9 + 0.1 * (d - 0.35) / 0.45;
+}
+function blast2Light(tt) { // how bright the cloud is, tt seconds after the flash: a spike, a dip, a swell to the main peak, a long fade
+  if (tt < 0) return 0;
+  const u = tt / 0.6;
+  return 0.85 * Math.exp(-tt / 0.05) + 2 * u * u / (1 + u * u * u * u) + 0.42 * (1 - Math.exp(-tt / 0.4)) * Math.exp(-tt / 5.5);
+}
+function blast2Sprites() { // soft round glows, white, yellow, orange, dull red, baked once: the color is a cross-fade between them
+  const out = [];
+  for (const col of ["255,248,240", "255,214,150", "255,140,52", "205,78,30"]) {
+    const c = document.createElement("canvas"); c.width = c.height = 96;
+    const x = c.getContext("2d"), r = x.createRadialGradient(48, 48, 0, 48, 48, 48);
+    r.addColorStop(0, "rgba(" + col + ",1)"); r.addColorStop(0.15, "rgba(" + col + ",0.7)"); r.addColorStop(0.4, "rgba(" + col + ",0.28)");
+    r.addColorStop(0.7, "rgba(" + col + ",0.07)"); r.addColorStop(1, "rgba(" + col + ",0)");
+    x.fillStyle = r; x.fillRect(0, 0, 96, 96); out.push(c);
+  }
+  return out;
+}
+function blast2Add(x, w, cx, cy, rx, ry, a) {
+  for (let i = 0; i < 4; i++) { const k = w[i] * a; if (k > 0.004) { x.globalAlpha = k > 1 ? 1 : k; x.drawImage(BLAST2.spr[i], cx - rx, cy - ry, rx * 2, ry * 2); } }
+}
+function blast2Boom() {
+  // the sound arriving: a deep roll, nothing above a couple of hundred hertz (the distance took it), a slow swell, then lumps
+  // as it comes back off the hills and the towers. The tail is sound from outside; the sub and the glass are in the room.
+  if (!ctx || !built) return;
+  const Z = BLAST2, t0 = ctx.currentTime + 0.05, n = 100, len = 10, nb = noiseKept(4.8), env = new Float32Array(n), r = Math.random;
+  const f1 = 0.4 + r() * 0.2, f2 = 0.9 + r() * 0.4, f3 = 1.7 + r() * 0.6, p1 = r() * 6.3, p2 = r() * 6.3, p3 = r() * 6.3;
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1) * len, base = u < 1.3 ? b2s(0, 1.3, u) : Math.exp(-(u - 1.3) / 3.3);
+    const echo = (0.5 * Math.exp(-Math.pow((u - 2.7) / 0.6, 2)) + 0.35 * Math.exp(-Math.pow((u - 4.6) / 0.7, 2)) + 0.2 * Math.exp(-Math.pow((u - 6.4) / 0.8, 2))) * Math.exp(-(u - 1.3) / 6);
+    env[i] = (base + echo) * (0.82 + 0.18 * Math.sin(f1 * u + p1) + 0.12 * Math.sin(f2 * u + p2) + 0.08 * Math.sin(f3 * u + p3)) * (1 - b2s(8.8, 10, u));
+  }
+  const curve = (peak) => env.map(v => Math.max(0.0001, v * peak));
+  const lp = (f) => new BiquadFilterNode(ctx, { type: "lowpass", frequency: f, Q: 0.6 });
+  const bed = (filt, peak, dest, at) => { // noise through its filters, shaped by the same curve
+    const src = new AudioBufferSourceNode(ctx, { buffer: nb, loop: true }), gn = new GainNode(ctx, { gain: 0.0001 });
+    gn.gain.setValueAtTime(0.0001, at); gn.gain.setValueCurveAtTime(curve(peak), at, len);
+    let nd = src; for (const f of filt) nd = nd.connect(f);
+    nd.connect(gn).connect(dest); src.start(at, r() * 3); src.stop(at + len + 0.1);
+  };
+  bed([lp(150), lp(150)], BL2_BODY, N.ambW, t0); // the body of it, from outside
+  bed([new BiquadFilterNode(ctx, { type: "bandpass", frequency: 190, Q: 0.7 }), lp(330)], BL2_MID, interiorOut(0), t0 + 0.1); // what small speakers can carry
+  if (rollBuf) { // and a recorded roll under it, pushed far down
+    const s = new AudioBufferSourceNode(ctx, { buffer: rollBuf, playbackRate: 0.5 }), gn = new GainNode(ctx, { gain: 0.0001 });
+    gn.gain.setValueAtTime(0.0001, t0); gn.gain.setValueCurveAtTime(curve(BL2_ROLL), t0, len);
+    s.connect(lp(140)).connect(lp(220)).connect(gn).connect(N.ambW); s.start(t0 + 0.2, rollOff); s.stop(t0 + len + 0.2);
+  }
+  { // a low tone sinking under it, pushed through a soft clip so its harmonics reach speakers that cannot play 40 Hz
+    const o = new OscillatorNode(ctx, { frequency: 46 }), sh = new WaveShaperNode(ctx, { curve: shaperCurve(v => Math.tanh(3 * v)) }), gn = new GainNode(ctx, { gain: 0.0001 });
+    o.frequency.setValueAtTime(46, t0 + 0.3); o.frequency.exponentialRampToValueAtTime(27, t0 + 5);
+    gn.gain.setValueAtTime(0.0001, t0); gn.gain.setValueCurveAtTime(curve(BL2_SUB), t0, len);
+    o.connect(sh).connect(new BiquadFilterNode(ctx, { type: "bandpass", frequency: 105, Q: 0.7 })).connect(gn).connect(interiorOut(0)); o.start(t0); o.stop(t0 + len + 0.1);
+  }
+  // the glass and the shutter, rattling a little: the first push, then again on the big lumps
+  const out = interiorOut(0), taps = [[0.5, 1], [0.58, 0.7], [0.68, 0.55], [0.8, 0.4], [0.97, 0.3], [1.2, 0.2], [2.7, 0.45], [2.82, 0.3], [4.6, 0.3], [6.4, 0.18]];
+  for (const [d, v] of taps) {
+    const at = t0 + d, s1 = new AudioBufferSourceNode(ctx, { buffer: nb }), f1 = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 1250 * (0.94 + r() * 0.12), Q: 12 }), g1 = new GainNode(ctx, { gain: 0.0001 });
+    g1.gain.setValueAtTime(0.034 * v, at); g1.gain.exponentialRampToValueAtTime(0.0005, at + 0.25);
+    s1.connect(f1).connect(g1).connect(out); s1.start(at, r() * 2); s1.stop(at + 0.27);
+    const s2 = new AudioBufferSourceNode(ctx, { buffer: nb }), f2 = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 310, Q: 2.5 }), g2 = new GainNode(ctx, { gain: 0.0001 });
+    g2.gain.setValueAtTime(0.08 * v, at); g2.gain.exponentialRampToValueAtTime(0.0005, at + 0.08);
+    s2.connect(f2).connect(g2).connect(out); s2.start(at, r() * 2); s2.stop(at + 0.09);
+  }
+  // the rain dips as it arrives: its own gain on the way to the weather gate, put in the first time it is needed
+  if (N.rainG) {
+    if (!Z.duck) { Z.duck = new GainNode(ctx, { gain: 1 }); N.rainG.disconnect(); N.rainG.connect(Z.duck).connect(N.ambW); }
+    const dg = Z.duck.gain; dg.cancelScheduledValues(t0); dg.setValueAtTime(1, t0); dg.linearRampToValueAtTime(0.35, t0 + 0.35); dg.setValueAtTime(0.35, t0 + 1.6); dg.setTargetAtTime(1, t0 + 1.6, 1.2);
+  }
+}
+const BL2_BODY = 0.36, BL2_MID = 0.17, BL2_ROLL = 0.04, BL2_SUB = 0.022; // well under the first blast: this one is far off
+function stepBlast2(t, dt, gap) {
+  const Z = BLAST2, B = BLAST, st = STORY;
+  if (!Z.on || Z.ph >= 3) return;
+  if (B.at < 0 && B.jump < 0 && B.t0 < -1e8) { Z.on = false; return; } // no bomb in this visit after all
+  if (Z.ph === 0) {
+    if (B.t0 < -1e8) return;
+    if (t - B.t0 > Z.delay + 120) { Z.on = false; return; } // never found a quiet moment: leave it, and let the raid go
+    if (t - B.t0 < Z.delay || !B.lifted || B.lock || blastBusy(t) || strike || rotShown || shutterPos > 0.002 || shutterMoving || (grab && grab.kind === "shutter")) return;
+    if ((st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) || (st.knocked >= 0 && t - st.knocked < 12) || (DOOR.after && DOOR.step !== 9) || (RAID.u >= 0 && !RAID.done)) return;
+    if (st.boT >= 0 && t - st.boT < 20) return; // never within 20 s of the power going
+    if (!Z.spr) Z.spr = blast2Sprites();
+    Z.ph = 1; Z.t0 = Z.glT = Z.jT = t; Z.boomAt = t + 15 + Math.random() * 5;
+    if (st.blackout && st.boT < 0) st.boAt = Math.max(st.boAt, st.clk + 20 + (Z.boomAt - t) + 10); // and the power fails only after all of it
+    if (nextStrikeT < Z.boomAt + 10) nextStrikeT = Z.boomAt + 10 + Math.random() * 10; // no lightning in the silence, none in the roll
+    if (built && radioOn && crtShown() && st.deadT < 0) playStaticBurst(0, 0.9, 0.025); // the monitor's speaker, with the picture
+    if (!RM) B.swingV += 0.02;
+    return;
+  }
+  if (gap > 0.2) { Z.t0 += gap; Z.boomAt += gap; if (Z.boomT > -1e8) { Z.boomT += gap; for (const l of Z.lumps) l[0] += gap; } }
+  if (Z.ph === 1 && t >= Z.boomAt) {
+    Z.ph = 2; Z.boomT = t; blast2Boom();
+    Z.lumps = [[t + 0.5, 1], [t + 2.7, 0.55], [t + 4.6, 0.35], [t + 6.4, 0.2]]; Z.li = 0;
+  }
+  if (Z.ph === 2) {
+    if (Z.li < Z.lumps.length && t >= Z.lumps[Z.li][0]) { // the glass buzzes, the lamp stirs on its conduit
+      const v = Z.lumps[Z.li++][1];
+      if (!RM) { shakeT = t; shakeDur = 0.45; shakeAmp = 1.7 * v * clamp(Math.min(W, H) / 700, 0.9, 1.5); B.swingV += 0.03 * v; }
+    }
+    if (t - Z.boomT > 30) Z.ph = 3; // rolled away: the raid, if there is one, may start
+  }
+}
+function drawBlast2Room(t) { // the window lights the wall a little
+  const Z = BLAST2, tt = t - Z.t0;
+  if (Z.ph < 1 || tt > 12) return;
+  const F = clamp(blast2Light(tt), 0, 1);
+  if (F < 0.02) return;
+  g.save(); g.globalCompositeOperation = "lighter"; g.fillStyle = "rgb(" + Math.round(34 * F) + "," + Math.round(26 * F) + "," + Math.round(17 * F) + ")"; g.fillRect(0, 0, W, H); g.restore();
+}
+function drawBlast2(t) {
+  const Z = BLAST2;
+  if (Z.ph < 1 || !L) return;
+  const sil = BLAST.swapped && silAfterC ? silAfterC : silC;
+  if (!sil) return;
+  const { apW, apH } = L, tt = t - Z.t0, sc = Math.min(DPR, 1.5, 720 / apW), yH = apH * 0.5, gx = apW * Z.x;
+  let c = Z.c;
+  if (!c || c.width !== Math.ceil(apW * sc) || c.height !== Math.ceil(apH * sc)) { // made the first time it is needed, in a visit that has it
+    c = Z.c = document.createElement("canvas"); c.width = Math.ceil(apW * sc); c.height = Math.ceil(apH * sc); c.sc = sc; c.x = c.getContext("2d"); Z.lastR = -9;
+    const gm = c.x.createLinearGradient(0, apH * 0.56, 0, apH * 0.68); gm.addColorStop(0, "rgba(0,0,0,0)"); gm.addColorStop(1, "rgba(0,0,0,1)"); c.gm = gm; // the ground does not catch it
+  }
+  if (tt < 16 || t - Z.lastR >= 0.1) { // after the first seconds the glow only moves slowly, so it is redrawn ten times a second
+    Z.lastR = t;
+    const wW = 1 - b2s(0.6, 3, tt), wY = (1 - wW) * (1 - b2s(3, 9, tt)), wD = b2s(9, 40, tt), wO = Math.max(0, 1 - wW - wY - wD);
+    Z.w[0] = wW; Z.w[1] = wY; Z.w[2] = wO; Z.w[3] = wD;
+    const Fl = blast2Light(tt), Gf = (1 - Math.exp(-tt / 9)) * (RM ? 1 : 0.84 + 0.16 * Math.sin(t * 1.1) * Math.sin(t * 0.43 + 2) + 0.06 * Math.sin(t * 0.27));
+    const x = c.x; x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, c.width, c.height); x.setTransform(sc, 0, 0, sc, 0, 0);
+    const aS = clamp(Fl * 0.9 + Gf * 0.3, 0, 1);
+    if (aS > 0.01 && cloudHotC && cloudWarmC) { // the scud over it lit from below, through the lit twins of the dark strip, only near the spot
+      const cw = apW * 1.5, chh = apH * 0.36, cy0 = apH * 0.08, oc = RM ? 200 : (cloudPh * 4) % cw;
+      x.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 2; i++) { // twice over: the strips are thin, and this is the part that has to read as cloud
+        x.globalAlpha = aS * wW; if (x.globalAlpha > 0.01) { x.drawImage(cloudHotC, -oc, cy0, cw, chh); x.drawImage(cloudHotC, cw - oc, cy0, cw, chh); }
+        x.globalAlpha = aS * (1 - wW); x.drawImage(cloudWarmC, -oc, cy0, cw, chh); x.drawImage(cloudWarmC, cw - oc, cy0, cw, chh);
+      }
+      const k = clamp(Fl, 0, 1), rx = apW * (0.24 + 0.5 * k), ry = apH * (0.2 + 0.32 * k);
+      x.globalCompositeOperation = "destination-in"; x.globalAlpha = 1; x.drawImage(Z.spr[0], gx - rx, yH - apH * 0.12 - ry, rx * 2, ry * 2); x.globalCompositeOperation = "source-over";
+    }
+    x.globalCompositeOperation = "lighter";
+    if (Fl > 0.004) {
+      blast2Add(x, Z.w, gx, yH - apH * 0.02, apW * 0.9, apH * 0.6, 0.55 * Fl); // the whole deck takes some of it, most near the ground
+      blast2Add(x, Z.w, gx, yH - apH * 0.03, apW * 0.5, apH * 0.2, Fl); // the low band of sky on the horizon flares
+      blast2Add(x, Z.w, gx, yH - apH * 0.04, apW * 0.2, apH * 0.09, 0.9 * Fl);
+    }
+    blast2Add(x, Z.wf, gx, yH - apH * 0.05, apW * 0.3, apH * 0.2, 0.4 * Gf); // and then the fire under it, low and dull
+    blast2Add(x, Z.wf, gx, yH - apH * 0.03, apW * 0.12, apH * 0.08, 0.8 * Gf);
+    x.globalAlpha = 1; x.globalCompositeOperation = "destination-out";
+    x.fillStyle = c.gm; x.fillRect(0, 0, apW, apH);
+    x.drawImage(sil, 0, 0, apW, apH); // the city stands in front of it
+    x.globalCompositeOperation = "source-over";
+  }
+  g.save(); g.globalCompositeOperation = "lighter"; g.drawImage(c, 0, 0, apW, apH); g.restore();
 }
 function raidCanvas() { // only made for a visit that has the raid: at full size it is the biggest canvas on the page
   if (!L || RAID.at < 0) return null;
@@ -1123,7 +1294,7 @@ function stepRaid(t, dt) {
     if (!built || st.clk < R.at || st.deadT >= 0 || st.boT >= 0) return;
     if (R.post) { // after the blast, once it has all settled: the shutter up, the warning on, any knock at the door over
       const B = BLAST;
-      if (!B.lifted || B.lock || t - B.t0 < BL_LIFT + 12 || (B.radAt > -1e8 && B.radT < -1e8) || (B.radT > -1e8 && t - B.radT < 6) ||
+      if (!B.lifted || B.lock || t - B.t0 < BL_LIFT + 12 || blast2Hold() || (B.radAt > -1e8 && B.radT < -1e8) || (B.radT > -1e8 && t - B.radT < 6) ||
         (DOOR.after && DOOR.step !== 9) || (st.knocked >= 0 && t - st.knocked < 12)) return;
     } else if (st.knock && st.knocked < 0) { R.at = -1; return; } // a knock at the door is coming (an agent's): not this visit
     R.u = 0; R.snd = raidDrone(); R.rev = 8 + Math.random() * 4; R.endAt = R.rev + RAID_SHOW;
@@ -2455,6 +2626,7 @@ function drawCity(t, amp, dt, flashA) {
     }
   }
 
+  drawBlast2(t); // the second blast, if there is one: light under the cloud, then the glow
   // siren head on the mast: horn bell + rotor housing on a trunnion yoke
   const tw2 = anchors.tower, tx = tw2.x, tt = tw2.topY;
   const yaw = hornYaw(), sy = Math.sin(yaw), cy2 = Math.cos(yaw);
@@ -3473,6 +3645,7 @@ function drawLampAndGlow(t, amp, flashA) {
   if (!RM && dj >= 0 && dj < 1.95) {
     jolt = dj < 0.07 ? 0.22 : dj < 0.18 ? 1.12 : dj < 0.5 ? 0.34 : dj < 0.62 ? 0.95 : dj < 1.12 ? 0.4 : dj < 1.27 ? 0.92 : dj < 1.65 ? 0.62 : 0.62 + 0.38 * (dj - 1.65) / 0.3;
   }
+  jolt *= blast2Jolt(t);
   let dk = Math.max(0, (1 - lampDim * Math.min(1, pwrLvl) * jolt) * 0.62) + deadK * 0.24;
   if (deadK > 0) dk = Math.max(0.12, dk - (flashA || 0) * 3.2 * deadK); // in the dark, each flash shows you the room
   roomDark = dk;
@@ -3669,8 +3842,8 @@ function drawCRT(t) {
   if (inCard && ct > CARD_LEN - 0.3) drawSnow(c);
   else if (inCard) drawCard(c, ct, flick);
   else if (bwv >= 0 && bwv < 0.35) drawSnow(c); // the air hits the camera outside
-  else if (BLAST.radT > -1e8 && !DOOR.cam) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
-  else if (t - STORY.glitchT < 0.35 || t - DOOR.camT < 0.35) drawSnow(c); // the picture breaks up; when it comes back the door is open
+  else if (BLAST.radT > -1e8 && !DOOR.cam) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35 || blast2Glitch(t)) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
+  else if (t - STORY.glitchT < 0.35 || t - DOOR.camT < 0.35 || blast2Glitch(t)) drawSnow(c); // the picture breaks up; when it comes back the door is open
   else {
     g.globalAlpha = flick;
     g.drawImage(STORY.doorOpen || STORY.knocked >= 0 || DOOR.cam ? feedOpenC : feedC, c.x, c.y, c.w, c.h); // after a knock it is never shut again
@@ -4116,6 +4289,7 @@ function frame(now) {
   stepBlast(t, dt, gap);
   stepStory(t, dt);
   stepRaid(t, dt);
+  stepBlast2(t, dt, gap);
 
   let shX = 0, shY = 0;
   if (t - shakeT < shakeDur) {
@@ -4140,6 +4314,7 @@ function frame(now) {
   drawCity(t, amp, dt, flashA);
   g.drawImage(frameC, 0, 0, W, H);
   if (flashA > 0.01) { g.fillStyle = "rgba(180,200,255," + (flashA * 0.10).toFixed(3) + ")"; g.fillRect(0, 0, W, H); }
+  drawBlast2Room(t);
   drawKnobAt(L.vol, S.vol, "vol");
   drawKnobAt(L.dist, (S.dist - 150) / 2650, "dist");
   drawKnobAt(L.storm, stormVol, "storm");
