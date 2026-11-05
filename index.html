@@ -927,6 +927,7 @@ let rainNear = null, rainFar = null, runnels = [], strike = null, nextStrikeT = 
 let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
 let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, shakeDur = 0.32, shakeAmp = 6, feedC = null, feedOpenC = null;
 let silC = null, lightC = null, mushC = null, cloudWarmC = null, cloudHotC = null, rotShown = false, variantT = null;
+let B2HIT = null; // the far blast's mark on the skyline (set while its broken plates are baked, and for good once they are on screen)
 let cityAfterC = null, silAfterC = null, fireL1 = null, fireL2 = null, afterFires = [], bakeAfter = false, nearM = null, silPallC = null, waveSilC = null, ruinSilC = null;
 let cloudC = null, cloudLitC = null, rainPhF = 0, rainPhN = 0, fogPh = 0, cloudPh = 0, wxAudioT = -9;
 /* weather: a slow random walk through calm, building, squall, passing; k is the rain intensity it drives */
@@ -1046,21 +1047,27 @@ let planeC = null;
 }
 /* ---- the second blast: a minute or so after the first, another one, far off, below the horizon (only when NEW_EVENTS_LIVE) ----
    First the light: the cloud above the horizon flares white from below, goes yellow, then a dull orange, and the monitor breaks up
-   and the lamp stutters. Then 15 to 20 seconds of nothing but rain. Then the sound: low, long and muffled, no crack in it, the glass
-   rattling a little and the rain dipping. After that a low orange glow stays on the horizon there for the rest of the visit.
+   and the lamp stutters. The far towers stand black against it. A couple of seconds later the air reaches them: crowns shear off
+   and topple, a few lean and sink, a bank of dust rises and rolls out lit orange from below. Then 15 to 20 seconds of nothing but
+   rain. Then the sound: low, long and muffled, no crack in it, the glass rattling a little and the rain dipping. After that the
+   skyline there stays broken, with a few small fires and a slow column of smoke, and a low orange glow on the horizon.
    A raid after the blast waits until this has rolled away. Local test: ?blast2 (70 s after the first flash) or ?blast2=N, with
-   ?blast or ?after=N (on production add evtest=1) */
-const BLAST2 = { on: false, delay: 70, ph: 0, x: 0.5, t0: -1e9, boomAt: 0, boomT: -1e9, glT: -9, jT: -9, lumps: [], li: 0, duck: null, spr: null, c: null, lastR: -9, w: [1, 0, 0, 0], wf: [0, 0, 0.75, 0.25] };
+   ?blast or ?after=N (on production add evtest=1); ?blast2 alone also brings the first blast in at 15 s on a visit that has none */
+const BLAST2 = { on: false, delay: 70, ph: 0, x: 0.5, t0: -1e9, boomAt: 0, boomT: -1e9, glT: -9, jT: -9, lumps: [], li: 0, duck: null, spr: null, spd: null, c: null, lastR: -9,
+  w: [1, 0, 0, 0, 0], wf: [0, 0, 0.75, 0.25, 0], ck: -1, bk: 0, bkT: 0, nw: null, hitD: 2.6, hit: false, rv: null, cr: [], pf: [], sm: [], gr: null, gk: "" };
 {
   const m = (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(location.search)) ? location.search.match(/[?&]blast2(?:=(\d+))?\b/) : null;
+  if (m && BLAST.at < 0 && BLAST.jump < 0) { BLAST.at = BLAST.at0 = 15; if (!STORY.fast) { STORY.knock = false; STORY.card = false; } if (RAID.at >= 0 && !RAID.post) RAID.at = -1; } // a test visit with no bomb gets one
   if (BLAST.at >= 0 || BLAST.jump >= 0) BLAST2.on = !!m || (NEW_EVENTS_LIVE && BLAST.jump < 0 && Math.random() < 0.5); // half of the visits where the bomb goes off
   BLAST2.delay = m && m[1] ? +m[1] : m ? 70 : 60 + Math.random() * 30; // after the first flash
   BLAST2.x = 0.15 + Math.random() * 0.7; if (Math.abs(BLAST2.x - NUKE.x) < 0.12) BLAST2.x = 0.15 + Math.random() * 0.4; // not on top of the first one
+  BLAST2.hitD = 2.4 + Math.random() * 0.6; // the air reaches the far towers this long after the flash, well before the sound reaches us
   window.__blast2 = BLAST2;
 }
 const b2s = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 function blast2Hold() { return BLAST2.on && BLAST2.ph < 3; } // the raid after the blast waits for it
-function blast2Glitch(t) { const d = t - BLAST2.glT; return d >= 0 && d < 1 && !(d > 0.42 && d < 0.52); } // the picture breaks up, comes back a moment, breaks again
+function blast2Busy(t) { const Z = BLAST2; return Z.on && (Z.ph === 1 || (Z.ph === 2 && t - Z.boomT < 10)); } // nothing else starts in the silence or the first of the roll
+function blast2Glitch(t) { const d = t - BLAST2.glT; return d >= 0 && d < 1.1 && (RM ? d < 0.35 : d < 0.5 || (d > 0.62 && d < 0.82) || (d > 0.9 && d < 1.05)); } // the picture breaks up, comes back a moment, breaks again, once more
 function blast2Jolt(t) { // the lamp once: out, back too bright, half out, steady
   const d = t - BLAST2.jT;
   return RM || d < 0 || d > 0.8 ? 1 : d < 0.08 ? 0.2 : d < 0.15 ? 1.15 : d < 0.26 ? 0.45 : d < 0.35 ? 0.9 : 0.9 + 0.1 * (d - 0.35) / 0.45;
@@ -1070,19 +1077,76 @@ function blast2Light(tt) { // how bright the cloud is, tt seconds after the flas
   const u = tt / 0.6;
   return 0.85 * Math.exp(-tt / 0.05) + 2 * u * u / (1 + u * u * u * u) + 0.42 * (1 - Math.exp(-tt / 0.4)) * Math.exp(-tt / 5.5);
 }
-function blast2Sprites() { // soft round glows, white, yellow, orange, dull red, baked once: the color is a cross-fade between them
-  const out = [];
-  for (const col of ["255,248,240", "255,214,150", "255,140,52", "205,78,30"]) {
+function blast2Sprites() { // soft round glows, white, yellow, orange, dull red, and the cold blue-white of the first pulse, baked once; dark smoke and brown dust
+  const mk = (col, stops) => {
     const c = document.createElement("canvas"); c.width = c.height = 96;
     const x = c.getContext("2d"), r = x.createRadialGradient(48, 48, 0, 48, 48, 48);
-    r.addColorStop(0, "rgba(" + col + ",1)"); r.addColorStop(0.15, "rgba(" + col + ",0.7)"); r.addColorStop(0.4, "rgba(" + col + ",0.28)");
-    r.addColorStop(0.7, "rgba(" + col + ",0.07)"); r.addColorStop(1, "rgba(" + col + ",0)");
-    x.fillStyle = r; x.fillRect(0, 0, 96, 96); out.push(c);
-  }
-  return out;
+    for (const [p, a] of stops) r.addColorStop(p, "rgba(" + col + "," + a + ")");
+    x.fillStyle = r; x.fillRect(0, 0, 96, 96); return c;
+  };
+  const glow = [[0, 1], [0.15, 0.7], [0.4, 0.28], [0.7, 0.07], [1, 0]], puff = [[0, 1], [0.3, 0.7], [0.65, 0.25], [1, 0]];
+  BLAST2.spd = [mk("0,0,0", puff), mk("150,90,54", puff)];
+  return ["255,248,240", "255,214,150", "255,140,52", "205,78,30", "225,232,255"].map(col => mk(col, glow));
 }
 function blast2Add(x, w, cx, cy, rx, ry, a) {
-  for (let i = 0; i < 4; i++) { const k = w[i] * a; if (k > 0.004) { x.globalAlpha = k > 1 ? 1 : k; x.drawImage(BLAST2.spr[i], cx - rx, cy - ry, rx * 2, ry * 2); } }
+  for (let i = 0; i < w.length; i++) { const k = w[i] * a; if (k > 0.004) { x.globalAlpha = k > 1 ? 1 : k; x.drawImage(BLAST2.spr[i], cx - rx, cy - ry, rx * 2, ry * 2); } }
+}
+function blast2Bake(t) { // the skyline as the far blast leaves it, baked ahead a piece at a time so no frame is held up; none of it is on screen yet
+  const Z = BLAST2;
+  if (!L || t < Z.bkT || Z.bk >= 5) return;
+  Z.bkT = t + 0.12;
+  const nw = Z.nw || (Z.nw = {}), k = Z.bk++;
+  B2HIT = { x: Z.x, rec: k === 0 ? [] : null };
+  try {
+    if (k === 0) { nw.after = bakeVariant("after"); nw.rec = B2HIT.rec; }
+    else if (k === 1) nw.sil = bakeVariant("silAfter");
+    else if (k === 2) nw.lo = bakeVariant("afterLo");
+    else if (k === 3) nw.f1 = lightDiff(nw.lo, bakeVariant("fireLo1"));
+    else { nw.f2 = lightDiff(nw.lo, bakeVariant("fireLo2")); nw.lo = null; }
+  } finally { B2HIT = null; }
+}
+function blast2Reset() { // a resize: what was baked is the wrong size. Before the hit, bake it again; after it, every bake is broken already
+  const Z = BLAST2;
+  Z.rv = null; Z.nw = null; Z.cr = []; Z.sm = [];
+  if (!Z.hit) Z.bk = 0;
+}
+function blast2Hit(t) { // the air reaches them: the broken skyline goes in under a reveal that runs outward, and what fell is thrown up as dust and crowns
+  const Z = BLAST2, nw = Z.nw, { apW, apH } = L, sc = Math.min(DPR, 1.5, 720 / apW) * 0.55, gx = apW * Z.x, r = Math.random; // the crowns are baked small and drawn up, so their edges are soft
+  if (cityAfterC && silAfterC) Z.rv = { old: cityAfterC, oldS: silAfterC };
+  cityAfterC = nw.after; silAfterC = nw.sil; fireL1 = nw.f1; fireL2 = nw.f2;
+  B2HIT = { x: Z.x, rec: null }; Z.hit = true;
+  const rec = nw.rec.slice().sort((a, b) => ((b.tall ? 1e4 : 0) + (b.pts[0][1] - b.top)) - ((a.tall ? 1e4 : 0) + (a.pts[0][1] - a.top))).slice(0, 7);
+  Z.cr = []; Z.sm = []; Z.pf = [];
+  for (const q of rec) { // each crown: a black shape (it cuts the glow like a building does) and a faint orange along its underside
+    const n = q.pts.length - 1, yb = (q.pts[0][1] + q.pts[n][1]) / 2, ch = yb - q.top, ox = q.x - 4, oy = q.top - 5, sw = q.w + 8;
+    let yM = 0; for (const p of q.pts) yM = Math.max(yM, p[1]);
+    const sh = yM - oy + 3, m = document.createElement("canvas"), l = document.createElement("canvas");
+    m.width = l.width = Math.ceil(sw * sc); m.height = l.height = Math.ceil(sh * sc);
+    const mx = m.getContext("2d"), lx = l.getContext("2d");
+    const path = (c) => { c.beginPath(); c.moveTo(q.pts[0][0] - 0.5, q.top); c.lineTo(q.pts[n][0] + 0.5, q.top); for (let i = n; i >= 0; i--) c.lineTo(q.pts[i][0], q.pts[i][1]); c.closePath(); };
+    mx.setTransform(sc, 0, 0, sc, -ox * sc, -oy * sc); mx.fillStyle = "#000"; path(mx); mx.fill();
+    lx.setTransform(sc, 0, 0, sc, -ox * sc, -oy * sc); path(lx); lx.clip();
+    const lg = lx.createLinearGradient(0, q.top, 0, yM); lg.addColorStop(0, "rgba(255,110,40,0)"); lg.addColorStop(0.55, "rgba(255,110,40,0)"); lg.addColorStop(1, "rgba(255,126,48,0.6)");
+    lx.fillStyle = lg; lx.fillRect(ox, oy, sw, sh);
+    const cx = q.x + q.w / 2, dir = cx < gx ? -1 : 1, lean = ch > 0.6 * (q.base - q.top);
+    Z.cr.push({ m, l, ox, oy, sw, sh, dir, lean, u0: 5 * Math.abs(cx - gx) / apW + q.li * 0.05 + r() * 0.12,
+      pvx: lean ? cx : dir > 0 ? q.x + q.w : q.x, pvy: lean ? yb : q.pts[dir > 0 ? n : 0][1],
+      th: dir * (lean ? 0.1 + 0.12 * r() : 0.1 + 0.35 * r()), dur: lean ? 3 + r() : 1.7 + r() * 0.8, fall: lean ? ch * 0.9 : apH * (0.1 + 0.1 * r()) });
+    if (Z.sm.length < 2) Z.sm.push({ x: cx, y: yb, ph: r() });
+  }
+  const tx = rec.map(q => (q.x + q.w / 2) / apW);
+  for (let i = 0; i < 84; i++) { // the dust: first at the feet of the towers that fell, then along the whole stretch, a little later the farther it is from the spot
+    const fx = clamp(i < tx.length * 5 ? tx[i % tx.length] + (r() - 0.5) * 0.06 : Z.x + (r() - 0.5) * 0.6, 0.02, 0.98), d = Math.abs(fx - Z.x);
+    Z.pf.push({ fx, fy: 0.53 + r() * 0.09, rise: (0.08 + r() * 0.2) * (1 - d * 0.8), dx: (fx > Z.x ? 1 : -1) * (0.02 + 0.07 * r()), r: 0.016 + 0.026 * r(), u0: 5 * d + r() * 0.5, life: 22 + r() * 18, a: 0.5 + 0.5 * r() });
+  }
+  Z.nw = null; Z.lastR = -9;
+}
+function blast2Reveal(t) { // the old skyline stays where the air has not yet got to: put back over the new one outside the reach
+  const Z = BLAST2, rv = Z.rv, u = t - Z.t0 - Z.hitD, { apW, apH } = L;
+  if (u > 1.7) { Z.rv = null; return; }
+  const R = apW * 0.32 * clamp(u / 1.6, 0, 1), l = Math.max(0, Math.floor(apW * Z.x - R)), r = Math.min(apW, Math.ceil(apW * Z.x + R)), o = rv.old, k = o.width / apW;
+  if (l > 0) g.drawImage(o, 0, 0, l * k, o.height, 0, 0, l, apH);
+  if (r < apW) g.drawImage(o, r * k, 0, o.width - r * k, o.height, r, 0, apW - r, apH);
 }
 function blast2Boom() {
   // the sound arriving: a deep roll, nothing above a couple of hundred hertz (the distance took it), a slow swell, then lumps
@@ -1103,18 +1167,33 @@ function blast2Boom() {
     let nd = src; for (const f of filt) nd = nd.connect(f);
     nd.connect(gn).connect(dest); src.start(at, r() * 3); src.stop(at + len + 0.1);
   };
-  bed([lp(150), lp(150)], BL2_BODY, N.ambW, t0); // the body of it, from outside
+  const rec = (buf, rate, off, at, fc, peak) => { // a real thunder recording dragged far down, 4th-order low-pass, under the same curve
+    const s = new AudioBufferSourceNode(ctx, { buffer: buf, playbackRate: rate }), gn = new GainNode(ctx, { gain: 0.0001 });
+    gn.gain.setValueAtTime(0.0001, at); gn.gain.setValueCurveAtTime(curve(peak), at, len);
+    s.connect(lp(fc)).connect(lp(fc)).connect(new BiquadFilterNode(ctx, { type: "highpass", frequency: 22, Q: 0.5 })).connect(gn).connect(N.ambW); s.start(at, off); s.stop(at + len + 0.2);
+  };
+  const long = thunderBufs.find(b => b.duration > 30);
+  bed([lp(150), lp(150)], boomBuf ? BL2_BODY * 0.4 : BL2_BODY, N.ambW, t0); // the body of it, from outside: shaped noise, under the recordings, alone if they are not loaded
+  if (boomBuf) rec(boomBuf, 0.36, boomOff, t0, 150, BL2_REC);
+  if (rollBuf) rec(rollBuf, 0.42, rollOff, t0 + 0.4, 120, BL2_REC * 0.6);
+  if (long) rec(long, 0.32, 4 + r() * 12, t0 + 0.8, 100, BL2_REC * 0.45);
   bed([new BiquadFilterNode(ctx, { type: "bandpass", frequency: 190, Q: 0.7 }), lp(330)], BL2_MID, interiorOut(0), t0 + 0.1); // what small speakers can carry
-  if (rollBuf) { // and a recorded roll under it, pushed far down
-    const s = new AudioBufferSourceNode(ctx, { buffer: rollBuf, playbackRate: 0.5 }), gn = new GainNode(ctx, { gain: 0.0001 });
-    gn.gain.setValueAtTime(0.0001, t0); gn.gain.setValueCurveAtTime(curve(BL2_ROLL), t0, len);
-    s.connect(lp(140)).connect(lp(220)).connect(gn).connect(N.ambW); s.start(t0 + 0.2, rollOff); s.stop(t0 + len + 0.2);
+  { // two low tones a hair apart so it throbs, and a copy pushed through a soft clip so its harmonics reach speakers that cannot play 40 Hz
+    const sg = new GainNode(ctx, { gain: 0.0001 }), sh = new WaveShaperNode(ctx, { curve: shaperCurve(v => Math.tanh(3 * v)) }), hg = new GainNode(ctx, { gain: 0.0001 });
+    sg.gain.setValueAtTime(0.0001, t0); sg.gain.setValueCurveAtTime(curve(BL2_SUB * 0.6), t0, len); hg.gain.setValueAtTime(0.0001, t0); hg.gain.setValueCurveAtTime(curve(BL2_SUB), t0, len);
+    for (const [f0, f1e] of [[44, 25], [44.7, 25.5]]) {
+      const o = new OscillatorNode(ctx, { frequency: f0 }); o.frequency.setValueAtTime(f0, t0 + 0.3); o.frequency.exponentialRampToValueAtTime(f1e, t0 + 6); o.connect(sg); o.start(t0); o.stop(t0 + len + 0.1);
+    }
+    sg.connect(interiorOut(0)); sg.connect(sh).connect(new BiquadFilterNode(ctx, { type: "bandpass", frequency: 115, Q: 0.7 })).connect(hg).connect(interiorOut(0));
   }
-  { // a low tone sinking under it, pushed through a soft clip so its harmonics reach speakers that cannot play 40 Hz
-    const o = new OscillatorNode(ctx, { frequency: 46 }), sh = new WaveShaperNode(ctx, { curve: shaperCurve(v => Math.tanh(3 * v)) }), gn = new GainNode(ctx, { gain: 0.0001 });
-    o.frequency.setValueAtTime(46, t0 + 0.3); o.frequency.exponentialRampToValueAtTime(27, t0 + 5);
-    gn.gain.setValueAtTime(0.0001, t0); gn.gain.setValueCurveAtTime(curve(BL2_SUB), t0, len);
-    o.connect(sh).connect(new BiquadFilterNode(ctx, { type: "bandpass", frequency: 105, Q: 0.7 })).connect(gn).connect(interiorOut(0)); o.start(t0); o.stop(t0 + len + 0.1);
+  { // the towers coming down, heard only now: grains of crumble scattered through the tail, from outside
+    const ca = Z.hitD, ng = 6 + Math.floor(r() * 5);
+    for (let i = 0; i < ng; i++) {
+      const at = t0 + ca + 0.2 + r() * 4, d = 0.4 + r() * 0.8, s = new AudioBufferSourceNode(ctx, { buffer: nb }), gn = new GainNode(ctx, { gain: 0.0001 });
+      const bp = new BiquadFilterNode(ctx, { type: "bandpass", frequency: 180 + r() * 320, Q: 1 }), pk = BL2_MID * (0.15 + 0.2 * r());
+      gn.gain.setValueAtTime(0.0001, at); gn.gain.linearRampToValueAtTime(pk, at + d * 0.3); gn.gain.exponentialRampToValueAtTime(0.0003, at + d);
+      s.connect(bp).connect(lp(600)).connect(gn).connect(N.ambW); s.start(at, r() * 3); s.stop(at + d + 0.05);
+    }
   }
   // the glass and the shutter, rattling a little: the first push, then again on the big lumps
   const out = interiorOut(0), taps = [[0.5, 1], [0.58, 0.7], [0.68, 0.55], [0.8, 0.4], [0.97, 0.3], [1.2, 0.2], [2.7, 0.45], [2.82, 0.3], [4.6, 0.3], [6.4, 0.18]];
@@ -1126,21 +1205,23 @@ function blast2Boom() {
     g2.gain.setValueAtTime(0.08 * v, at); g2.gain.exponentialRampToValueAtTime(0.0005, at + 0.08);
     s2.connect(f2).connect(g2).connect(out); s2.start(at, r() * 2); s2.stop(at + 0.09);
   }
-  // the rain dips as it arrives: its own gain on the way to the weather gate, put in the first time it is needed
+  // the rain dips as it arrives: its own gain on the way to the weather gate, spliced in the first time it is needed
   if (N.rainG) {
-    if (!Z.duck) { Z.duck = new GainNode(ctx, { gain: 1 }); N.rainG.disconnect(); N.rainG.connect(Z.duck).connect(N.ambW); }
-    const dg = Z.duck.gain; dg.cancelScheduledValues(t0); dg.setValueAtTime(1, t0); dg.linearRampToValueAtTime(0.35, t0 + 0.35); dg.setValueAtTime(0.35, t0 + 1.6); dg.setTargetAtTime(1, t0 + 1.6, 1.2);
+    try { if (!Z.duck) { N.rainG.disconnect(N.ambW); Z.duck = new GainNode(ctx, { gain: 1 }); N.rainG.connect(Z.duck); Z.duck.connect(N.ambW); } } catch (e) { Z.duck = null; }
+    if (Z.duck) { const dg = Z.duck.gain; dg.cancelScheduledValues(t0); dg.setValueAtTime(1, t0); dg.linearRampToValueAtTime(0.35, t0 + 0.35); dg.setValueAtTime(0.35, t0 + 1.6); dg.setTargetAtTime(1, t0 + 1.6, 1.2); }
   }
 }
-const BL2_BODY = 0.36, BL2_MID = 0.17, BL2_ROLL = 0.04, BL2_SUB = 0.022; // well under the first blast: this one is far off
+const BL2_BODY = 0.36, BL2_MID = 0.17, BL2_REC = 0.42, BL2_SUB = 0.022; // well under the first blast: this one is far off
 function stepBlast2(t, dt, gap) {
   const Z = BLAST2, B = BLAST, st = STORY;
   if (!Z.on || Z.ph >= 3) return;
   if (B.at < 0 && B.jump < 0 && B.t0 < -1e8) { Z.on = false; return; } // no bomb in this visit after all
   if (Z.ph === 0) {
     if (B.t0 < -1e8) return;
-    if (t - B.t0 > Z.delay + 120) { Z.on = false; return; } // never found a quiet moment: leave it, and let the raid go
-    if (t - B.t0 < Z.delay || !B.lifted || B.lock || blastBusy(t) || strike || rotShown || shutterPos > 0.002 || shutterMoving || (grab && grab.kind === "shutter")) return;
+    Z.ck = Z.ck < 0 ? t - B.t0 : Z.ck + (rotShown ? 0 : Math.min(dt, 0.1)); // its own seconds since the first flash: a hidden tab or the rotate screen does not use them up
+    if (Z.ck > Z.delay + 120) { Z.on = false; return; } // never found a quiet moment: leave it, and let the raid go
+    if (Z.bk < 5 && Z.ck >= Math.max(BL_BUSY + 1, Z.delay - 10) && B.lifted && !B.lock && cityAfterC && silAfterC) blast2Bake(t); // the broken skyline, ready before the flash
+    if (Z.ck < Z.delay || Z.bk < 5 || !B.lifted || B.lock || blastBusy(t) || strike || rotShown || shutterPos > 0.002 || shutterMoving || shutterTarget > 0.5 || (grab && grab.kind === "shutter")) return;
     if ((st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) || (st.knocked >= 0 && t - st.knocked < 12) || (DOOR.after && DOOR.step !== 9) || (RAID.u >= 0 && !RAID.done)) return;
     if (st.boT >= 0 && t - st.boT < 20) return; // never within 20 s of the power going
     if (!Z.spr) Z.spr = blast2Sprites();
@@ -1152,6 +1233,8 @@ function stepBlast2(t, dt, gap) {
     return;
   }
   if (gap > 0.2) { Z.t0 += gap; Z.boomAt += gap; if (Z.boomT > -1e8) { Z.boomT += gap; for (const l of Z.lumps) l[0] += gap; } }
+  if (!Z.hit && Z.bk < 5) blast2Bake(t); // after a resize in the silence: bake it again
+  if (!Z.hit && Z.nw && Z.bk >= 5 && t - Z.t0 >= Z.hitD && L && cityAfterC && silAfterC) blast2Hit(t);
   if (Z.ph === 1 && t >= Z.boomAt) {
     Z.ph = 2; Z.boomT = t; blast2Boom();
     Z.lumps = [[t + 0.5, 1], [t + 2.7, 0.55], [t + 4.6, 0.35], [t + 6.4, 0.2]]; Z.li = 0;
@@ -1164,12 +1247,32 @@ function stepBlast2(t, dt, gap) {
     if (t - Z.boomT > 30) Z.ph = 3; // rolled away: the raid, if there is one, may start
   }
 }
-function drawBlast2Room(t) { // the window lights the wall a little
+function drawBlast2Room(t) { // the window lights the wall a little: warm, brightest by the window, gone toward the corners and the panel
   const Z = BLAST2, tt = t - Z.t0;
-  if (Z.ph < 1 || tt > 12) return;
-  const F = clamp(blast2Light(tt), 0, 1);
+  if (Z.ph < 1 || tt > 12 || !L) return;
+  const F = clamp(blast2Light(tt), 0, 1) * (1 - 0.8 * shutterPos);
   if (F < 0.02) return;
-  g.save(); g.globalCompositeOperation = "lighter"; g.fillStyle = "rgb(" + Math.round(34 * F) + "," + Math.round(26 * F) + "," + Math.round(17 * F) + ")"; g.fillRect(0, 0, W, H); g.restore();
+  const key = W + "x" + H;
+  if (Z.gk !== key) {
+    const rr = Math.max(W, H) * 0.7, gr = g.createRadialGradient(L.apX + L.apW / 2, L.apY + L.apH * 0.75, 0, L.apX + L.apW / 2, L.apY + L.apH * 0.75, rr);
+    for (const [p, a] of [[0, 1], [0.3, 0.55], [0.65, 0.15], [1, 0]]) gr.addColorStop(p, "rgba(40,30,20," + a + ")");
+    Z.gr = gr; Z.gk = key;
+  }
+  g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = F; g.fillStyle = Z.gr; g.fillRect(0, 0, W, H); g.restore();
+}
+function blast2Cut(x, c, s, hard, apW, apH) { // the city stands in front: its plate takes the light away. The far rows are baked part clear, so for the glow the plate goes in again many times over and they stand black
+  x.drawImage(s, 0, 0, apW, apH);
+  if (!hard) return;
+  if (!s.hm || s.hm.width !== c.width) { const h = document.createElement("canvas"); h.width = c.width; h.height = c.height; const hx = h.getContext("2d"); for (let i = 0; i < 10; i++) hx.drawImage(s, 0, 0, h.width, h.height); const h2 = document.createElement("canvas"); h2.width = h.width; h2.height = h.height; const h2x = h2.getContext("2d"); for (let i = 0; i < 8; i++) h2x.drawImage(h, 0, 0); s.hm = h2; }
+  x.globalAlpha = 0.94; x.drawImage(s.hm, 0, 0, apW, apH); x.globalAlpha = 1;
+}
+function blast2CutAll(x, c, sil, hard, tt, gx, apW, apH) {
+  const Z = BLAST2;
+  if (Z.rv) { // the old one where the air has not reached yet, the new one inside the reach
+    const R = apW * 0.32 * clamp((tt - Z.hitD) / 1.6, 0, 1), l = Math.max(0, gx - R), r = Math.min(apW, gx + R);
+    x.save(); x.beginPath(); x.rect(0, 0, l, apH); x.rect(r, 0, apW - r, apH); x.clip(); blast2Cut(x, c, Z.rv.oldS, hard, apW, apH); x.restore();
+    x.save(); x.beginPath(); x.rect(l, 0, r - l, apH); x.clip(); blast2Cut(x, c, sil, hard, apW, apH); x.restore();
+  } else blast2Cut(x, c, sil, hard, apW, apH);
 }
 function drawBlast2(t) {
   const Z = BLAST2;
@@ -1180,12 +1283,12 @@ function drawBlast2(t) {
   let c = Z.c;
   if (!c || c.width !== Math.ceil(apW * sc) || c.height !== Math.ceil(apH * sc)) { // made the first time it is needed, in a visit that has it
     c = Z.c = document.createElement("canvas"); c.width = Math.ceil(apW * sc); c.height = Math.ceil(apH * sc); c.sc = sc; c.x = c.getContext("2d"); Z.lastR = -9;
-    const gm = c.x.createLinearGradient(0, apH * 0.56, 0, apH * 0.68); gm.addColorStop(0, "rgba(0,0,0,0)"); gm.addColorStop(1, "rgba(0,0,0,1)"); c.gm = gm; // the ground does not catch it
+    const gm = c.x.createLinearGradient(0, apH * 0.49, 0, apH * 0.55); gm.addColorStop(0, "rgba(0,0,0,0)"); gm.addColorStop(1, "rgba(0,0,0,1)"); c.gm = gm; // the glare ends at the skyline: the towers stand on dark ground, not on lit sky
   }
   if (tt < 16 || t - Z.lastR >= 0.1) { // after the first seconds the glow only moves slowly, so it is redrawn ten times a second
     Z.lastR = t;
-    const wW = 1 - b2s(0.6, 3, tt), wY = (1 - wW) * (1 - b2s(3, 9, tt)), wD = b2s(9, 40, tt), wO = Math.max(0, 1 - wW - wY - wD);
-    Z.w[0] = wW; Z.w[1] = wY; Z.w[2] = wO; Z.w[3] = wD;
+    const wB = Math.exp(-tt / 0.06), wW = 1 - b2s(0.6, 3, tt), wY = (1 - wW) * (1 - b2s(3, 9, tt)), wD = b2s(9, 40, tt), wO = Math.max(0, 1 - wW - wY - wD);
+    Z.w[0] = wW * (1 - wB); Z.w[4] = wW * wB; Z.w[1] = wY; Z.w[2] = wO; Z.w[3] = wD; // the first tenth of a second is cold blue-white, then white
     const Fl = blast2Light(tt), Gf = (1 - Math.exp(-tt / 9)) * (RM ? 1 : 0.84 + 0.16 * Math.sin(t * 1.1) * Math.sin(t * 0.43 + 2) + 0.06 * Math.sin(t * 0.27));
     const x = c.x; x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, c.width, c.height); x.setTransform(sc, 0, 0, sc, 0, 0);
     const aS = clamp(Fl * 0.9 + Gf * 0.3, 0, 1);
@@ -1205,11 +1308,48 @@ function drawBlast2(t) {
       blast2Add(x, Z.w, gx, yH - apH * 0.03, apW * 0.5, apH * 0.2, Fl); // the low band of sky on the horizon flares
       blast2Add(x, Z.w, gx, yH - apH * 0.04, apW * 0.2, apH * 0.09, 0.9 * Fl);
     }
-    blast2Add(x, Z.wf, gx, yH - apH * 0.05, apW * 0.3, apH * 0.2, 0.4 * Gf); // and then the fire under it, low and dull
-    blast2Add(x, Z.wf, gx, yH - apH * 0.03, apW * 0.12, apH * 0.08, 0.8 * Gf);
-    x.globalAlpha = 1; x.globalCompositeOperation = "destination-out";
-    x.fillStyle = c.gm; x.fillRect(0, 0, apW, apH);
-    x.drawImage(sil, 0, 0, apW, apH); // the city stands in front of it
+    blast2Add(x, Z.wf, gx, yH - apH * 0.015, apW * 0.3, apH * 0.2, 0.4 * Gf); // and then the fire under it, low and dull, the skyline cutting its lower half
+    blast2Add(x, Z.wf, gx, yH - apH * 0.008, apW * 0.12, apH * 0.08, 0.8 * Gf);
+    x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; x.fillStyle = c.gm; x.fillRect(0, 0, apW, apH); // the sky glow stops at the skyline
+    blast2CutAll(x, c, sil, true, tt, gx, apW, apH); // and the towers stand black against it, now and for the rest of the visit; the dust below goes in after, in front of them
+    if (Z.hit) { // the collapse: crowns shearing off and dropping, the dust bank rolling out lit from below, and after it the smoke
+      const u = tt - Z.hitD;
+      x.globalCompositeOperation = "destination-out";
+      for (const q of Z.cr) { // the crowns cut the glow, as dark shapes in front of it
+        const v = u - q.u0, k = v / q.dur; if (v < 0 || k >= 1) continue;
+        x.save(); x.translate(q.pvx, q.pvy + q.fall * (q.lean ? k * k : k * k * 1.4)); x.rotate(q.th * (q.lean ? b2s(0, 1, k) : k * k)); x.translate(-q.pvx, -q.pvy);
+        x.globalAlpha = 1 - b2s(0.5, 1, k); x.drawImage(q.m, q.ox, q.oy, q.sw, q.sh); x.restore();
+      }
+      for (const p of Z.pf) { // each puff: dark where it is thick, then its underside lit orange
+        const v = u - p.u0; if (v < 0) continue;
+        const e = b2s(0, 1.4, v) * (1 - b2s(p.life * 0.45, p.life, v)); if (e < 0.01) continue;
+        const k = 1 - Math.exp(-v / 4.5), px = (p.fx + p.dx * k) * apW, py = (p.fy - p.rise * k) * apH, rr = apW * p.r * (1 + v / 14);
+        x.globalAlpha = 0.24 * e * p.a; x.drawImage(Z.spd[0], px - rr * 1.8, py - rr * 0.9, rr * 3.6, rr * 1.8);
+      }
+      if (u > 3) for (const s of Z.sm) { // one slow column of smoke from a stump, dark against the lit cloud, for the rest of the visit
+        const ps = clamp(apH / 540, 0.45, 1), lean = RM ? 0.6 : Math.min(1.3, 0.3 + 0.6 * WX.k + 0.6 * WX.gust), fade = b2s(3, 12, u);
+        for (let i = 0; i < 7; i++) {
+          const k = RM ? i / 7 : ((t / 24) + i / 7 + s.ph) % 1, rr = (7 + k * 30) * ps;
+          x.globalAlpha = 0.3 * fade * (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
+          x.drawImage(Z.spd[0], s.x + Math.sin(k * 4 + i * 2) * 3 * ps + k * k * apW * 0.07 * (0.5 + lean) - rr, s.y - (1 - Math.pow(1 - k, 1.5)) * apH * 0.3 - rr, rr * 2, rr * 2);
+        }
+      }
+      x.globalCompositeOperation = "lighter";
+      for (const q of Z.cr) { // the underside of what is falling, lit by what is burning below it
+        const v = u - q.u0, k = v / q.dur; if (v < 0 || k >= 1) continue;
+        x.save(); x.translate(q.pvx, q.pvy + q.fall * (q.lean ? k * k : k * k * 1.4)); x.rotate(q.th * (q.lean ? b2s(0, 1, k) : k * k)); x.translate(-q.pvx, -q.pvy);
+        x.globalAlpha = 1 - b2s(0.5, 1, k); x.drawImage(q.l, q.ox, q.oy, q.sw, q.sh); x.restore();
+      }
+      for (const p of Z.pf) { // dust lit orange from below, dull red as it climbs and cools
+        const v = u - p.u0; if (v < 0) continue;
+        const e = b2s(0, 1.4, v) * (1 - b2s(p.life * 0.45, p.life, v)); if (e < 0.01) continue;
+        const k = 1 - Math.exp(-v / 4.5), px = (p.fx + p.dx * k) * apW, py = (p.fy - p.rise * k) * apH, rr = apW * p.r * (1 + v / 14);
+        x.globalAlpha = 0.1 * e * p.a * (1 - b2s(2, 12, v)); x.drawImage(Z.spr[2], px - rr * 1.5, py - rr * 0.3, rr * 3, rr * 1.3); // lit by the flash and the fires, less as it goes
+        x.globalAlpha = 0.02 * e * p.a; x.drawImage(Z.spr[3], px - rr * 1.5, py - rr * 0.3, rr * 3, rr * 1.3);
+        x.globalAlpha = 0.07 * e * p.a * (1 - b2s(4, 16, v)); x.drawImage(Z.spd[1], px - rr * 1.8, py - rr * 0.9, rr * 3.6, rr * 1.8);
+      }
+    }
+    x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; blast2CutAll(x, c, sil, false, tt, gx, apW, apH); // then what is in front of the dust
     x.globalCompositeOperation = "source-over";
   }
   g.save(); g.globalCompositeOperation = "lighter"; g.drawImage(c, 0, 0, apW, apH); g.restore();
@@ -1475,7 +1615,7 @@ function blastIw(t) { // how much of the light is coming into the room: all of i
 }
 function blastBusy(t) {
   return (BLAST.t0 > -1e8 && t - BLAST.t0 < BL_BUSY) || (BLAST.at >= 0 && BLAST.t0 < -1e8 && BLAST.at - BLAST.on < 4) ||
-    (BLAST.radAt > -1e8 && (BLAST.radT < -1e8 || t - BLAST.radT < RAD_RING + 2));
+    (BLAST.radAt > -1e8 && (BLAST.radT < -1e8 || t - BLAST.radT < RAD_RING + 2)) || blast2Busy(t);
 }
 // the lamp's last seconds: level by time, then the bulb pops at BO_POP
 const BO_PAT = [[0, 1], [0.12, 0.3], [0.2, 1], [0.5, 0.12], [0.58, 0.9], [0.9, 0.4], [1.0, 1], [1.35, 0.06], [1.5, 0.75], [1.62, 0.18], [1.8, 0.85], [2.05, 0.25]], BO_POP = 2.2;
@@ -1842,6 +1982,7 @@ function bakeBackdrop(mode) {
   const fireOn = md === "fireLo1" ? 1 : md === "fireLo2" ? 2 : 0, fullAfter = md === "after";
   const SS = lo ? 0.5 : nearK ? 1 : Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
   const rd = after ? hashRng(4242) : null, rf = after ? hashRng(9090) : null, fires = [];
+  let rq = rd; // the stream the cuts draw from: the ruin's own, but the far blast's new cuts take theirs apart so nothing else re-rolls
   bakeAfter = after;
   const c = document.createElement("canvas");
   c.width = Math.ceil(aw * SS); c.height = Math.ceil(ah * SS);
@@ -1905,7 +2046,7 @@ function bakeBackdrop(mode) {
     const bh = baseY - top, keep = dmg.v > 0.8 ? 0.07 + 0.2 * dmg.f : 0.34 + 0.4 * dmg.f;
     const yL = baseY - bh * keep * (0.75 + 0.5 * dmg.s), yR = baseY - bh * keep * (1.25 - 0.5 * dmg.s);
     const n = Math.max(4, Math.round(bw / 5)), pts = [];
-    for (let i = 0; i <= n; i++) { const q = i / n; pts.push([bx - 3 + (bw + 6) * q, yL + (yR - yL) * q + (rd() - 0.5) * Math.min(16, bh * 0.1)]); }
+    for (let i = 0; i <= n; i++) { const q = i / n; pts.push([bx - 3 + (bw + 6) * q, yL + (yR - yL) * q + (rq() - 0.5) * Math.min(16, bh * 0.1)]); }
     x.save(); x.beginPath(); x.moveTo(bx - 3, baseY + ext + 4);
     for (const p of pts) x.lineTo(p[0], p[1]);
     x.lineTo(bx + bw + 3, baseY + ext + 4); x.closePath(); x.clip();
@@ -1917,24 +2058,31 @@ function bakeBackdrop(mode) {
     sg.addColorStop(0, "rgba(0,0,0,0.55)"); sg.addColorStop(1, "rgba(0,0,0,0)");
     x.fillStyle = sg; x.fillRect(bx - 3, cut.top - 16, bw + 6, cut.bh * 0.25 + 16);
     x.strokeStyle = "rgba(150,165,190,0.12)"; x.lineWidth = 1;
-    for (let i = 0; i < 3; i++) { const p = cut.pts[1 + Math.floor(rd() * (cut.pts.length - 2))]; x.beginPath(); x.moveTo(p[0] - 4, p[1] + 3 + i * 5); x.lineTo(p[0] + 5 + rd() * 6, p[1] + 3 + i * 5); x.stroke(); }
+    for (let i = 0; i < 3; i++) { const p = cut.pts[1 + Math.floor(rq() * (cut.pts.length - 2))]; x.beginPath(); x.moveTo(p[0] - 4, p[1] + 3 + i * 5); x.lineTo(p[0] + 5 + rq() * 6, p[1] + 3 + i * 5); x.stroke(); }
   };
   const rubble = (bx, bw, baseY, col) => { // what came down, heaped at the foot of it
     x.fillStyle = shade(col, -0.3); x.beginPath(); x.moveTo(bx - 6, baseY + ext);
-    const n = 6; for (let i = 0; i <= n; i++) x.lineTo(bx - 6 + (bw + 12) * (i / n), baseY - (i === 0 || i === n ? 1 : 3 + rd() * 9));
+    const n = 6; for (let i = 0; i <= n; i++) x.lineTo(bx - 6 + (bw + 12) * (i / n), baseY - (i === 0 || i === n ? 1 : 3 + rq() * 9));
     x.lineTo(bx + bw + 6, baseY + ext); x.closePath(); x.fill();
   };
   const damage = (li, cx, keep) => { // how hard the blast hit this building: harder toward it, harder in the far rows that faced it
     const a = rd(), b = rd(), c2 = rd();
-    if (keep || li < 1) return null;
-    const close = 1 - Math.min(1, Math.abs(cx - aw * NUKE.x) / (aw * 1.1));
-    return { v: clamp(close * [0, 1, 1, 0.8, 0.6][li] * 1.2 + (a - 0.5) * 0.6, 0, 1), f: b, s: c2 };
+    rq = rd;
+    let v0 = -1, f = b, s = c2;
+    if (!keep && li >= 1) { const close = 1 - Math.min(1, Math.abs(cx - aw * NUKE.x) / (aw * 1.1)); v0 = clamp(close * [0, 1, 1, 0.8, 0.6][li] * 1.2 + (a - 0.5) * 0.6, 0, 1); }
+    if (B2HIT && !keep) { // the far blast: the buildings within a quarter of the window of it, the far rows hardest, from its own stream
+      const k2 = 1 - Math.min(1, Math.abs(cx - aw * B2HIT.x) / (aw * 0.26)), hb = hashRng(Math.floor(cx * 97) + li * 7919), n1 = hb(), n2 = hb(), n3 = hb();
+      const v2 = clamp(k2 * [1.5, 1.5, 1.2, 0.6, 0][li] + (n1 - 0.5) * 0.25 * k2, 0, 1);
+      if (v2 > 0.05 && v2 > v0) { const had = v0 > 0.45; if (!had) { f = n2; s = n3; rq = hb; } return { v: v2, f, s, o: had, b2: v2, v0 }; }
+    }
+    return v0 < 0 ? null : { v: v0, f, s, o: true, b2: 0, v0 };
   };
   const burn = (li, bx, bw, top, baseY, cut, dmg) => {
     // in the buildings it gutted, one floor still burning: a ragged band of fire along it with soot above, never a lit window
-    const n0 = Math.floor(rf() * 3), n = dmg && dmg.v > 0.4 && li >= 2 ? n0 : 0, near = li >= 3;
+    const n0 = Math.floor(rf() * 3), n1 = dmg && dmg.v0 > 0.4 && li >= 2 ? n0 : 0, near = li >= 3;
+    const hs = n1 === 0 && B2HIT && dmg && dmg.b2 > 0.5 && li <= 2 && cut ? hashRng(Math.floor(bx * 61) + li * 31) : null, n = hs ? 1 : n1, rx = hs || rf; // the far blast's stumps burn too, from their own stream
     for (let i = 0; i < n; i++) {
-      const wx = bx + 4 + rf() * Math.max(2, bw - 10), y0 = (cut ? cut.top + 6 : top + 6), wy = y0 + rf() * Math.max(4, (baseY - y0) * 0.35), grp = rf() < 0.5 ? 1 : 2, wf = rf();
+      const wx = bx + 4 + rx() * Math.max(2, bw - 10), y0 = (cut ? cut.top + 6 : top + 6), wy = y0 + rx() * Math.max(4, (baseY - y0) * 0.35), grp = rx() < 0.5 ? 1 : 2, wf = rx();
       if (i > 0) continue; // one floor to a building: two small lights side by side read as a face
       const fh = near ? 4.6 : 3.4, fw = Math.min(bw - 6, Math.max(fh * 3, bw * (0.3 + 0.4 * wf))), fx0 = clamp(wx - fw * 0.5, bx + 3, bx + bw - 3 - fw);
       if (fullAfter) {
@@ -1961,6 +2109,7 @@ function bakeBackdrop(mode) {
         const tw = (li === 1 ? 18 : 30) + r() * 12, th = ah * (li === 1 ? 0.30 + r() * 0.10 : 0.36 + r() * 0.08);
         const dmgT = rd ? damage(li, bx + tw / 2, false) : null, cutT = dmgT && dmgT.v > 0.45 ? breakAt(bx, baseY - th, tw, baseY, dmgT) : null;
         drawTallTower(x, r, ly, li, bx, baseY - th, tw, baseY, ext);
+        if (cutT && fullAfter && B2HIT && B2HIT.rec && !dmgT.o) B2HIT.rec.push({ x: bx, w: tw, top: baseY - th, base: baseY, pts: cutT.pts, li, col: ly.col, haze: ly.haze, tall: true }); // what the far blast broke off, for the collapse to animate
         if (cutT) { breakEdge(cutT, bx, tw, baseY, ly.col); x.restore(); rubble(bx, tw, baseY, ly.col); }
         bx += tw + 6 + r() * 12; tallI++; continue;
       }
@@ -1991,6 +2140,7 @@ function bakeBackdrop(mode) {
       const dmg = rd ? damage(li, bx + bw / 2, spansTower || o.fire) : null;
       const cut = dmg && dmg.v > 0.45 ? breakAt(bx, top, bw, baseY, dmg) : null;
       const res = drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o);
+      if (cut && fullAfter && B2HIT && B2HIT.rec && !dmg.o && li <= 2 && baseY - top > ah * 0.1) B2HIT.rec.push({ x: bx, w: bw, top, base: baseY, pts: cut.pts, li, col: ly.col, haze: ly.haze, tall: false });
       if (rd) burn(li, bx, bw, top, baseY, cut, dmg);
       if (res && o.fire) anchors.smoke = res;
       // a second, thinner fire far across the city
@@ -2510,7 +2660,7 @@ function resize() {
   // the plates the blast needs: the city in black, the ruin, its black, and its firelight. Baked a piece at a time a
   // moment after load so no frame is held up; all at once if they are on screen now. A visit with no blast bakes none of it.
   clearTimeout(variantT);
-  silC = cityAfterC = silAfterC = fireL1 = fireL2 = nearM = silPallC = ruinSilC = null;
+  silC = cityAfterC = silAfterC = fireL1 = fireL2 = nearM = silPallC = ruinSilC = null; blast2Reset();
   const steps = [];
   if (!BLAST.swapped) steps.push(() => { silC = bakeVariant("sil"); }, () => { nearM = [null, bakeVariant("near1"), bakeVariant("near2")]; },
     () => { if (nearM) nearM.push(bakeVariant("near3"), bakeVariant("near4")); });
@@ -2891,6 +3041,7 @@ function drawBackdrop(t) {
   // shows, the buildings standing black in front of it
   const { apW, apH } = L, B = BLAST, ruin = B.swapped && cityAfterC;
   g.drawImage(ruin ? cityAfterC : cityC, 0, 0, apW, apH);
+  if (BLAST2.rv) blast2Reveal(t); // the far blast's broken skyline coming in outward from the spot
   const tt = B.t0 > -1e8 ? t - B.t0 : 99, F = B.t0 > -1e8 ? blastF(tt) : 0, G = blastG(t), sil = ruin ? silAfterC : (waveSil(tt) || silC);
   if ((F < 0.003 && G < 0.003) || !sil || !lightC) return;
   const gx = apW * B.gx, gy = apH * B.gy, lx = lightC.getContext("2d"), mg = mushGeom(t);
@@ -3841,9 +3992,10 @@ function drawCRT(t) {
   const bwv = t - BLAST.waveT;
   if (inCard && ct > CARD_LEN - 0.3) drawSnow(c);
   else if (inCard) drawCard(c, ct, flick);
+  else if (blast2Glitch(t)) drawSnow(c); // the far blast's pulse breaks the picture up
   else if (bwv >= 0 && bwv < 0.35) drawSnow(c); // the air hits the camera outside
-  else if (BLAST.radT > -1e8 && !DOOR.cam) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35 || blast2Glitch(t)) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
-  else if (t - STORY.glitchT < 0.35 || t - DOOR.camT < 0.35 || blast2Glitch(t)) drawSnow(c); // the picture breaks up; when it comes back the door is open
+  else if (BLAST.radT > -1e8 && !DOOR.cam) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
+  else if (t - STORY.glitchT < 0.35 || t - DOOR.camT < 0.35) drawSnow(c); // the picture breaks up; when it comes back the door is open
   else {
     g.globalAlpha = flick;
     g.drawImage(STORY.doorOpen || STORY.knocked >= 0 || DOOR.cam ? feedOpenC : feedC, c.x, c.y, c.w, c.h); // after a knock it is never shut again
