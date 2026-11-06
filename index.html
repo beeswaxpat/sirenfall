@@ -1300,9 +1300,9 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   if (pool) {
     const rp = bFF * (r0 + dist / (1 + EX) * BL_TA * 1.1) / B.tz, ry = rp * clamp(1.7 * -BL_GY / B.tz, 0.12, 0.9), pk = k * (0.55 + 0.45 * clamp(150 / B.rho, 0, 1));
     b.save(); b.translate(px0, py0); b.scale(rp, ry); b.globalAlpha = pk; b.fillStyle = G.pool; b.fillRect(-1, -1, 2, 2); b.restore();
-    b.globalCompositeOperation = "source-in"; blimpDS(b, B.cityS, sc); // the city's own picture inside the pool
-    b.globalCompositeOperation = "lighter"; b.drawImage(bc, 0, 0, apW, apH); b.drawImage(bc, 0, 0, apW, apH); // brighter, three times over
-    b.save(); b.translate(px0, py0); b.scale(rp, ry); b.globalAlpha = pk * 0.34; b.fillStyle = G.wash; b.fillRect(-1, -1, 2, 2); b.restore(); // and a flat wash of wet light
+    b.globalCompositeOperation = "source-in"; if (BL_FI) b.filter = "blur(" + (2.5 * sc).toFixed(2) + "px)"; blimpDS(b, B.cityS, sc); b.filter = "none"; // the city's own picture inside the pool, hazed by the rain
+    b.globalCompositeOperation = "lighter"; b.drawImage(bc, 0, 0, apW, apH); // brighter, twice over
+    b.save(); b.translate(px0, py0); b.scale(rp, ry); b.globalAlpha = pk * 0.5; b.fillStyle = G.wash; b.fillRect(-1, -1, 2, 2); b.restore(); // and a flat wash of wet light
     if (sil) { b.globalCompositeOperation = "destination-in"; blimpDS(b, B.silS, sc); }
     b.globalCompositeOperation = "lighter"; // and a wide haze round the pool: the light dies out slowly in the wet air, not at an edge
     b.save(); b.translate(px0, py0); b.scale(rp * 3.2, rp * 3.2 * Math.max(0.3, ry / rp)); b.globalAlpha = pk; b.fillStyle = G.haze; b.fillRect(-1, -1, 2, 2); b.restore();
@@ -1443,43 +1443,63 @@ function drawBlimpRoom(t, flashA) { // the room: darker while the hull is overhe
   if (B.F > 0.01) blimpInRoom(t);
   if (B.pump > 0.01) { g.fillStyle = "rgba(2,3,6," + (0.4 * B.pump).toFixed(3) + ")"; g.fillRect(-40, -40, W + 80, H + 80); }
 }
-function blimpInRoom(t) { // the searchlight through the glass: the window's shape, frame and mullion dark in it, thrown on the wall and the panel and swung across them; the rain on the glass speckles it; at its worst it looks straight at you
-  const B = BLIMP, { apX, apY, apW, apH } = L, op = 1 - shutterPos, F = B.F * (RM ? 0.5 : 1), G = B.G * (RM ? 0.6 : 1), mx = apX + apW / 2, my = apY + apH / 2;
+const BL_FI = typeof CanvasRenderingContext2D !== "undefined" && "filter" in CanvasRenderingContext2D.prototype, BL_RS = 8, blTB = new Float32Array(8); // canvas blur where the browser has it; the light patch drawn at an eighth; the text lines it must not wash out
+function blQ(r, x0, y0, x1, y1, kx, ky, m, cx, ty, hp) { // a pane of the glass, thrown into the room: larger, and wider the further it falls (a window shape, not a box)
+  for (let i = 0; i < 4; i++) { const x = i === 1 || i === 2 ? x1 : x0, y = i >= 2 ? y1 : y0, X = kx + x * m, Y = ky + y * m, s = 0.85 + 0.15 * clamp((Y - ty) / hp, 0, 1); if (i) r.lineTo(cx + (X - cx) * s, Y); else r.moveTo(cx + (X - cx) * s, Y); }
+  r.closePath();
+}
+function blimpInRoom(t) { // the searchlight through the glass: the window's shape, frame and mullion dark in it, thrown soft across the wall, the panel and the calendar and swung across them; the rain on the glass speckles it and shines; at its worst it looks straight at you
+  const B = BLIMP, { apX, apY, apW, apH } = L, op = 1 - shutterPos, F = B.F * (RM ? 0.5 : 1), G = B.G * (RM ? 0.6 : 1), mx = apX + apW / 2, my = apY + apH / 2, RS = BL_RS;
   let lx = apX + apW * 0.78, ly = apY + apH * 0.1; // the lamp on the glass: the light falls away from it
   if (B.lz > BL_ZN) { lx = clamp(apX + bCX + bFF * B.lx / B.lz, apX + apW * 0.08, apX + apW * 0.92); ly = clamp(apY + bHZ - bFF * B.ly / B.lz, apY + apH * 0.03, apY + apH * 0.4); }
-  if (!B.rl || B.rlW !== W || B.rlH !== H) { B.rl = document.createElement("canvas"); B.rl.width = Math.ceil(W / 5); B.rl.height = Math.ceil(H / 5); B.rlW = W; B.rlH = H; const r = B.rl.getContext("2d"), q = r.createRadialGradient(0, 0, 0, 0, 0, 1); q.addColorStop(0, "rgba(212,226,255,1)"); q.addColorStop(0.5, "rgba(200,216,250,0.86)"); q.addColorStop(0.82, "rgba(190,206,244,0.5)"); q.addColorStop(0.95, "rgba(186,202,240,0.1)"); q.addColorStop(1, "rgba(186,202,240,0)"); B.rlg = q; const q2 = g.createRadialGradient(0, 0, 0, 0, 0, 1); q2.addColorStop(0, "rgba(236,244,255,1)"); q2.addColorStop(0.12, "rgba(214,228,255,0.7)"); q2.addColorStop(0.4, "rgba(190,208,246,0.22)"); q2.addColorStop(1, "rgba(180,198,240,0)"); B.rgG = q2; }
+  if (!B.rl || B.rlW !== W || B.rlH !== H) {
+    B.rl = document.createElement("canvas"); B.rl.width = Math.ceil(W / RS); B.rl.height = Math.ceil(H / RS); B.rl2 = document.createElement("canvas"); B.rl2.width = B.rl.width; B.rl2.height = B.rl.height; B.rlW = W; B.rlH = H; B.rlT = -9;
+    const r = B.rl.getContext("2d"), q = r.createRadialGradient(0, 0, 0, 0, 0, 1); q.addColorStop(0, "rgba(0,0,0,1)"); q.addColorStop(0.55, "rgba(0,0,0,0.9)"); q.addColorStop(0.85, "rgba(0,0,0,0.4)"); q.addColorStop(1, "rgba(0,0,0,0)"); B.rlg = q; const lg = r.createLinearGradient(0, 0, 0, 1); lg.addColorStop(0, "rgba(212,226,255,1)"); lg.addColorStop(1, "rgba(196,212,248,0.27)"); B.rlL = lg; // the beam's own round edge; the patch's fall-off
+    const q2 = g.createRadialGradient(0, 0, 0, 0, 0, 1); q2.addColorStop(0, "rgba(236,244,255,1)"); q2.addColorStop(0.12, "rgba(214,228,255,0.7)"); q2.addColorStop(0.4, "rgba(190,208,246,0.22)"); q2.addColorStop(1, "rgba(180,198,240,0)"); B.rgG = q2;
+    const q3 = g.createRadialGradient(0, 0, 0, 0, 0, 1); q3.addColorStop(0, "rgba(234,242,255,0.95)"); q3.addColorStop(0.25, "rgba(216,230,255,0.8)"); q3.addColorStop(0.55, "rgba(198,214,248,0.4)"); q3.addColorStop(1, "rgba(186,202,240,0)"); B.bmG = q3; // the glare
+  }
+  if (t - B.rlT > 0.5) { B.rlT = t; for (let j = 0; j < 2; j++) { const el = document.getElementById(j ? "hp" : "hint"), b = el && el.getBoundingClientRect(); if (b && b.height > 0) { blTB[j * 4] = b.left - 10; blTB[j * 4 + 1] = b.top - 4; blTB[j * 4 + 2] = b.width + 20; blTB[j * 4 + 3] = b.height + 8; } else blTB[j * 4 + 3] = 0; } } // where the words are
   if (op > 0.02) {
-    const r = B.rl.getContext("2d"), m = 1.06 + 0.5 * G, ox = -(lx - mx) * 0.55 - B.pp * apW * 0.3, oy = apH * (0.8 - 0.55 * G + B.py * 0.3); // the patch: the panes, shifted away from the lamp and a little larger
-    const dx = W / 2 + B.pp * W * 0.62, dy = H * (0.6 + B.py), R = Math.max(W, H) * (0.34 + 0.4 * G); // the beam's own round edge, swinging across
-    r.setTransform(1, 0, 0, 1, 0, 0); r.globalCompositeOperation = "source-over"; r.globalAlpha = 1; r.clearRect(0, 0, B.rl.width, B.rl.height); r.setTransform(1 / 5, 0, 0, 1 / 5, 0, 0);
-    const kx = mx + ox - mx * m, ky = my + oy - my * m; // a point on the glass to its place in the patch: k + p * m
-    r.fillStyle = "#fff"; r.globalAlpha = 0.45; // the panes, the frame and the mullion dark between them, their edges a little soft (the glass is wet)
-    for (let e = -7; e <= 7; e += 7) { const pw = (apW / 2 - 7.5) * m + e * 2, ph = (apH - 6) * m + e * 2; r.beginPath(); r.rect(kx + (apX + 3) * m - e, ky + (apY + 3) * m - e, pw, ph); r.rect(kx + (mx + 4.5) * m - e, ky + (apY + 3) * m - e, pw, ph); r.fill(); }
-    r.globalAlpha = 1; r.globalCompositeOperation = "source-in"; r.save(); r.translate(dx, dy); r.scale(R, R * 0.8); r.fillStyle = B.rlg; r.fillRect(-1, -1, 2, 2); r.restore(); // inside the beam's own round edge
+    const r = B.rl.getContext("2d"), m = 1.08 + 0.45 * G, ox = -(lx - mx) * 0.3 + B.pp * apW * 0.7, oy = apH * (0.5 - 0.3 * G + B.py * 0.35); // the patch: the panes, a little larger, swung with the beam across the wall, the calendar and the panel
+    const dx = W / 2 + B.pp * W * 0.62, dy = H * (0.55 + B.py * 0.6), R = Math.max(W, H) * (0.46 + 0.4 * G); // the beam's own round edge, swinging across
+    const kx = mx + ox - mx * m, ky = my + oy - my * m, cx = kx + mx * m, ty = ky + apY * m, hp = apH * m; // a point on the glass to its place in the patch: k + p * m, then widened toward the bottom
+    r.setTransform(1, 0, 0, 1, 0, 0); r.globalCompositeOperation = "source-over"; r.globalAlpha = 1; r.clearRect(0, 0, B.rl.width, B.rl.height); r.setTransform(1 / RS, 0, 0, 1 / RS, 0, 0);
+    r.fillStyle = "#fff"; r.globalAlpha = 0.36; // the panes, the frame and the mullion dark between them, their edges soft (the glass is wet)
+    for (let e = -10; e <= 10; e += 10) { r.beginPath(); blQ(r, apX + 3 - e, apY + 3 - e, mx - 4.5 + e, apY + apH - 3 + e, kx, ky, m, cx, ty, hp); blQ(r, mx + 4.5 - e, apY + 3 - e, apX + apW - 3 + e, apY + apH - 3 + e, kx, ky, m, cx, ty, hp); r.fill(); }
+    r.globalAlpha = 1; r.globalCompositeOperation = "source-in"; const lh = hp * 1.1; r.save(); r.translate(0, ty); r.scale(1, lh); r.fillStyle = B.rlL; r.fillRect(-40, -ty / lh - 1, W + 80, H / lh + 2); r.restore(); // brightest at the edge nearest the glass
+    r.globalCompositeOperation = "destination-in"; r.save(); r.translate(dx, dy); r.scale(R, R * 0.8); r.fillStyle = B.rlg; r.fillRect(-1, -1, 2, 2); r.restore(); // only inside the beam
     r.globalCompositeOperation = "destination-out"; r.fillStyle = "rgba(0,0,0,0.5)"; r.beginPath(); // the rain on the glass: its drops and runs speckle the light
-    for (let i = 0; i < droplets.length; i++) { const d = droplets[i], z = d.r * 2.6 * m; r.rect((kx + (apX + d.x) * m), (ky + (apY + d.y) * m), z, z); if ((i & 3) === 0) r.rect((kx + (apX + d.x) * m) + z * 0.3, (ky + (apY + d.y) * m) + z, 1.4 * m, (6 + (i % 7) * 2) * m); }
-    r.fill(); r.globalCompositeOperation = "source-over";
+    for (let i = 0; i < droplets.length; i++) { const d = droplets[i], X = kx + (apX + d.x) * m, Y = ky + (apY + d.y) * m, X2 = cx + (X - cx) * (0.85 + 0.15 * clamp((Y - ty) / hp, 0, 1)), z = d.r * 2.6 * m; r.rect(X2, Y, z, z); if ((i & 3) === 0) r.rect(X2 + z * 0.3, Y + z, 1.4 * m, (6 + (i % 7) * 2) * m); }
+    r.fill();
+    const tk = 0.6 * (1 - G); if (tk > 0.01) { r.fillStyle = "rgba(0,0,0," + tk.toFixed(3) + ")"; for (let j = 0; j < 2; j++) if (blTB[j * 4 + 3] > 0) r.fillRect(blTB[j * 4], blTB[j * 4 + 1], blTB[j * 4 + 2], blTB[j * 4 + 3]); } // the words stay readable
+    r.fillStyle = "#000"; r.fillRect(apX, apY, apW, apH); r.globalCompositeOperation = "source-over"; // none on the glass itself, so its edge at the sill is soft too
+    const r2 = B.rl2.getContext("2d"); r2.globalCompositeOperation = "copy"; if (BL_FI) r2.filter = "blur(" + (clamp(W / 60, 11, 22) / RS).toFixed(2) + "px)"; r2.drawImage(B.rl, 0, 0); r2.filter = "none"; r2.globalCompositeOperation = "source-over"; // every edge feathered
     g.save(); g.beginPath(); g.rect(-40, -40, W + 80, H + 80); g.rect(apX, apY, apW, apH); g.clip("evenodd"); // on the room, not the glass
-    g.globalCompositeOperation = "lighter"; g.globalAlpha = F * op * 0.5; g.drawImage(B.rl, 0, 0, B.rl.width * 5, B.rl.height * 5); // a cold wash
-    g.globalCompositeOperation = "color-dodge"; g.globalAlpha = F * op * 0.8; g.drawImage(B.rl, 0, 0, B.rl.width * 5, B.rl.height * 5); // and what it falls on shows, hard and cold
+    g.globalCompositeOperation = "lighter"; g.globalAlpha = F * op * 0.85; g.drawImage(B.rl2, 0, 0, B.rl.width * RS, B.rl.height * RS); // a cold wash
+    g.globalCompositeOperation = "color-dodge"; g.globalAlpha = F * op * 0.4; g.drawImage(B.rl2, 0, 0, B.rl.width * RS, B.rl.height * RS); // and what it falls on shows, cold
     g.restore();
-    const hg = shutterPos * apH; // the glass: a glare round the lamp, every drop on it lit
+    const hg = shutterPos * apH; // the glass: a cold sheen, a glare round the lamp, every drop on it lit
     g.save(); g.beginPath(); g.rect(apX, apY + hg, apW, apH - hg); g.clip(); g.globalCompositeOperation = "lighter";
+    g.globalAlpha = F * op * 0.2; g.fillStyle = "rgb(200,216,250)"; g.fillRect(apX, apY + hg, apW, apH - hg);
     const rb = apW * (0.16 + 0.75 * G); g.save(); g.translate(lx, ly); g.scale(rb, rb); g.globalAlpha = F * op * (0.4 + 0.6 * G); g.fillStyle = B.rgG; g.fillRect(-1, -1, 2, 2); g.restore();
     for (let pass = 0; pass < 2; pass++) {
-      g.fillStyle = pass ? "rgba(236,244,255,0.75)" : "rgba(206,222,252,0.3)"; g.globalAlpha = F * op; g.beginPath();
-      for (let i = 0; i < droplets.length; i++) { const d = droplets[i], ex = apX + d.x - lx, ey = apY + d.y - ly, k = Math.exp(-(ex * ex + ey * ey) / (rb * rb * 1.6)); if (pass ? k < 0.45 : k < 0.08 || k >= 0.45) continue; const z = d.r * (1.6 + 1.4 * k); g.rect(apX + d.x - z * 0.5, apY + d.y - z * 0.5, z, z * 1.5); }
+      g.fillStyle = pass ? "rgba(236,244,255,0.8)" : "rgba(214,228,255,0.45)"; g.globalAlpha = F * op; g.beginPath();
+      for (let i = 0; i < droplets.length; i++) { const d = droplets[i], ex = apX + d.x - lx, ey = apY + d.y - ly, k = Math.max(0.2, Math.exp(-(ex * ex + ey * ey) / (rb * rb * 1.6))); if (pass ? k < 0.45 : k >= 0.45) continue; const z = d.r * (1.6 + 1.4 * k); g.rect(apX + d.x - z * 0.5, apY + d.y - z * 0.5, z, z * 1.5); if ((i & 3) === 0) g.rect(apX + d.x - 0.6, apY + d.y + z, 1.2, 5 + (i % 7) * 2); }
       g.fill();
     }
     g.restore();
   }
-  if (shutterPos > 0.05) { // the shutter keeps it out: only a thin line round its edges and under it, and a little on the wall
+  if (shutterPos > 0.05) { // the shutter keeps it out: only a soft glow round its edges and along its bottom seam, and a little on the wall
     const lk = F * shutterPos * (0.35 + 0.65 * G), hg = shutterPos * apH;
-    g.save(); g.globalCompositeOperation = "lighter"; g.fillStyle = "rgba(206,220,250," + Math.min(0.9, lk).toFixed(3) + ")";
-    g.fillRect(apX, apY, 1.6, hg); g.fillRect(apX + apW - 1.6, apY, 1.6, hg); if (shutterPos < 0.985) g.fillRect(apX, apY + hg - 1, apW, 1.8);
-    g.fillStyle = "rgba(196,212,246," + (0.05 * lk).toFixed(3) + ")"; g.fillRect(-40, -40, W + 80, H + 80); g.restore();
+    g.save(); g.globalCompositeOperation = "lighter"; g.fillStyle = "rgb(206,220,250)";
+    for (let w = 1.5; w < 8; w += 2.5) { g.globalAlpha = Math.min(0.9, lk) * 0.14; g.fillRect(apX - w * 0.5, apY, w, hg); g.fillRect(apX + apW - w * 0.5, apY, w, hg); g.fillRect(apX, apY + hg - w * 0.6, apW, w * 0.9); }
+    g.globalAlpha = 0.05 * lk; g.fillRect(-40, -40, W + 80, H + 80); g.restore();
   }
-  if (G > 0.01) { g.fillStyle = "rgba(220,232,252," + (0.7 * G * F * op).toFixed(3) + ")"; g.fillRect(-40, -40, W + 80, H + 80); } // it looks straight at you: the view nearly goes white
+  if (G > 0.01) { // it looks straight at you: a glare from the lamp that nearly whites the view, then slides off to the side
+    const a = G * F * op, bx = lx + B.gs * W * 0.8, by = ly + B.gs * H * 0.1, R = Math.max(W, H) * 0.6;
+    g.save(); g.globalAlpha = Math.min(0.25, 0.25 * a); g.fillStyle = "rgb(196,210,240)"; g.fillRect(-40, -40, W + 80, H + 80);
+    g.globalAlpha = a; g.translate(bx, by); g.scale(R, R); g.fillStyle = B.bmG; g.fillRect(-3, -3, 6, 6); g.restore();
+  }
 }
 // the light coming in: [when, how long, how strong, which way it swings, how low its edge passes]: a graze across the panel as it feels toward the shelter, the full pass across you, a last graze as it goes
 const BL_IN = [[70.8, 0.95, 0.62, 1, 0.3], [BL_UC, 2.1, 1, -1, 0], [86.4, 1.0, 0.5, -1, 0.4]];
@@ -1578,7 +1598,7 @@ function stepBlimp(t, dt) {
   B.gk = 0; for (let q = 0; q < BL_GL.length; q++) { blimpAim(q, u); B.gk = Math.max(B.gk, B.gl[q * 11 + 3]); } // the two lights on the ground
   // one second of white as it crosses the window, then the eye catches up
   const du = u - BL_UC;
-  B.F = 0; B.G = 0; for (let i = 0; i < BL_IN.length; i++) { const P = BL_IN[i], f = (u - P[0]) / P[1]; if (f < -0.5 || f > 0.5) continue; const e = smooth01((f + 0.5) / 0.14) * (1 - smooth01((f - 0.36) / 0.14)), a = Math.abs(2 * f); B.pp = P[3] * Math.sign(f) * (P[2] > 0.9 ? Math.pow(a, 1.7) : a) * 1.25; B.py = P[4]; B.F = e * P[2]; B.G = P[2] > 0.9 ? e * Math.exp(-B.pp * B.pp / 0.05) : 0; }
+  B.F = 0; B.G = 0; B.gs = 0; for (let i = 0; i < BL_IN.length; i++) { const P = BL_IN[i], f = (u - P[0]) / P[1]; if (f < -0.5 || f > 0.5) continue; const e = smooth01((f + 0.5) / 0.14) * (1 - smooth01((f - 0.36) / 0.14)), a = Math.abs(2 * f); B.pp = P[3] * Math.sign(f) * (P[2] > 0.9 ? Math.pow(a, 1.7) : a) * 1.25; B.py = P[4]; B.F = e * P[2]; if (P[2] > 0.9) { const sl = smooth01((f - 0.14) / 0.36); B.G = e * smooth01((f + 0.3) / 0.14) * (1 - 0.45 * sl); B.gs = sl; } } // the glare holds 0.6 s, then slides off to the side
   B.hush = smooth01((du + 2) / 0.5) * (1 - smooth01((du - 0.4) / 0.6)); B.pump = smooth01((du - 1.0) / 0.3) * (1 - smooth01((du - 1.5) / 1.3));
   // lightning while it is overhead: the whole shape for a moment in the cloud (a long bright sheet), once overhead and once as it goes
   if (!B.fl1 && u >= 54 && !strike) { blimpStrike(t); B.fl1 = true; }
