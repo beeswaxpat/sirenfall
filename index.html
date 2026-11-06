@@ -1408,7 +1408,7 @@ function blast2Ruin(t, tt, sil, apW, apH, gx) { // in front of the glow, not add
     x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.drawImage(sil.hm, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "rgb(12,11,14)"; x.fillRect(0, 0, c.width, c.height);
     x.setTransform(k, 0, 0, k, 0, 0); x.globalCompositeOperation = "destination-in";
     const hg = x.createLinearGradient(gx - apW * 0.24, 0, gx + apW * 0.24, 0); hg.addColorStop(0, "rgba(0,0,0,0)"); hg.addColorStop(0.3, "#000"); hg.addColorStop(0.7, "#000"); hg.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = hg; x.fillRect(0, 0, apW, apH);
-    const vg = x.createLinearGradient(0, apH * 0.535, 0, apH * 0.57); vg.addColorStop(0, "#000"); vg.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = vg; x.fillRect(0, 0, apW, apH);
+    const vg = x.createLinearGradient(0, apH * 0.535, 0, apH * 0.585); vg.addColorStop(0, "#000"); vg.addColorStop(0.4, "rgba(0,0,0,0.5)"); vg.addColorStop(1, "rgba(0,0,0,0)"); // a longer fall-off below the skyline, so its lower edge is not a line x.fillStyle = vg; x.fillRect(0, 0, apW, apH);
     Z.dkS = sil;
   }
   g.save();
@@ -1493,10 +1493,12 @@ function drawBlast2Cloud(t, sil) { // the far cloud and the ruin smoke: one laye
   if (!B2C.S) b2cBake();
   const { apW, apH } = L, sc = Math.min(DPR, 1.5, 720 / apW), key = apW + "x" + apH + "x" + sc, gx = apW * Z.x, dir = Z.x > 0.5 ? -1 : 1, u = Z.hit ? tt - Z.hitD : -1;
   const lean = RM ? 0.6 : Math.min(1.3, 0.3 + 0.6 * WX.k + 0.6 * WX.gust);
+  if (u > 0) { Z.sm.length = 0; if (Z.pl) Z.pl.length = 0; } // the old thin dotted smoke trails give way to the columns below
   let c = B2C.c;
   if (!c || B2C.k !== key) {
     c = B2C.c = document.createElement("canvas"); c.width = Math.ceil(apW * sc); c.height = Math.ceil(apH * sc); c.x = c.getContext("2d"); c.sc = sc; B2C.k = key; B2C.last = -9;
-    const r = hashRng(6262); B2C.src = [-0.085, -0.052, -0.018, 0.017, 0.052, 0.088].map((o, i) => ({ ox: o + (r() - 0.5) * 0.012, h: 0.2 + 0.14 * r() + (i === 2 || i === 4 ? 0.08 : 0), ph: r(), per: 34 + 22 * r(), g: 0.7 + 0.6 * r() }));
+    const r = hashRng(6262); B2C.bk = document.createElement("canvas"); B2C.bk.width = c.width; B2C.bk.height = Math.ceil(apH * 0.22 * sc); B2C.bk.x = B2C.bk.getContext("2d"); B2C.bank = []; for (let i = 0; i < 16; i++) B2C.bank.push({ f: (i + 0.5) / 16 - 0.5 + (r() - 0.5) * 0.04, y: r(), r: 0.03 + 0.035 * r(), v: (r() * 4) | 0, ph: r() });
+    B2C.src = [-0.085, -0.052, -0.018, 0.017, 0.052, 0.088].map((o, i) => ({ ox: o + (r() - 0.5) * 0.012, h: 0.2 + 0.14 * r() + (i === 2 || i === 4 ? 0.08 : 0), ph: r(), per: 34 + 22 * r(), g: 0.7 + 0.6 * r() }));
   }
   if (t - B2C.last >= (tt > 90 ? 0.2 : 0.125)) {
     B2C.last = t;
@@ -1527,23 +1529,29 @@ function drawBlast2Cloud(t, sil) { // the far cloud and the ruin smoke: one laye
       x.globalAlpha = 1; x.fillStyle = vg; x.fillRect(0, 0, apW, apH);
       x.globalCompositeOperation = "source-over";
     }
-    if (u > 0) { // the ruins: columns of dark smoke, a low bank, all leaning with the wind and spreading as they climb
+    if (u > 0) { // the ruins: billowing columns of smoke, and a low bank, all leaning with the wind and spreading as they climb
       const fade = b2s(0.8, 10, u), grow = b2s(0.5, 24, u), by = apH * 0.54, fl = RM ? 0.8 : 0.8 + 0.2 * Math.sin(t * 2.1) * Math.sin(t * 0.7 + 1);
-      for (const s of B2C.src) for (let j = 0; j < 9; j++) {
-        const k = RM ? (j + 0.5) / 9 : ((u / s.per) + j / 9 + s.ph) % 1, rr = (14 + k * 56 * (0.8 + 0.4 * grow)) * ps * s.g;
-        const px = gx + s.ox * apW + (Math.sin(k * 4 + j * 2.1 + s.ph * 6) * 0.004 + k * k * (0.05 + 0.08 * grow) * (0.5 + lean) * dir) * apW, py = by - Math.pow(k, 0.85) * s.h * grow * apH - rr * 0.3;
-        const a = 0.6 * fade * Math.min(1, k / 0.1) * Math.pow(1 - k, 0.9), sp = S[(j + ((s.ph * 4) | 0)) & 3];
+      for (const s of B2C.src) for (let j = 0; j < 12; j++) { // each column: twelve big puffs overlapping a lot, wider and thinner the higher they are, lit orange at the foot
+        const k = RM ? (j + 0.5) / 12 : ((u / s.per) + j / 12 + s.ph) % 1, rr = (24 + k * 62 * (0.8 + 0.4 * grow)) * ps * s.g;
+        const px = gx + s.ox * apW + (Math.sin(k * 4 + j * 2.1 + s.ph * 6) * 0.004 + k * k * (0.05 + 0.08 * grow) * (0.5 + lean) * dir) * apW, py = by - Math.pow(k, 0.85) * s.h * grow * apH - rr * 0.35;
+        const a = 0.6 * fade * Math.min(1, k / 0.08) * Math.pow(1 - k, 1.2), sp = S[(j + ((s.ph * 4) | 0)) & 3];
         x.globalAlpha = a; x.drawImage(sp.body, px - rr, py - rr * 0.9, rr * 2, rr * 1.8);
-        x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.34 * a * fl * Math.pow(1 - k, 2) * (0.6 + 0.4 * Lg); x.drawImage(sp.lit, px - rr, py - rr * 0.9, rr * 2, rr * 1.8);
+        x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.5 * a * fl * Math.pow(1 - k, 2.2) * (0.6 + 0.4 * Lg); x.drawImage(sp.lit, px - rr, py - rr * 0.9, rr * 2, rr * 1.8);
         x.globalCompositeOperation = "source-over";
       }
-      for (let j = 0; j < 7; j++) { // the bank: wide low smoke lying along the broken skyline, drifting slowly downwind and thinning at its ends
-        const f = (j + 0.5) / 7 - 0.5, sp = S[j & 3], rr = apW * (0.05 + 0.03 * ((j * 5) % 3) / 2) * (0.7 + 0.5 * grow), e = Math.max(0, 1 - Math.abs(f) * 1.4);
-        const px = gx + f * apW * 0.3 * (1 + 0.4 * grow) + lean * dir * apW * 0.02 * grow + (RM ? 0 : Math.sin(t * 0.05 + j) * apW * 0.004), py = by - apH * (0.03 + 0.03 * grow) - ((j * 3) % 4) * apH * 0.008;
-        x.globalAlpha = 0.34 * fade * (1 - Math.abs(f) * 1.2); x.drawImage(sp.body, px - rr, py - rr * 0.45, rr * 2, rr * 0.9);
-        x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.3 * fade * fl * e; x.drawImage(sp.lit, px - rr, py - rr * 0.45, rr * 2, rr * 0.9);
-        x.globalCompositeOperation = "source-over";
+      const bk = B2C.bk, bx = bk.x, bh = apH * 0.22, bt = by - apH * 0.2; // the bank is made on its own small canvas, so its lower edge can be feathered away before it goes on
+      bx.setTransform(1, 0, 0, 1, 0, 0); bx.globalCompositeOperation = "source-over"; bx.globalAlpha = 1; bx.clearRect(0, 0, bk.width, bk.height); bx.setTransform(sc, 0, 0, sc, 0, -bt * sc);
+      for (const p of B2C.bank) {
+        const f = p.f, e = Math.max(0, 1 - Math.abs(f) * 1.5), rr = apW * p.r * (0.7 + 0.5 * grow), sp = S[p.v];
+        const px = gx + f * apW * 0.34 * (1 + 0.4 * grow) + lean * dir * apW * 0.02 * grow + (RM ? 0 : Math.sin(t * 0.05 + p.ph * 6) * apW * 0.004), py = by - apH * (0.02 + p.y * 0.075 * (0.5 + 0.5 * grow));
+        bx.globalAlpha = 0.5 * fade * e; bx.drawImage(sp.body, px - rr, py - rr * 0.7, rr * 2, rr * 1.4);
       }
+      bx.globalCompositeOperation = "source-atop"; bx.globalAlpha = 0.4 * fade; bx.fillStyle = "rgb(104,86,76)"; bx.fillRect(0, bt, apW, bh); // smoky grey-brown, not black
+      const og = bx.createLinearGradient(0, by - apH * 0.07, 0, by + apH * 0.01); og.addColorStop(0, "rgba(255,150,70,0)"); og.addColorStop(1, "rgba(255,130,50,0.5)");
+      bx.globalAlpha = fade * fl; bx.fillStyle = og; bx.fillRect(0, bt, apW, bh); // lit orange from below
+      bx.globalCompositeOperation = "destination-out"; bx.globalAlpha = 1; const fg = bx.createLinearGradient(0, by - apH * 0.085, 0, by - apH * 0.004); fg.addColorStop(0, "rgba(0,0,0,0)"); fg.addColorStop(0.55, "rgba(0,0,0,0.5)"); fg.addColorStop(1, "rgba(0,0,0,1)");
+      bx.fillStyle = fg; bx.fillRect(0, bt, apW, bh); // the lower edge fades out gradually, no line
+      x.globalAlpha = 1; x.drawImage(bk, 0, bt, apW, bh);
     }
     x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; blast2CutAll(x, c, sil, true, tt, gx, apW, apH); // the near skyline stands in front of all of it
     x.globalCompositeOperation = "source-over";
