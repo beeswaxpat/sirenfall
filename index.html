@@ -1674,7 +1674,7 @@ function blimpCars(c, lit) { // the control car forward on the keel, the lamp ho
 }
 function blimpGrads(c) { // the soft round lights, made once as unit gradients: each frame only moves, sizes and fades them
   const mk = (r, g2, b2, st) => { const q = c.createRadialGradient(0, 0, 0, 0, 0, 1); for (const s of st) q.addColorStop(s[0], "rgba(" + r + "," + g2 + "," + b2 + "," + s[1] + ")"); return q; };
-  BLG = { sp: mk(214, 226, 252, [[0, 0.5], [0.45, 0.2], [1, 0]]), pool: mk(255, 255, 255, [[0, 1], [0.55, 0.5], [1, 0]]), face: mk(255, 255, 255, [[0, 1], [0.3, 0.86], [0.55, 0.5], [0.8, 0.17], [1, 0]]), soft: mk(255, 255, 255, [[0, 1], [0.12, 0.88], [0.28, 0.62], [0.46, 0.36], [0.66, 0.15], [0.84, 0.04], [1, 0]]), wash: mk(176, 190, 222, [[0, 1], [1, 0]]), haze: mk(158, 176, 214, [[0, 0.2], [0.4, 0.08], [1, 0]]), lamp: mk(214, 226, 252, [[0, 0.5], [0.4, 0.14], [1, 0]]), cg: null, cgH: 0 };
+  BLG = { sp: mk(214, 226, 252, [[0, 0.5], [0.45, 0.2], [1, 0]]), pool: mk(255, 255, 255, [[0, 1], [0.55, 0.5], [1, 0]]), face: mk(255, 255, 255, [[0, 1], [0.3, 0.86], [0.55, 0.5], [0.8, 0.17], [1, 0]]), soft: mk(255, 255, 255, [[0, 0.3], [0.4, 0.27], [0.7, 0.13], [0.88, 0.04], [1, 0]]), wash: mk(176, 190, 222, [[0, 1], [1, 0]]), haze: mk(158, 176, 214, [[0, 0.2], [0.4, 0.08], [1, 0]]), lamp: mk(214, 226, 252, [[0, 0.5], [0.4, 0.14], [1, 0]]), cg: null, cgH: 0 };
 }
 function blMu(f, nf) { return 1 - (1 - nf) * smooth01((f - 0.4) / 0.35); }
 function blimpDS(x, img, sc) { x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(img, 0, 0); x.setTransform(sc, 0, 0, sc, 0, 0); } // a small copy of the city drawn 1:1 into the beam layer
@@ -1718,7 +1718,7 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
     F2(b, pk * 0.4, 1); // a light wet wash (not a flat fill: the picture carries the walls)
     if (sil) { b.globalCompositeOperation = "destination-in"; blimpDS(b, sm, sc); }
     // the faces toward the lamp catch the light: a thin rim on the edges that look at it (the near side of each tower, its roof), then a lit wall that is darker deeper in
-    if (sil && B.mc) {
+    if (sil && B.mc && BL_RIM > 0) {
       let vx = lx - px0, vy = ly - py0; const vl = Math.hypot(vx, vy); if (vl < 1) { vx = 0.5; vy = -0.85; } else { vx /= vl; vy /= vl; }
       const m = B.mc.getContext("2d"), w = B.mc.width, h = B.mc.height, dr = 2.3;
       if (Math.abs(vx - B.rvx) + Math.abs(vy - B.rvy) > 0.05) { // the strip only turns with the direction of the lamp: made again once that has moved a little
@@ -1796,7 +1796,7 @@ function blimpAim(q, u) { // ground light q: how bright it is, where it touches 
   a[o + 7] = gX; a[o + 8] = BL_GY; a[o + 9] = G.gz; a[o + 10] = on;
   if (!B.gf[q] && u >= G.uf) { B.gf[q] = 1; B.creakAt = Math.min(B.creakAt, u + 0.4); } // the hull groans as it is found
 }
-const BL_RIM = 0.4; // how much the lit edges of the towers show in the pool
+const BL_RIM = 0; // the lit edges of the towers in the pool: off (a bright edge is a bright line); the pool is only the beam's light dissolving into the haze and the walls
 const BL_PF = 0.4; // the least the pool is flattened to (a pool squashed thinner than this reads as a white line)
 const BL_KW = [1.8, 1, 0.45], BL_KA = [0.5, 0.7, 0.9];
 function blimpGround(t) { // the ground lights' shafts: climb out from behind the skyline through the rain to the belly. Drawn small, soft, into the beam layer
