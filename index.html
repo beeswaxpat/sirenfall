@@ -1355,6 +1355,87 @@ function drawBlast2(t) {
     x.globalCompositeOperation = "source-over";
   }
   g.save(); g.globalCompositeOperation = "lighter"; g.drawImage(c, 0, 0, apW, apH); g.restore();
+  blast2Ruin(t, tt, sil, apW, apH, gx);
+}
+const B2TW = [[-80, 10, 36, 0.5, 0], [-62, 14, 42, 0.4, 2], [-30, 16, 50, 0.7, 1], [-8, 12, 44, 0.46, 0], [22, 15, 46, 0.58, 1], [52, 11, 38, 0.42, 0], [66, 13, 40, 0.62, 1]]; // the towers at the spot: offset, width, height, how much is left, how the top goes (sink, lean, topple)
+function blast2Ruin(t, tt, sil, apW, apH, gx) { // in front of the glow, not added to it: the towers at the spot black in the glare, their tops going, then stumps, embers and smoke for good
+  const Z = BLAST2, ps = clamp(apH / 350, 0.45, 1.6), yb = apH * 0.545, key = apW + "x" + apH, r = Math.random, u = Z.hit ? tt - Z.hitD : -1;
+  if (Z.ruK !== key) { // made once a visit (again on a resize): the stumps baked small so their edges are soft, and where each piece goes
+    Z.ruK = key; Z.dk = null; Z.dkS = null; const kr = Math.min(DPR, 1.5) * 0.7, ox = gx - 100 * ps, oy = yb - 70 * ps, c = document.createElement("canvas");
+    c.width = Math.ceil(200 * ps * kr); c.height = Math.ceil(72 * ps * kr); const x = c.getContext("2d"); x.setTransform(kr, 0, 0, kr, -ox * kr, -oy * kr);
+    Z.tw = B2TW.map(([dx, w, H, f, ty], i) => {
+      const x0 = gx + (dx + (r() - 0.5) * 5) * ps, ww = w * ps, HH = (H + (r() - 0.5) * 6) * ps, h = HH * clamp(f + (r() - 0.5) * 0.08, 0.25, 0.7), n = 4 + Math.floor(r() * 3);
+      x.fillStyle = "rgb(13,12,15)"; x.beginPath(); x.moveTo(x0, yb + 2); x.lineTo(x0, yb - h * (0.6 + 0.3 * r()));
+      for (let j = 1; j < n; j++) x.lineTo(x0 + ww * j / n + (r() - 0.5) * ww * 0.12, yb - h * (j === (n >> 1) ? 1 : 0.5 + 0.45 * r()));
+      x.lineTo(x0 + ww, yb - h * (0.55 + 0.35 * r())); x.lineTo(x0 + ww, yb + 2); x.closePath(); x.fill();
+      if (i === 2 || i === 4) { // the frame left standing over the break: bare columns and the floor lines between them
+        x.strokeStyle = "rgba(13,12,15,0.75)"; x.lineWidth = 1 / kr * 1.2; x.beginPath();
+        x.moveTo(x0 + 1.2 * ps, yb - h * 0.8); x.lineTo(x0 + 1.4 * ps, yb - h - 9 * ps); x.moveTo(x0 + ww * 0.62, yb - h * 0.9); x.lineTo(x0 + ww * 0.6 + ps, yb - h - 6 * ps);
+        for (let j = 0; j < 4; j++) { const fy = yb - h - (j + 0.4) * 2.2 * ps; x.moveTo(x0 + 1.2 * ps, fy); x.lineTo(x0 + ww * (0.35 + 0.6 * r()) - j * ps, fy + (r() - 0.5) * 0.6 * ps); }
+        x.stroke();
+      }
+      const cv = document.createElement("canvas"), cx0 = x0 - 3 * ps, cy0 = yb - HH - 9 * ps, cw = ww + 6 * ps, ch = HH - h * 0.5 + 9 * ps, sb = r() * 0.5, cx = cv.getContext("2d"); // the top, baked small and soft: a setback, a mast on some
+      cv.width = Math.ceil(cw * kr); cv.height = Math.ceil(ch * kr); cx.setTransform(kr, 0, 0, kr, -cx0 * kr, -cy0 * kr); cx.fillStyle = "rgb(13,12,15)";
+      cx.fillRect(x0, yb - HH, ww, HH - h * 0.5); cx.fillRect(x0 + ww * sb, yb - HH - 3 * ps, ww * (0.35 + 0.2 * r()), 3 * ps + 1); if (r() < 0.5) cx.fillRect(x0 + ww * (0.2 + 0.6 * r()), yb - HH - 8 * ps, Math.max(1, 0.8 * ps), 6 * ps);
+      return { x0, w: ww, H: HH, h, ty, cv, cx0, cy0, cw, ch, u0: 0.5 + 1.1 * r() + Math.abs(dx) / 80 * 0.6, dur: ty === 2 ? 2.6 + r() * 0.6 : 3 + r(),
+        th: (dx < 0 ? -1 : 1) * (ty === 2 ? 1.1 + 0.3 * r() : ty === 1 ? 0.14 + 0.2 * r() : 0.04), fall: (ty === 2 ? 22 : ty === 1 ? 12 + 8 * r() : 16) * ps };
+    });
+    Z.ru = { c, ox, oy, w: 200 * ps, h: 72 * ps };
+    const tw = Z.tw; Z.em = [2, 4, 6, 1].map(i => ({ x: tw[i].x0 + tw[i].w * (0.25 + 0.5 * r()), y: yb - tw[i].h * (0.25 + 0.45 * r()), s: (5 + 3 * r()) * ps, ph: r() * 9 }));
+    Z.pl = [2, 4, 6].map(i => ({ x: tw[i].x0 + tw[i].w * 0.5, y: yb - tw[i].h, R: (45 + 30 * r()) * ps, d: (3 + 3 * r()) * ps, ph: r() }));
+    Z.dw = []; for (let i = 0; i < 18; i++) Z.dw.push({ s: i & 1 ? 1 : -1, f: r(), j: r(), rr: (7 + 5 * r()) * ps });
+  }
+  if (sil && sil.hm && Z.dkS !== sil ) { // the far rows near the spot as a black plate, to stand them dark in the glare; the broken one after the hit, crossfaded in
+    if (Z.hit && Z.dk && !Z.dk0) Z.dk0 = Z.dk, Z.dk = null;
+    const c = Z.dk || (Z.dk = document.createElement("canvas")); c.width = sil.hm.width; c.height = sil.hm.height; const x = c.getContext("2d"), k = c.width / apW;
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.drawImage(sil.hm, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "rgb(12,11,14)"; x.fillRect(0, 0, c.width, c.height);
+    x.setTransform(k, 0, 0, k, 0, 0); x.globalCompositeOperation = "destination-in";
+    const hg = x.createLinearGradient(gx - apW * 0.24, 0, gx + apW * 0.24, 0); hg.addColorStop(0, "rgba(0,0,0,0)"); hg.addColorStop(0.3, "#000"); hg.addColorStop(0.7, "#000"); hg.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = hg; x.fillRect(0, 0, apW, apH);
+    const vg = x.createLinearGradient(0, apH * 0.535, 0, apH * 0.57); vg.addColorStop(0, "#000"); vg.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = vg; x.fillRect(0, 0, apW, apH);
+    Z.dkS = sil;
+  }
+  g.save();
+  const dA = u < 0.5 ? 0.88 * b2s(0, 0.12, tt) : 0.88 - 0.16 * b2s(0.5, 4, u);
+  if (Z.dk) { g.globalAlpha = dA; g.drawImage(Z.dk, 0, 0, apW, apH); }
+  if (Z.dk0) { // the towers that stood there going down into their own dust, in strips, the nearest to the spot first
+    if (u > 6) Z.dk0 = null; else for (let i = 0; i < 8; i++) {
+      const bx = gx + (i - 4) * apW * 0.06, d = Math.abs(i - 3.5), v = clamp((u - 0.4 - d * 0.18 - (i * 7 % 5) * 0.08) / (1.6 + (i * 3 % 4) * 0.3), 0, 1), dy = v * v * 60 * ps;
+      g.save(); g.beginPath(); g.rect(bx, 0, apW * 0.06, yb - 2 * ps); g.clip(); g.globalAlpha = dA * (1 - b2s(0.7, 1, v)); g.drawImage(Z.dk0, 0, dy, apW, apH); g.restore();
+    }
+  }
+  if (u > 0) for (const q of Z.cr) { // the crowns baked from the skyline, dark as they go too
+    const v = u - q.u0, k = v / q.dur; if (v < 0 || k >= 1) continue;
+    g.save(); g.translate(q.pvx, q.pvy + q.fall * (q.lean ? k * k : k * k * 1.4)); g.rotate(q.th * (q.lean ? b2s(0, 1, k) : k * k)); g.translate(-q.pvx, -q.pvy);
+    g.globalAlpha = 0.85 * (1 - b2s(0.5, 1, k)); g.drawImage(q.m, q.ox, q.oy, q.sw, q.sh); g.restore();
+  }
+  for (const q of Z.tw) { // the tops: whole in the glare, then gone, a couple leaning off and one going over sideways
+    const v = u - q.u0, k = v < 0 ? 0 : v / q.dur; if (k >= 1) continue;
+    const pvx = q.th < 0 ? q.x0 : q.x0 + q.w, pvy = yb - q.h * 0.7;
+    g.save(); g.translate(pvx, pvy + q.fall * k * k); g.rotate(q.th * (q.ty === 1 ? b2s(0, 1, k) : k * k)); g.translate(-pvx, -pvy);
+    g.globalAlpha = 1 - b2s(0.8, 1, k); g.drawImage(q.cv, q.cx0, q.cy0, q.cw, q.ch); g.restore();
+  }
+  const R = Z.ru; g.globalAlpha = 1; g.drawImage(R.c, R.ox, R.oy, R.w, R.h);
+  if (u > 0) {
+    for (const p of Z.dw) { // the dust wall at their feet, rolling out both ways, lit orange from below; a low bank of it stays
+      const e = b2s(0, 0.8, u - p.j * 0.4) * (1 - 0.7 * b2s(8, 35, u)); if (e < 0.01) continue;
+      const px = gx + p.s * (p.f * 70 * ps + 50 * ps * b2s(0, 4.5, u) * (0.4 + 0.6 * p.f)), rr = p.rr * (1 + Math.min(u, 6) / 10), py = yb - rr * 0.45 - p.j * 6 * ps;
+      g.globalCompositeOperation = "source-over"; g.globalAlpha = 0.5 * e; g.drawImage(Z.spd[0], px - rr * 1.6, py - rr * 0.8, rr * 3.2, rr * 1.6);
+      g.globalCompositeOperation = "lighter"; g.globalAlpha = (0.08 + 0.16 * (1 - b2s(4, 20, u))) * e; g.drawImage(Z.spr[2], px - rr * 1.4, py + rr * 0.1, rr * 2.8, rr * 0.8);
+    }
+    g.globalCompositeOperation = "source-over";
+    const fade = b2s(1, 6, u);
+    for (const s of Z.pl) for (let i = 0; i < 8; i++) { // thin smoke off the stumps, up into the glow and drifting off
+      const k = RM ? i / 8 : ((t / 14) + i / 8 + s.ph) % 1, rr = (2.5 + k * 11) * ps;
+      g.globalAlpha = 0.5 * fade * (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88);
+      g.drawImage(Z.spd[0], s.x + k * 14 * s.d + Math.sin(k * 5 + i) * ps - rr, s.y - k * s.R - rr, rr * 2, rr * 2);
+    }
+    g.globalCompositeOperation = "lighter";
+    for (const m of Z.em) { // embers in the stumps, flickering
+      g.globalAlpha = b2s(1.5, 4, u) * (RM ? 0.55 : 0.55 + 0.15 * Math.sin(t * 7 + m.ph) * Math.sin(t * 2.3 + m.ph * 2)); g.drawImage(Z.spr[2], m.x - m.s, m.y - m.s, m.s * 2, m.s * 2);
+      g.globalAlpha *= 0.5; g.drawImage(Z.spr[1], m.x - m.s * 0.35, m.y - m.s * 0.35, m.s * 0.7, m.s * 0.7);
+    }
+  }
+  g.restore();
 }
 function raidCanvas() { // only made for a visit that has the raid: at full size it is the biggest canvas on the page
   if (!L || RAID.at < 0) return null;
