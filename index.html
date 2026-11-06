@@ -1132,7 +1132,7 @@ function blast2Hit(t) { // the air reaches them: the broken skyline goes in unde
     Z.cr.push({ m, l, ox, oy, sw, sh, dir, lean, u0: 5 * Math.abs(cx - gx) / apW + q.li * 0.05 + r() * 0.12,
       pvx: lean ? cx : dir > 0 ? q.x + q.w : q.x, pvy: lean ? yb : q.pts[dir > 0 ? n : 0][1],
       th: dir * (lean ? 0.1 + 0.12 * r() : 0.1 + 0.35 * r()), dur: lean ? 3 + r() : 1.7 + r() * 0.8, fall: lean ? ch * 0.9 : apH * (0.1 + 0.1 * r()) });
-    if (Z.sm.length < 2) Z.sm.push({ x: cx, y: yb, ph: r() });
+    if (Z.sm.length < 3) Z.sm.push({ x: cx, y: yb, ph: r() });
   }
   const tx = rec.map(q => (q.x + q.w / 2) / apW);
   for (let i = 0; i < 84; i++) { // the dust: first at the feet of the towers that fell, then along the whole stretch, a little later the farther it is from the spot
@@ -1284,6 +1284,7 @@ function drawBlast2(t) {
   if (!c || c.width !== Math.ceil(apW * sc) || c.height !== Math.ceil(apH * sc)) { // made the first time it is needed, in a visit that has it
     c = Z.c = document.createElement("canvas"); c.width = Math.ceil(apW * sc); c.height = Math.ceil(apH * sc); c.sc = sc; c.x = c.getContext("2d"); Z.lastR = -9;
     const gm = c.x.createLinearGradient(0, apH * 0.49, 0, apH * 0.55); gm.addColorStop(0, "rgba(0,0,0,0)"); gm.addColorStop(1, "rgba(0,0,0,1)"); c.gm = gm; // the glare ends at the skyline: the towers stand on dark ground, not on lit sky
+    const gm2 = c.x.createLinearGradient(0, apH * 0.515, 0, apH * 0.57); gm2.addColorStop(0, "rgba(0,0,0,0)"); gm2.addColorStop(1, "rgba(0,0,0,1)"); c.gm2 = gm2; // once they are down it reaches lower, behind the stumps
   }
   if (tt < 16 || t - Z.lastR >= 0.1) { // after the first seconds the glow only moves slowly, so it is redrawn ten times a second
     Z.lastR = t;
@@ -1310,7 +1311,8 @@ function drawBlast2(t) {
     }
     blast2Add(x, Z.wf, gx, yH - apH * 0.015, apW * 0.3, apH * 0.2, 0.4 * Gf); // and then the fire under it, low and dull, the skyline cutting its lower half
     blast2Add(x, Z.wf, gx, yH - apH * 0.008, apW * 0.12, apH * 0.08, 0.8 * Gf);
-    x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; x.fillStyle = c.gm; x.fillRect(0, 0, apW, apH); // the sky glow stops at the skyline
+    if (Z.hit) { const kh = b2s(0, 3, tt - Z.hitD); blast2Add(x, Z.wf, gx, apH * 0.53, apW * 0.2, apH * 0.03, 0.7 * Gf * kh); blast2Add(x, Z.wf, gx + apW * 0.05, apH * 0.535, apW * 0.09, apH * 0.02, 0.5 * Gf * kh); } // the ruins burning low behind the stumps, so they stand broken against it
+    x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; x.fillStyle = Z.hit && tt - Z.hitD > 1 ? c.gm2 : c.gm; x.fillRect(0, 0, apW, apH); // the sky glow stops at the skyline
     blast2CutAll(x, c, sil, true, tt, gx, apW, apH); // and the towers stand black against it, now and for the rest of the visit; the dust below goes in after, in front of them
     if (Z.hit) { // the collapse: crowns shearing off and dropping, the dust bank rolling out lit from below, and after it the smoke
       const u = tt - Z.hitD;
@@ -2025,7 +2027,16 @@ function bakeBackdrop(mode) {
   // ---- the city continues past seeing: a last row of specks at the far line ----
   const hS = hideFor(0);
   x.globalAlpha = 0.16; x.fillStyle = "#1c2432";
-  for (let fx = -6; fx < aw + 6;) { const fw2 = 6 + r() * 10, fh2 = ah * (0.02 + r() * 0.05); x.fillRect(fx, ah * 0.535 - fh2, fw2, fh2 + 4); fx += fw2 + 2 + r() * 14; }
+  for (let fx = -6; fx < aw + 6;) {
+    const fw2 = 6 + r() * 10, fh2 = ah * (0.02 + r() * 0.05), kb = B2HIT ? 1 - Math.min(1, Math.abs(fx + fw2 / 2 - aw * B2HIT.x) / (aw * 0.34)) : 0;
+    if (kb > 0.1) { // the far blast took these down: low ragged heaps, a spike of something left in a few
+      const hj = hashRng(Math.floor(fx * 41) + 3), y0 = ah * 0.535 + 4, hk = fh2 * (1 - 0.8 * kb);
+      x.beginPath(); x.moveTo(fx - 2, y0);
+      for (let q = 0; q <= 5; q++) x.lineTo(fx - 2 + (fw2 + 4) * q / 5, ah * 0.535 - hk * (hj() < 0.2 ? 1 : 0.15 + 0.5 * hj()));
+      x.lineTo(fx + fw2 + 2, y0); x.closePath(); x.fill();
+    } else x.fillRect(fx, ah * 0.535 - fh2, fw2, fh2 + 4);
+    fx += fw2 + 2 + r() * 14;
+  }
   x.globalAlpha = 1;
   if (hS) x.restore();
 
@@ -2047,10 +2058,22 @@ function bakeBackdrop(mode) {
     const yL = baseY - bh * keep * (0.75 + 0.5 * dmg.s), yR = baseY - bh * keep * (1.25 - 0.5 * dmg.s);
     const n = Math.max(4, Math.round(bw / 5)), pts = [];
     for (let i = 0; i <= n; i++) { const q = i / n; pts.push([bx - 3 + (bw + 6) * q, yL + (yR - yL) * q + (rq() - 0.5) * Math.min(16, bh * 0.1)]); }
+    let yT = Math.min(yL, yR);
+    if (dmg.b2 > 0.45) { // the far blast tore it: a torn top, a column or a corner left standing, bites out of it (its own stream, so nothing else re-rolls)
+      const j = hashRng(Math.floor(bx * 53) + 7), p2 = [], lo = baseY - 3;
+      for (let i = 0; i < pts.length; i++) {
+        const [px, py] = pts[i], u = j(), up = u < 0.2 ? bh * (0.08 + 0.22 * j()) : 0; // a piece of wall or a corner still up: two points at one height, not a spire
+        let y = py + (j() - 0.5) * bh * 0.14 - up;
+        if (u > 0.82) y += bh * (0.05 + 0.12 * j());
+        p2.push([px, clamp(y, top + 2, lo)]);
+        if (i < pts.length - 1) { const nx = pts[i + 1]; p2.push([(px + nx[0]) / 2 + (j() - 0.5) * 2, clamp(up ? y + (j() - 0.5) * 3 : (py + nx[1]) / 2 + (j() - 0.35) * bh * 0.12, top + 2, lo)]); }
+      }
+      pts.length = 0; for (const p of p2) { pts.push(p); yT = Math.min(yT, p[1]); }
+    }
     x.save(); x.beginPath(); x.moveTo(bx - 3, baseY + ext + 4);
     for (const p of pts) x.lineTo(p[0], p[1]);
     x.lineTo(bx + bw + 3, baseY + ext + 4); x.closePath(); x.clip();
-    return { pts, top: Math.min(yL, yR), bh };
+    return { pts, top: yT, bh };
   };
   const breakEdge = (cut, bx, bw, baseY, col) => {
     // the broken edge: floors hanging out, the concrete black with soot below it
@@ -2059,6 +2082,25 @@ function bakeBackdrop(mode) {
     x.fillStyle = sg; x.fillRect(bx - 3, cut.top - 16, bw + 6, cut.bh * 0.25 + 16);
     x.strokeStyle = "rgba(150,165,190,0.12)"; x.lineWidth = 1;
     for (let i = 0; i < 3; i++) { const p = cut.pts[1 + Math.floor(rq() * (cut.pts.length - 2))]; x.beginPath(); x.moveTo(p[0] - 4, p[1] + 3 + i * 5); x.lineTo(p[0] + 5 + rq() * 6, p[1] + 3 + i * 5); x.stroke(); }
+  };
+  let skN = 0;
+  const skel = (li, bx, bw, top, cut, col) => { // the frame left standing over the break: a few columns of different heights, slabs hanging between them, some gone
+    const h = hashRng(Math.floor(bx * 29) + li * 3);
+    if (skN >= 2 || li > 1 || h() > 0.55 || cut.top - top < 12) return;
+    skN++;
+    const lost = cut.top - top, nC = 3 + Math.floor(h() * 2), cols = [], fl = Math.max(3, lost * 0.07);
+    for (let i = 0; i < nC; i++) cols.push([bx + 1.5 + (bw - 3) * (i / (nC - 1)) + (h() - 0.5) * 2, cut.top + 3 - lost * (i === 0 || h() < 0.4 ? 0.12 + 0.6 * h() : 0.05 + 0.15 * h()), (h() - 0.5) * 0.1]);
+    x.strokeStyle = shade(col, -0.45); x.lineCap = "butt";
+    for (const [cx, ty, lean] of cols) { x.lineWidth = li ? 1.2 : 0.9; x.beginPath(); x.moveTo(cx, cut.top + 4); x.lineTo(cx + (cut.top - ty) * lean, ty); x.stroke(); }
+    x.lineWidth = li ? 0.8 : 0.6;
+    for (let i = 0; i < nC - 1; i++) {
+      const a = cols[i], b = cols[i + 1], ty = Math.max(a[1], b[1]);
+      for (let y = cut.top - fl * 0.5; y > ty; y -= fl) {
+        if (h() < 0.45) continue; // that slab is gone
+        const sag = h() < 0.3 ? fl * (0.6 + 1.4 * h()) * (h() < 0.5 ? -1 : 1) : 0, ka = (cut.top - y) * a[2], kb = (cut.top - y) * b[2];
+        x.beginPath(); x.moveTo(a[0] + ka, y); x.lineTo(b[0] + kb, y + sag); x.stroke();
+      }
+    }
   };
   const rubble = (bx, bw, baseY, col) => { // what came down, heaped at the foot of it
     x.fillStyle = shade(col, -0.3); x.beginPath(); x.moveTo(bx - 6, baseY + ext);
@@ -2071,7 +2113,7 @@ function bakeBackdrop(mode) {
     let v0 = -1, f = b, s = c2;
     if (!keep && li >= 1) { const close = 1 - Math.min(1, Math.abs(cx - aw * NUKE.x) / (aw * 1.1)); v0 = clamp(close * [0, 1, 1, 0.8, 0.6][li] * 1.2 + (a - 0.5) * 0.6, 0, 1); }
     if (B2HIT && !keep) { // the far blast: the buildings within a quarter of the window of it, the far rows hardest, from its own stream
-      const k2 = 1 - Math.min(1, Math.abs(cx - aw * B2HIT.x) / (aw * 0.26)), hb = hashRng(Math.floor(cx * 97) + li * 7919), n1 = hb(), n2 = hb(), n3 = hb();
+      const k2 = 1 - Math.min(1, Math.abs(cx - aw * B2HIT.x) / (aw * 0.32)), hb = hashRng(Math.floor(cx * 97) + li * 7919), n1 = hb(), n2 = hb(), n3 = hb();
       const v2 = clamp(k2 * [1.5, 1.5, 1.2, 0.6, 0][li] + (n1 - 0.5) * 0.25 * k2, 0, 1);
       if (v2 > 0.05 && v2 > v0) { const had = v0 > 0.45; if (!had) { f = n2; s = n3; rq = hb; } return { v: v2, f, s, o: had, b2: v2, v0 }; }
     }
@@ -2110,7 +2152,7 @@ function bakeBackdrop(mode) {
         const dmgT = rd ? damage(li, bx + tw / 2, false) : null, cutT = dmgT && dmgT.v > 0.45 ? breakAt(bx, baseY - th, tw, baseY, dmgT) : null;
         drawTallTower(x, r, ly, li, bx, baseY - th, tw, baseY, ext);
         if (cutT && fullAfter && B2HIT && B2HIT.rec && !dmgT.o) B2HIT.rec.push({ x: bx, w: tw, top: baseY - th, base: baseY, pts: cutT.pts, li, col: ly.col, haze: ly.haze, tall: true }); // what the far blast broke off, for the collapse to animate
-        if (cutT) { breakEdge(cutT, bx, tw, baseY, ly.col); x.restore(); rubble(bx, tw, baseY, ly.col); }
+        if (cutT) { breakEdge(cutT, bx, tw, baseY, ly.col); x.restore(); rubble(bx, tw, baseY, ly.col); if (dmgT.b2 > 0.6) skel(li, bx, tw, baseY - th, cutT, ly.col); }
         bx += tw + 6 + r() * 12; tallI++; continue;
       }
       // demolition lots: nothing stands here any more
@@ -2156,7 +2198,7 @@ function bakeBackdrop(mode) {
       }
       // rooftop clutter, sparse
       if (ly.clut && !o.broken && !o.collapsed && !o.lean && !o.setback && r() < ly.clut) drawClutter(x, r, bx, top, bw, shade(ly.col, -0.35));
-      if (cut) { breakEdge(cut, bx, bw, baseY, ly.col); x.restore(); rubble(bx, bw, baseY, ly.col); }
+      if (cut) { breakEdge(cut, bx, bw, baseY, ly.col); x.restore(); rubble(bx, bw, baseY, ly.col); if (dmg.b2 > 0.6) skel(li, bx, bw, top, cut, ly.col); }
       // remember the mid-ground rooftop the siren mast stands on
       if (spansTower && !towerFound) { towerBaseY = top; towerFound = true; }
       bx += Math.max(bw + 4 + r() * 10, (ly.wMax * (ly.gapK || 0.9)) * (0.55 + r() * 0.7));
