@@ -1312,7 +1312,7 @@ function drawBlast2(t) {
     }
     blast2Add(x, Z.wf, gx, yH - apH * 0.015, apW * 0.3, apH * 0.2, 0.4 * Gf); // and then the fire under it, low and dull, the skyline cutting its lower half
     blast2Add(x, Z.wf, gx, yH - apH * 0.008, apW * 0.12, apH * 0.08, 0.8 * Gf);
-    if (Z.hit) { const kh = b2s(0, 3, tt - Z.hitD); blast2Add(x, Z.wf, gx, apH * 0.53, apW * 0.2, apH * 0.03, 0.7 * Gf * kh); blast2Add(x, Z.wf, gx + apW * 0.05, apH * 0.535, apW * 0.09, apH * 0.02, 0.5 * Gf * kh); } // the ruins burning low behind the stumps, so they stand broken against it
+    if (Z.hit) { const kh = b2s(0, 3, tt - Z.hitD); blast2Add(x, Z.wf, gx, apH * 0.525, apW * 0.2, apH * 0.075, 0.45 * Gf * kh); blast2Add(x, Z.wf, gx + apW * 0.05, apH * 0.53, apW * 0.1, apH * 0.05, 0.3 * Gf * kh); } // the ruins burning low behind the stumps, so they stand broken against it
     x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; x.fillStyle = Z.hit && tt - Z.hitD > 1 ? c.gm2 : c.gm; x.fillRect(0, 0, apW, apH); // the sky glow stops at the skyline
     blast2CutAll(x, c, sil, true, tt, gx, apW, apH); // and the towers stand black against it, now and for the rest of the visit; the dust below goes in after, in front of them
     if (Z.hit) { // the collapse: crowns shearing off and dropping, the dust bank rolling out lit from below, and after it the smoke
