@@ -1368,11 +1368,27 @@ function blast2Ruin(t, tt, sil, apW, apH, gx) { // in front of the glow, not add
       x.fillStyle = "rgb(13,12,15)"; x.beginPath(); x.moveTo(x0, yb + 2); x.lineTo(x0, yb - h * (0.6 + 0.3 * r()));
       for (let j = 1; j < n; j++) x.lineTo(x0 + ww * j / n + (r() - 0.5) * ww * 0.12, yb - h * (j === (n >> 1) ? 1 : 0.5 + 0.45 * r()));
       x.lineTo(x0 + ww, yb - h * (0.55 + 0.35 * r())); x.lineTo(x0 + ww, yb + 2); x.closePath(); x.fill();
-      if (i === 2 || i === 4) { // the frame left standing over the break: bare columns and the floor lines between them
-        x.strokeStyle = "rgba(13,12,15,0.75)"; x.lineWidth = 1 / kr * 1.2; x.beginPath();
-        x.moveTo(x0 + 1.2 * ps, yb - h * 0.8); x.lineTo(x0 + 1.4 * ps, yb - h - 9 * ps); x.moveTo(x0 + ww * 0.62, yb - h * 0.9); x.lineTo(x0 + ww * 0.6 + ps, yb - h - 6 * ps);
-        for (let j = 0; j < 4; j++) { const fy = yb - h - (j + 0.4) * 2.2 * ps; x.moveTo(x0 + 1.2 * ps, fy); x.lineTo(x0 + ww * (0.35 + 0.6 * r()) - j * ps, fy + (r() - 0.5) * 0.6 * ps); }
-        x.stroke();
+      if (i === 2 || i === 4) { // the bare frame over the break: stubby girders, each bent once, braced in zigzags, one beam hanging off; all low, no pole, no flat top, fainter the higher it goes
+        const nc = i === 2 ? 3 : 4, top0 = yb - h, P = [], hs = [], seg = (xa, ya, xb, yc) => {
+          x.strokeStyle = "rgba(13,12,15," + (0.7 - 0.32 * clamp((top0 - Math.min(ya, yc)) / (9 * ps), 0, 1)).toFixed(2) + ")"; x.lineWidth = (1 + 0.5 * r()) * Math.max(ps, 0.8); x.beginPath(); x.moveTo(xa, ya); x.lineTo(xb, yc); x.stroke();
+        };
+        for (let c = 0; c < nc; c++) hs.push((2.5 + 6.5 * r()) * ps);
+        const sH = hs.slice().sort((p, q) => q - p); if (sH[0] > 1.45 * sH[1]) hs[hs.indexOf(sH[0])] = 1.45 * sH[1]; // the tallest never stands alone
+        for (let c = 0; c < nc; c++) { // a column: foot inside the stump, a kink, a ragged top, and sometimes a bent-over end
+          const cx = x0 + ww * (c + 0.3 + 0.4 * r()) / nc, by = top0 + h * 0.35, ty = top0 - hs[c], k1 = (r() - 0.5) * 2.5 * ps, k2 = (r() - 0.5) * 3 * ps;
+          P.push([[cx, by], [cx + k1, (by + ty) / 2], [cx + k1 + k2, ty]]);
+          seg(cx, by, cx + k1, (by + ty) / 2); seg(cx + k1, (by + ty) / 2, cx + k1 + k2, ty);
+          if (r() < 0.5) { const s2 = r() < 0.5 ? -1 : 1; seg(cx + k1 + k2, ty, cx + k1 + k2 + s2 * (1.5 + 2 * r()) * ps, ty + (1 + 1.5 * r()) * ps); }
+        }
+        for (let c = 0; c < nc - 1; c++) { // diagonal bracing between neighbours, some of it gone
+          const A = P[c], B = P[c + 1];
+          if (r() < 0.75) seg(A[0][0], A[0][1] - 0.5 * ps, B[1][0], B[1][1]);
+          if (r() < 0.65) seg(B[0][0], B[0][1] - 0.5 * ps, A[1][0], A[1][1]);
+          if (r() < 0.6) seg(A[1][0], A[1][1], B[2][0], B[2][1] + (r() - 0.5) * ps);
+          if (r() < 0.4) seg(B[1][0], B[1][1], A[2][0], A[2][1]);
+        }
+        let ti = 0; for (let c = 1; c < nc; c++) if (hs[c] > hs[ti]) ti = c;
+        const T = P[ti][1], sd = P[ti][1][0] < x0 + ww / 2 ? -1 : 1; seg(T[0], T[1], T[0] + sd * (4 + 3 * r()) * ps, T[1] + (2.5 + 2 * r()) * ps); // a girder bent down and hanging off the side
       }
       const cv = document.createElement("canvas"), cx0 = x0 - 3 * ps, cy0 = yb - HH - 9 * ps, cw = ww + 6 * ps, ch = HH - h * 0.5 + 9 * ps, sb = r() * 0.5, cx = cv.getContext("2d"); // the top, baked small and soft: a setback, a mast on some
       cv.width = Math.ceil(cw * kr); cv.height = Math.ceil(ch * kr); cx.setTransform(kr, 0, 0, kr, -cx0 * kr, -cy0 * kr); cx.fillStyle = "rgb(13,12,15)";
@@ -1397,10 +1413,10 @@ function blast2Ruin(t, tt, sil, apW, apH, gx) { // in front of the glow, not add
   g.save();
   const dA = u < 0.5 ? 0.88 * b2s(0, 0.12, tt) : 0.88 - 0.16 * b2s(0.5, 4, u);
   if (Z.dk) { g.globalAlpha = dA; g.drawImage(Z.dk, 0, 0, apW, apH); }
-  if (Z.dk0) { // the towers that stood there going down into their own dust, in strips, the nearest to the spot first
+  if (Z.dk0) { // the towers that stood there going down into their own dust, in strips, the nearest to the spot first; the half-transparent edge strips fade out before the old row is swapped, so no grey ghost boxes stay
     if (u > 6) Z.dk0 = null; else for (let i = 0; i < 8; i++) {
       const bx = gx + (i - 4) * apW * 0.06, d = Math.abs(i - 3.5), v = clamp((u - 0.4 - d * 0.18 - (i * 7 % 5) * 0.08) / (1.6 + (i * 3 % 4) * 0.3), 0, 1), dy = v * v * 60 * ps;
-      g.save(); g.beginPath(); g.rect(bx, 0, apW * 0.06, yb - 2 * ps); g.clip(); g.globalAlpha = dA * (1 - b2s(0.7, 1, v)); g.drawImage(Z.dk0, 0, dy, apW, apH); g.restore();
+      g.save(); g.beginPath(); g.rect(bx, 0, apW * 0.06, yb - 2 * ps); g.clip(); g.globalAlpha = dA * (1 - b2s(0.7, 1, v)) * (d > 1 ? 1 - b2s(0.8, 1.5, u) : 1); g.drawImage(Z.dk0, 0, dy, apW, apH); g.restore();
     }
   }
   if (u > 0) for (const q of Z.cr) { // the crowns baked from the skyline, dark as they go too
@@ -2775,22 +2791,19 @@ function bakeBackdrop(mode) {
     for (let i = 0; i < 3; i++) { const p = cut.pts[1 + Math.floor(rq() * (cut.pts.length - 2))]; x.beginPath(); x.moveTo(p[0] - 4, p[1] + 3 + i * 5); x.lineTo(p[0] + 5 + rq() * 6, p[1] + 3 + i * 5); x.stroke(); }
   };
   let skN = 0;
-  const skel = (li, bx, bw, top, cut, col) => { // the frame left standing over the break: a few columns of different heights, slabs hanging between them, some gone
+  const skel = (li, bx, bw, top, cut, col) => { // the frame left standing over the break: a few low bent columns with diagonal braces, some gone
     const h = hashRng(Math.floor(bx * 29) + li * 3);
     if (skN >= 2 || li > 1 || h() > 0.55 || cut.top - top < 12) return;
     skN++;
-    const lost = cut.top - top, nC = 3 + Math.floor(h() * 2), cols = [], fl = Math.max(3, lost * 0.07);
-    for (let i = 0; i < nC; i++) cols.push([bx + 1.5 + (bw - 3) * (i / (nC - 1)) + (h() - 0.5) * 2, cut.top + 3 - lost * (i === 0 || h() < 0.4 ? 0.12 + 0.6 * h() : 0.05 + 0.15 * h()), (h() - 0.5) * 0.1]);
-    x.strokeStyle = shade(col, -0.45); x.lineCap = "butt";
-    for (const [cx, ty, lean] of cols) { x.lineWidth = li ? 1.2 : 0.9; x.beginPath(); x.moveTo(cx, cut.top + 4); x.lineTo(cx + (cut.top - ty) * lean, ty); x.stroke(); }
+    const lost = Math.min(cut.top - top, 8 + 4 * h()), nC = 3 + Math.floor(h() * 2), cols = []; // low and stubby: a few bent columns braced in diagonals, never a pole or a flat slab
+    for (let i = 0; i < nC; i++) { const cx = bx + 1.5 + (bw - 3) * (i / (nC - 1)) + (h() - 0.5) * 2, ty = cut.top + 3 - lost * (0.3 + 0.7 * h()), k1 = (h() - 0.5) * 3; cols.push([cx, cut.top + 4, cx + k1, (cut.top + 4 + ty) / 2, cx + k1 + (h() - 0.5) * 2.5, ty]); }
+    x.strokeStyle = shade(col, -0.45); x.lineCap = "butt"; x.lineWidth = li ? 1.1 : 0.85;
+    for (const c of cols) { x.beginPath(); x.moveTo(c[0], c[1]); x.lineTo(c[2], c[3]); x.lineTo(c[4], c[5]); x.stroke(); }
     x.lineWidth = li ? 0.8 : 0.6;
     for (let i = 0; i < nC - 1; i++) {
-      const a = cols[i], b = cols[i + 1], ty = Math.max(a[1], b[1]);
-      for (let y = cut.top - fl * 0.5; y > ty; y -= fl) {
-        if (h() < 0.45) continue; // that slab is gone
-        const sag = h() < 0.3 ? fl * (0.6 + 1.4 * h()) * (h() < 0.5 ? -1 : 1) : 0, ka = (cut.top - y) * a[2], kb = (cut.top - y) * b[2];
-        x.beginPath(); x.moveTo(a[0] + ka, y); x.lineTo(b[0] + kb, y + sag); x.stroke();
-      }
+      const a = cols[i], b = cols[i + 1];
+      if (h() < 0.7) { x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[2], b[3]); x.stroke(); }
+      if (h() < 0.6) { x.beginPath(); x.moveTo(b[2], b[3]); x.lineTo(a[4], a[5]); x.stroke(); }
     }
   };
   const rubble = (bx, bw, baseY, col) => { // what came down, heaped at the foot of it
