@@ -5713,6 +5713,7 @@ const NT = { on: false, open: false, busy: false, hov: false, dn: false, at: 0, 
   if (FEX) NT.box.style.fontFamily = FFB;
   NT.yes.addEventListener("click", noteSend); NT.x.addEventListener("click", () => noteClose());
   NT.btn.addEventListener("click", () => noteOpen());
+  NT.ta.addEventListener("input", () => { if (NT.open && !NT.box.classList.contains("done")) notePlace(); });
   cv.addEventListener("click", () => { if (NT.dn) { NT.dn = false; noteOpen(); } });
 }
 const noteFine = matchMedia("(pointer: fine)");
@@ -5735,10 +5736,17 @@ function noteLayout() {
   if (NT.open) notePlace();
 }
 function notePlace() {
-  const b = NT.box, ta = NT.ta; ta.style.height = "";
+  const b = NT.box, ta = NT.ta, top = ta.scrollTop; ta.style.height = "";
   NS = clamp((L.apX - 30) / 86, 1.75, 2.4); b.style.setProperty("--so", NS.toFixed(3));
   if (!ta.value) { ta.value = ta.placeholder; const ph = ta.scrollHeight; ta.value = ""; if (ph > ta.clientHeight) ta.style.height = ph + "px"; } // the privacy line lives in the placeholder: never clip it
-  let sp = noteSpot(86 * NS, b.offsetHeight * NS);
+  let sp = null;
+  if (ta.value) { // the writing area grows with the words, up to eight lines, then scrolls; shorter if the wall has no room
+    const base = ta.clientHeight;
+    for (let h = Math.min(ta.scrollHeight, 66); h > base && !sp; h -= 8) { ta.style.height = h + "px"; sp = noteSpot(86 * NS, b.offsetHeight * NS); }
+    if (!sp) ta.style.height = "";
+    ta.scrollTop = top;
+  }
+  if (!sp) sp = noteSpot(86 * NS, b.offsetHeight * NS);
   if (!sp) { NT.ta.style.height = "16px"; sp = noteSpot(86 * NS, b.offsetHeight * NS); } // a long prompt: fewer lines rather than none
   if (!sp) { noteClose(true); return false; }
   b.style.left = sp.x + "px"; b.style.top = sp.y + "px";
@@ -5779,7 +5787,7 @@ function noteSend() {
       NT.busy = false; NT.yes.disabled = false;
       if (ok) NT.ta.value = ""; // sent: the words are gone from the page
       if (!NT.open) return;
-      if (ok) { NT.box.style.minHeight = NT.box.offsetHeight + "px"; NT.box.classList.add("done"); NT.msg.textContent = t("note_thanks"); NT.tm = setTimeout(noteFold, 2500); }
+      if (ok) { NT.ta.style.height = ""; NT.box.style.minHeight = NT.box.offsetHeight + "px"; NT.box.classList.add("done"); NT.msg.textContent = t("note_thanks"); NT.tm = setTimeout(noteFold, 2500); }
       else { NT.msg.textContent = t("note_fail"); NT.box.classList.add("bad"); }
     });
 }
