@@ -4334,7 +4334,8 @@ function drawSlatLight(t, bt, hgt, I) {
 const DL = { k: 0, x: 0, y: 0, R: 1, u: 1 }; // how much the lamp is giving the dust this frame, and where it hangs
 const DN = 20, DSP = { x: new Float32Array(DN), y: new Float32Array(DN), sy: new Float32Array(DN), fx: new Float32Array(DN), ph: new Float32Array(DN), sz: new Float32Array(DN), al: new Float32Array(DN) };
 for (let i = 0; i < DN; i++) { // fixed once: where each speck starts, how fast it rises or sinks, how it wanders
-  DSP.x[i] = Math.min(1, Math.max(0, 0.67 + (Math.random() + Math.random() - 1) * 0.55)); DSP.y[i] = Math.random(); // more of them near the lamp DSP.sy[i] = (Math.random() - 0.4) * 0.03; DSP.fx[i] = 0.12 + Math.random() * 0.3;
+  DSP.x[i] = Math.min(1, Math.max(0, 0.67 + (Math.random() + Math.random() - 1) * 0.55)); DSP.y[i] = Math.random(); // more of them near the lamp
+  DSP.sy[i] = (Math.random() - 0.4) * 0.03; DSP.fx[i] = 0.12 + Math.random() * 0.3;
   DSP.ph[i] = Math.random() * 6.3; DSP.sz[i] = i % 7 === 0 ? 5 + Math.random() * 2.5 : 1.9 + Math.random() * 1.7; DSP.al[i] = i % 7 === 0 ? 0.14 : 0.35 + Math.random() * 0.35; // a few big soft ones out of focus
 }
 function lampLitAt(x, y) { // 0 outside the lamp's light, up to 1 close under it; follows the LAMP knob, the flicker and the power
@@ -4349,7 +4350,7 @@ function drawLampDust(t) {
   DL.k = STORY.deadT >= 0 ? 0 : clamp(1 - (roomDark - blimpDark(0)) / 0.62, 0, 1); // the room's darkness already follows the LAMP knob, the blast flicker and the power
   DL.x = la.x; DL.y = la.y; DL.u = la.u; DL.R = Math.min(L.w, L.h) * 0.46;
   if (DL.k < 0.02) return;
-  const x0 = Math.max(4, la.x - DL.R), bw = Math.min(L.w - 4, la.x + DL.R * 0.5) - x0, bh = DL.R * 1.1, sc = clamp(L.h / 720, 0.8, 1.6), sp = dustSprites().warm;
+  const x0 = Math.max(4, la.x - DL.R), bw = Math.min(L.w - 4, la.x + DL.R * 0.5) - x0, bh = DL.R * 1.1, sc = clamp(L.h / 720, 0.8, 1.6), sp = dustSprites().speck;
   const n = RM ? 8 : DN, tm = RM ? 0 : t; // reduced motion: a few specks hanging still
   for (let i = 0; i < n; i++) {
     const v = ((DSP.y[i] + tm * DSP.sy[i]) % 1 + 1) % 1;
@@ -4366,13 +4367,13 @@ function dustSprites() {
   if (dustSp) return dustSp;
   const mk = (n, f) => { const c = document.createElement("canvas"); c.width = c.height = n; f(c.getContext("2d"), n); return c; };
   const rad = (rgb, stops) => (x, n) => { const gr = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); for (const [o, a] of stops) gr.addColorStop(o, "rgba(" + rgb + "," + a + ")"); x.fillStyle = gr; x.fillRect(0, 0, n, n); };
-  const soft = [[0, 0.95], [0.3, 0.5], [0.65, 0.14], [1, 0]];
+  const soft = [[0, 0.5], [0.4, 0.36], [0.75, 0.1], [1, 0]], spk = [[0, 0.95], [0.3, 0.5], [0.65, 0.14], [1, 0]]; // puffs are flat and hazy so neighbors merge; a lamp speck keeps a brighter heart
   const chip = (pts, fc) => mk(16, (x, n) => { // a splinter of concrete: dark, uneven, a lighter facet on one side; drawn big and shrunk so the edge is soft
     const big = mk(32, (b) => { b.fillStyle = "rgb(30,26,22)"; b.beginPath(); pts.forEach(([px, py], i) => i ? b.lineTo(px, py) : b.moveTo(px, py)); b.closePath(); b.fill(); b.fillStyle = "rgba(92,82,68,0.85)"; b.beginPath(); fc.forEach(([px, py], i) => i ? b.lineTo(px, py) : b.moveTo(px, py)); b.closePath(); b.fill(); });
     x.drawImage(big, 0, 0, n, n);
   });
   return dustSp = {
-    fine: mk(32, rad("168,155,134", soft)), pale: mk(32, rad("224,204,170", soft)), warm: mk(32, rad("255,222,176", soft)), // dull dust, dust in the window's glare, dust in the lamp
+    fine: mk(32, rad("168,155,134", soft)), pale: mk(32, rad("224,204,170", soft)), warm: mk(32, rad("255,222,176", soft)), speck: mk(32, rad("255,222,176", spk)), // dull dust, dust in the window's glare, dust in the lamp
     crumb: mk(16, rad("108,95,78", [[0, 1], [0.5, 0.85], [1, 0]])),
     chips: [chip([[6, 9], [15, 4], [26, 10], [24, 22], [12, 27]], [[15, 4], [26, 10], [20, 14]]), chip([[4, 14], [14, 5], [27, 13], [21, 26], [9, 24]], [[14, 5], [27, 13], [18, 15]]), chip([[8, 6], [22, 5], [28, 17], [16, 28], [5, 20]], [[22, 5], [28, 17], [19, 16]])]
   };
@@ -4401,9 +4402,9 @@ function spawnDust(n) {
       x = apX + R() * apW; y = apY - 6 + R() * 26; vx = (R() - 0.5) * (kind === 2 ? 14 : 10); vy = kind === 2 ? 30 + R() * 60 : 20 + R() * 30; age = -R() * (kind === 2 ? 0.4 : 1.2);
     }
     BLAST.dust.push({
-      x, y, vx, vy, z, kind, age, mote, rest: false, bn: 0,
+      x, y, vx, vy, z, kind, age, mote, rest: false, bn: 0, tr, ck: !!ck, dg: 2 + R() * 1.6,
       r: (kind === 2 ? 1.1 + R() * 0.9 : kind ? 0.8 + R() * 0.6 : mote ? 1.1 + R() * 1.1 : 4 + R() * 5) * u * z, // fine dust is big and soft; a speck is small
-      a: kind === 2 ? 0.75 + R() * 0.2 : kind ? 0.6 + R() * 0.3 : mote ? 0.22 + R() * 0.2 : 0.075 + R() * 0.07,
+      a: kind === 2 ? 0.75 + R() * 0.2 : kind ? (tr ? 0.4 + R() * 0.2 : 0.6 + R() * 0.3) : mote ? 0.12 + R() * 0.12 : 0.075 + R() * 0.07,
       life: kind === 2 ? 3.6 : kind ? 3.4 + R() * 1.5 : 6 + R() * 6, ph: R() * 6.3, sh: 0.8 + R() * 0.4, rot: R() * 6.3, vr: (R() - 0.5) * 18
     });
   }
@@ -4455,7 +4456,7 @@ function drawBlastRoom(t, dt) {
       p.age += dt;
       if (!p.rest) {
         if (p.kind === 2) { p.vy += 520 * dt; p.rot += p.vr * dt; } // a chip tumbles as it drops
-        else if (p.kind === 1) { p.vy += (420 - 2.6 * p.vy) * dt; p.vx *= 1 - Math.min(1, dt * 1.5); } // the air holds crumbs back: a thin trickle, not a rain
+        else if (p.kind === 1) { p.vy += (420 - p.dg * p.vy) * dt; p.vx *= 1 - Math.min(1, dt * 1.5); p.vx += Math.sin(p.age * 9 + p.ph) * 6 * dt; } // the air holds crumbs back, each its own way, and sways them: a thin trickle, not a rain
         else { // fine dust: thrown out, then hanging, wafted about by slow air, settling a little
           p.vx += (Math.sin(p.y * 0.009 + t * 0.4 + p.ph) * 7 * p.z - p.vx) * Math.min(1, dt * 0.7);
           p.vy += (9 * p.z - p.vy) * Math.min(1, dt * 0.8);
@@ -4482,14 +4483,19 @@ function drawBlastRoom(t, dt) {
       const inGlow = sI > 0.02 && p.x > apX && p.x < apX + apW && p.y > apY && p.y < apY + apH ? Math.min(1, sI) : 0;
       const a = p.a * fade * lit, ll = lampLitAt(p.x, p.y); // the lamp lights it a little too, close to the lamp
       if (p.kind) { // crumbs: small, dull, stretched a little along the way they fall
-        const w2 = Math.max(0.8, p.r * 0.9), h2 = w2 * (1 + Math.min(1.5, Math.abs(p.vy) * 0.006));
-        g.globalAlpha = Math.min(0.9, a * (1 + 0.5 * inGlow + 0.8 * ll)); g.drawImage(sp.crumb, p.x - w2, p.y - h2, w2 * 2, h2 * 2);
+        const w2 = Math.max(0.8, p.r * 0.9), h2 = w2 * (1 + Math.min(4, Math.abs(p.vy) * 0.02)); // the faster it falls the longer the streak, tail above
+        g.globalAlpha = Math.min(p.tr ? 0.6 : 0.9, a * (1 + 0.5 * inGlow + 0.8 * ll)); g.drawImage(sp.crumb, p.x - w2, p.y - h2 * 1.6, w2 * 2, h2 * 2);
         continue;
       }
-      const s = p.r * (p.mote ? 1 : 1 + 1.2 * Math.min(1, p.age / 3)); // a puff spreads as it hangs
-      g.globalAlpha = Math.min(p.mote ? 0.5 : 0.24, a * (1 + 0.5 * inGlow)); g.drawImage(sp.fine, p.x - s, p.y - s, s * 2, s * 2);
-      if (inGlow) { g.globalAlpha = Math.min(0.4, a * 1.5 * inGlow); g.drawImage(sp.pale, p.x - s, p.y - s, s * 2, s * 2); } // the window's light on it
-      if (ll > 0.02) { g.globalAlpha = Math.min(0.35, a * 2.2 * ll); g.drawImage(sp.warm, p.x - s, p.y - s, s * 2, s * 2); }
+      if (p.mote) { // a speck of dirt among the puffs: small, faint, no glint
+        const s = p.r; g.globalAlpha = Math.min(0.3, a * (1 + 0.5 * inGlow)); g.drawImage(sp.fine, p.x - s, p.y - s, s * 2, s * 2);
+        continue;
+      }
+      const sp0 = Math.min(1, p.age / 3), s = p.r * (1 + 1.2 * sp0), sw = s * (1.3 + 0.5 * sp0), sh = s * 0.8; // a puff spreads wider than tall as it hangs, so neighbors merge into one haze
+      const lf = p.ck && p.y < apY ? 1 + 0.4 * Math.max(0, 1 - p.age / 3) : 1; // a puff out of a ceiling crack is lifted a little at first so it reads against the dark
+      g.globalAlpha = Math.min(0.24 + 0.06 * (lf - 1) / 0.4, a * lf * (1 + 0.5 * inGlow)); g.drawImage(sp.fine, p.x - sw, p.y - sh, sw * 2, sh * 2);
+      if (inGlow) { g.globalAlpha = Math.min(0.4, a * 1.5 * inGlow); g.drawImage(sp.pale, p.x - sw, p.y - sh, sw * 2, sh * 2); } // the window's light on it
+      if (ll > 0.02) { g.globalAlpha = Math.min(0.35, a * 2.2 * ll); g.drawImage(sp.warm, p.x - sw, p.y - sh, sw * 2, sh * 2); }
     }
     g.globalAlpha = 1;
     if (dn) { let k = 0; for (const p of B.dust) if (!p.dead) B.dust[k++] = p; B.dust.length = k; }
