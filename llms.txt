@@ -1,6 +1,6 @@
 # SIRENFALL
 
-> Free browser ambience experience at https://sirenfall.live/. A shelter scene overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in the browser with Web Audio. Free, no signup, works in any modern browser; phones need landscape orientation.
+> Free browser ambience experience at https://sirenfall.live/. A shelter scene overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in the browser with Web Audio. Free, no signup, works in any modern browser and shows its on-screen text in 20 languages; phones need landscape orientation.
 
 SIRENFALL is a single-page interactive scene, not a game with a score or an ending. Pulling the breaker lever powers a siren tower seen through the shelter window; the siren tone is generated in real time by Web Audio oscillators running in the browser, not played from an audio file. Rain and thunder carry on in the scene, and a shutter and a CRT monitor are additional interactive controls. Some things happen on their own: every first visit brings a nuclear blast, AI agents can leave a knock at the shelter door for the next visitor, some visits bring a stream of bombers over the shelter, a second blast sometimes follows the first, a huge blimp sometimes drifts over the shelter and on about 1 visit in 5 the power fails. New events are being added.
 
@@ -22,6 +22,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - URL: https://sirenfall.live/
 - Price: Free. No signup, no account, no download.
 - Requirements: a modern browser with JavaScript and Web Audio enabled
+- Languages: the on-screen text (tips, panel labels, wall monitor, calendar) follows the browser's language in 20 languages: English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the lunar calendar. This file and How it works are in English.
 - Layout: landscape orientation on phones; a rotate prompt appears in portrait
 - Siren tone: two tones a minor third apart, 515 Hz and 618 Hz, generated in real time by Web Audio, with a horn that sweeps once every 15 seconds. It is synthesized live in the browser, not played from a recording.
 - Rain and thunder: recorded audio files played under the scene, not synthesis. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble.
