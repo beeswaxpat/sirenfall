@@ -173,38 +173,38 @@
   #nbtn { position: fixed; display: none; padding: 0; border: 0; background: none; opacity: 0; pointer-events: none; z-index: 4; }
   #nbtn:focus-visible { opacity: 1; outline: 1px dashed rgba(214,196,166,0.6); outline-offset: 4px; }
   #note {
-    position: fixed; z-index: 5; display: none; width: 104px; padding: 10px 6px 4px; --r: -1.3deg; transform: rotate(var(--r)); cursor: default;
-    color: #17120b; font: 8.5px/10px Georgia, "Times New Roman", serif; text-align: start;
+    position: fixed; z-index: 5; display: none; width: 86px; padding: 8px 5px 3px; --r: -1.3deg; transform: rotate(var(--r)); cursor: default;
+    color: #17120b; font: 7px/8px Georgia, "Times New Roman", serif; text-align: start;
     background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 55%, rgba(30,20,8,0.4) 100%), linear-gradient(172deg, #4a4538, #3d392e); /* paper in the lamp's dim light, not white */
     border-radius: 1px 2px 3px 1px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.5);
   }
   #note.open { display: block; animation: noteIn 0.4s ease backwards; }
-  #note::before { content: ""; position: absolute; left: 50%; top: 3px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a4e58, #1e2026 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.55); }
-  #note::after { content: ""; position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; background: linear-gradient(135deg, rgba(0,0,0,0) 50%, rgba(30,20,8,0.3) 50%, rgba(40,28,10,0.12) 100%); pointer-events: none; }
+  #note::before { content: ""; position: absolute; left: 50%; top: 2px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a4e58, #1e2026 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.55); }
+  #note::after { content: ""; position: absolute; right: 0; bottom: 0; width: 8px; height: 8px; background: linear-gradient(135deg, rgba(0,0,0,0) 50%, rgba(30,20,8,0.3) 50%, rgba(40,28,10,0.12) 100%); pointer-events: none; }
   @keyframes noteIn { from { opacity: 0; transform: translateY(-6px) rotate(var(--r)); } to { opacity: 1; transform: rotate(var(--r)); } }
-  #note .np { font-size: 8.5px; line-height: 10px; font-weight: 600; margin-bottom: 3px; padding-inline-end: 8px; user-select: none; }
+  #note .np { font-size: 7px; line-height: 8px; font-weight: 600; margin-bottom: 2px; padding-inline-end: 7px; user-select: none; }
   #note textarea {
-    display: block; width: 100%; height: 30px; resize: none; border: 0; outline: 0; padding: 0 2px; margin: 0; border-radius: 0; user-select: text; -webkit-user-select: text; cursor: text;
-    font: inherit; color: #17120b; caret-color: #2a2114; background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 9px, rgba(30,22,10,0.22) 9px 10px) local;
+    display: block; width: 100%; height: 24px; resize: none; border: 0; outline: 0; padding: 0 2px; margin: 0; border-radius: 0; user-select: text; -webkit-user-select: text; cursor: text;
+    font: inherit; color: #17120b; caret-color: #2a2114; background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 7px, rgba(30,22,10,0.22) 7px 8px) local;
   }
   #note textarea::placeholder { color: rgba(30,22,10,0.5); }
   #note textarea:focus-visible { background-color: rgba(255,246,214,0.05); }
-  #note .nf { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; margin-top: 3px; justify-content: flex-end; }
+  #note .nf { display: flex; align-items: flex-end; justify-content: space-between; gap: 3px; margin-top: 2px; justify-content: flex-end; }
   #note .nv { display: none; } /* the privacy line rides in the textarea placeholder to keep the note small */
-  #note .ny { flex: none; font: 600 7.5px/1 Georgia, "Times New Roman", serif; letter-spacing: 0.3px; padding: 2px 4px; color: #17120b; background: rgba(20,14,6,0.12); border: 1px solid rgba(20,14,6,0.35); border-radius: 2px; cursor: pointer; }
+  #note .ny { flex: none; font: 600 6.5px/1 Georgia, "Times New Roman", serif; letter-spacing: 0.2px; padding: 1px 3px; color: #17120b; background: rgba(20,14,6,0.12); border: 1px solid rgba(20,14,6,0.35); border-radius: 2px; cursor: pointer; }
   #note .ny:hover:not(:disabled) { background: rgba(20,14,6,0.22); }
   #note .ny:disabled { opacity: 0.55; cursor: default; }
-  #note .nx { position: absolute; top: 0; inset-inline-end: 0; width: 13px; height: 13px; padding: 0; border: 0; background: none; font: 10px/13px Georgia, serif; color: rgba(30,22,10,0.55); cursor: pointer; }
+  #note .nx { position: absolute; top: 0; inset-inline-end: 0; width: 11px; height: 11px; padding: 0; border: 0; background: none; font: 9px/11px Georgia, serif; color: rgba(30,22,10,0.55); cursor: pointer; }
   #note .nx:hover { color: rgba(46,34,16,0.9); }
   #note button:focus-visible { outline: 1px dashed #2b2317; outline-offset: 2px; }
-  #note .nm { min-height: 0; margin-top: 3px; font-size: 9px; line-height: 11px; font-style: italic; }
+  #note .nm { min-height: 0; margin-top: 2px; font-size: 7.5px; line-height: 9px; font-style: italic; }
   #note .nm:empty { display: none; }
   #note.bad .nm { color: #6b2a1a; }
   #note .nh { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; opacity: 0; }
   #note.done { display: flex; flex-direction: column; justify-content: center; }
   #note.done .np, #note.done textarea, #note.done .nf, #note.done .nx { display: none; }
-  #note.done .nm { margin: 0; font-size: 9.5px; line-height: 12px; text-align: center; }
+  #note.done .nm { margin: 0; font-size: 8px; line-height: 10px; text-align: center; }
   #note.fold { transition: transform 0.6s ease-in, opacity 0.6s ease-in; transform: translateY(16px) rotate(calc(var(--r) * 4)) scale(0.86, 0.12); opacity: 0; }
   @media (prefers-reduced-motion: reduce) { #note.open { animation: none; } #note.fold { transition: none; } }
   html.nols #note, html.nols #note * { letter-spacing: 0; }
@@ -5725,7 +5725,7 @@ function noteSpot(nw, nh) {
 }
 function noteLayout() {
   const ps = L.papers || [];
-  NT.on = ps.length > 0 && noteFine.matches && W >= 720 && H >= 480 && !rotShown && (L.apX - 24 >= 104 || H - 14 - (L.sillY + 12) >= 85);
+  NT.on = ps.length > 0 && noteFine.matches && W >= 720 && H >= 480 && !rotShown && (L.apX - 24 >= 86 || H - 14 - (L.sillY + 12) >= 70);
   if (!NT.on && NT.hov) { NT.hov = false; cv.classList.remove("paper"); }
   if (!NT.on) { NT.btn.style.display = "none"; if (NT.open) noteClose(true); return; }
   const x0 = Math.min(...ps.map(p => p.x)) - 6, y0 = Math.min(...ps.map(p => p.y)) - 6, x1 = Math.max(...ps.map(p => p.x + p.w)) + 6, y1 = Math.max(...ps.map(p => p.y + p.h)) + 6;
@@ -5733,9 +5733,10 @@ function noteLayout() {
   if (NT.open) notePlace();
 }
 function notePlace() {
-  const b = NT.box; NT.ta.style.height = "";
-  let sp = noteSpot(104, b.offsetHeight);
-  if (!sp) { NT.ta.style.height = "20px"; sp = noteSpot(104, b.offsetHeight); } // a long prompt: fewer lines rather than none
+  const b = NT.box, ta = NT.ta; ta.style.height = "";
+  if (!ta.value) { ta.value = ta.placeholder; const ph = ta.scrollHeight; ta.value = ""; if (ph > ta.clientHeight) ta.style.height = ph + "px"; } // the privacy line lives in the placeholder: never clip it
+  let sp = noteSpot(86, b.offsetHeight);
+  if (!sp) { NT.ta.style.height = "16px"; sp = noteSpot(86, b.offsetHeight); } // a long prompt: fewer lines rather than none
   if (!sp) { noteClose(true); return false; }
   b.style.left = sp.x + "px"; b.style.top = sp.y + "px";
   return true;
