@@ -4511,8 +4511,10 @@ function dustSprites() {
     x.drawImage(big, 0, 0, n, n);
   });
   return dustSp = {
-    fine: mk(32, rad("168,155,134", soft)), pale: mk(32, rad("224,204,170", soft)), warm: mk(32, rad("255,222,176", soft)), speck: mk(32, rad("255,222,176", spk)), // dull dust, dust in the window's glare, dust in the lamp
-    crumb: mk(16, rad("108,95,78", [[0, 1], [0.5, 0.85], [1, 0]])),
+    fine: mk(32, rad("122,129,141", soft)), pale: mk(32, rad("168,166,162", soft)), warm: mk(32, rad("190,168,138", soft)), speck: mk(32, rad("255,222,176", spk)), // cool gray concrete dust, a little warmer in the window's glare, a little warmer still in the lamp
+    crumb: mk(16, rad("100,104,112", [[0, 1], [0.5, 0.85], [1, 0]])),
+    grit: ["64,68,76", "84,88,96", "108,112,120"].map(c => mk(4, (x, n) => { x.fillStyle = "rgb(" + c + ")"; x.fillRect(0, 0, n, n); })), // a grain of grit: dark to mid gray, never pale
+    streak: mk(16, (x, n) => { const gr = x.createLinearGradient(0, 0, 0, n); gr.addColorStop(0, "rgba(104,110,120,0)"); gr.addColorStop(1, "rgba(104,110,120,1)"); x.fillStyle = gr; x.fillRect(0, 0, n, n); }), // the faint tail a falling grain leaves, thin and fading upward
     chips: [chip([[6, 9], [15, 4], [26, 10], [24, 22], [12, 27]], [[15, 4], [26, 10], [20, 14]]), chip([[4, 14], [14, 5], [27, 13], [21, 26], [9, 24]], [[14, 5], [27, 13], [18, 15]]), chip([[8, 6], [22, 5], [28, 17], [16, 28], [5, 20]], [[22, 5], [28, 17], [19, 16]])]
   };
 }
@@ -4520,29 +4522,32 @@ function spawnDust(n) {
   // shaken loose from the head of the window and out of cracks in the ceiling: dirt, not sparkle. Each crack coughs a puff of fine dust that
   // spreads and hangs, and lets a thin trickle of crumbs fall; chips of concrete tumble and drop; the window head lets go in puffs too
   const { apX, apY, apW, w, h } = L, u = clamp(Math.min(w, h) / 560, 1, 2), R = Math.random;
-  const cracks = Array.from({ length: 3 + Math.floor(R() * 3) }, () => ({ x: w * (0.06 + R() * 0.88), sp: 0.6 + R() * 3.2, t: R() * 0.8, np: 1 + Math.floor(R() * 3) }));
-  const heads = Array.from({ length: 3 }, () => ({ x: apX + apW * (0.1 + R() * 0.8), t: 0.05 + R() * 0.5 }));
-  const streams = n > 60 ? cracks.length * Math.round(16 + R() * 10) : 0; // a big shake opens the cracks properly
+  const cracks = Array.from({ length: 3 + Math.floor(R() * 3) }, () => { const t = R() * 0.8; return { x: w * (0.06 + R() * 0.88), sp: 0.6 + R() * 3.2, t, np: 1 + Math.floor(R() * 3), dr: (R() - 0.5) * 5, clk: t }; });
+  const heads = Array.from({ length: 2 + Math.floor(R() * 3) }, () => ({ x: apX + apW * (0.08 + R() * 0.84), t: 0.05 + R() * 0.5, wd: 0.015 + R() * 0.06 })); // a few uneven clumps along the head, some tight, some loose
+  const streams = n > 60 ? cracks.length * Math.round(45 + R() * 40) : 0; // a big shake opens the cracks properly: each trickle is many fine grains
   for (let i = 0; i < n + streams; i++) {
     const q = R(), tr = i >= n; // tr: a trickle out of a crack: mostly crumbs, now and then a chunk
-    const kind = tr ? (q < 0.9 ? 1 : q < 0.96 ? 2 : 0) : q < 0.18 ? 2 : q < 0.5 ? 1 : 0; // kinds: 2 chips, 1 crumbs, 0 fine dust
-    const ck = tr || R() < 0.3 ? cracks[tr ? (i - n) % cracks.length : Math.floor(R() * cracks.length)] : null, hd = heads[Math.floor(R() * 3)], z = 0.75 + R() * 0.6;
+    let kind = tr ? (q < 0.988 ? 1 : 2) : q < 0.18 ? 2 : q < 0.5 ? 1 : 0; // kinds: 3 grit, 2 chips, 1 crumbs, 0 fine dust
+    const ck = tr || R() < 0.3 ? cracks[tr ? (i - n) % cracks.length : Math.floor(R() * cracks.length)] : null, hd = R() < 0.25 ? { x: apX + apW * (0.05 + R() * 0.9), wd: 0.03, t: 0.05 + R() * 0.5 } : heads[Math.floor(R() * R() * heads.length)], z = 0.75 + R() * 0.6;
+    const sz = R() < 0.2 ? 1.1 + R() * 0.5 : 0.5 + R() * 0.7; // puffs vary a lot in size: a few big ones among many small
+    if (ck && kind === 1) kind = 3; // out of a crack, crumbs are grit
     const mote = kind === 0 && R() < 0.4; // a few small specks among the puffs
     let x, y, vx, vy, age;
     if (ck) {
-      x = ck.x + (R() - 0.5) * (kind === 0 ? 8 : 2.5) * u; y = h * (0.035 + R() * 0.01);
-      vx = (R() - 0.5) * (kind === 0 ? 26 : 5); vy = kind === 0 ? 5 + R() * 18 : 10 + R() * 25;
-      age = -(ck.t + (kind === 0 ? Math.floor(R() * ck.np) * (0.7 + R() * 0.5) + R() * 0.3 : R() * ck.sp));
+      x = ck.x + (R() - 0.5) * (kind === 0 ? 8 : kind === 3 ? 1.2 : 2.5) * u; y = h * (0.035 + R() * 0.01);
+      vx = kind === 3 ? ck.dr + (R() - 0.5) * 6 : (R() - 0.5) * (kind === 0 ? 26 : 5); vy = kind === 0 ? 5 + R() * 18 : kind === 3 ? 18 + R() * 40 : 10 + R() * 25;
+      if (kind === 3 && tr) { ck.clk += -Math.log(1 - R() * 0.999) * 0.035 + (R() < 0.07 ? 0.15 + R() * 0.5 : 0); age = -ck.clk; } // grains come in little bursts with random gaps between
+      else age = -(ck.t + (kind === 0 ? Math.floor(R() * ck.np) * (0.7 + R() * 0.5) + R() * 0.3 : R() * ck.sp));
     } else if (kind === 0) { // a puff off the head of the window: the middle of it thick, the edges thin
-      x = hd.x + (R() + R() + R() - 1.5) * apW * 0.045; y = apY + 2 + R() * 18;
-      vx = (R() - 0.5) * 30 + (x - hd.x) * 0.4; vy = 3 + R() * 14; age = -(hd.t + R() * 0.3);
+      x = hd.x + (R() + R() + R() - 1.5) * apW * hd.wd * 2; y = apY - 4 + R() * R() * 44; // mostly near the head, a few hang lower
+      vx = (R() - 0.5) * 30 + (x - hd.x) * 0.4; vy = 3 + R() * 14; age = -(hd.t + R() * 0.5);
     } else {
       x = apX + R() * apW; y = apY - 6 + R() * 26; vx = (R() - 0.5) * (kind === 2 ? 14 : 10); vy = kind === 2 ? 30 + R() * 60 : 20 + R() * 30; age = -R() * (kind === 2 ? 0.4 : 1.2);
     }
     BLAST.dust.push({
-      x, y, vx, vy, z, kind, age, mote, rest: false, bn: 0, tr, ck: !!ck, dg: 2 + R() * 1.6,
-      r: (kind === 2 ? 1.1 + R() * 0.9 : kind ? 0.8 + R() * 0.6 : mote ? 1.1 + R() * 1.1 : 4 + R() * 5) * u * z, // fine dust is big and soft; a speck is small
-      a: kind === 2 ? 0.75 + R() * 0.2 : kind ? (tr ? 0.4 + R() * 0.2 : 0.6 + R() * 0.3) : mote ? 0.12 + R() * 0.12 : 0.075 + R() * 0.07,
+      x, y, vx, vy, z, kind, age, mote, rest: false, bn: 0, tr, ck: !!ck, dg: kind === 3 ? 2.2 + R() * 2 : 2 + R() * 1.6, tn: Math.floor(R() * 3),
+      r: kind === 3 ? (0.5 + R() * 0.5) * Math.min(u, 1.6) : (kind === 2 ? 1.1 + R() * 0.9 : kind ? 0.8 + R() * 0.6 : mote ? 1.1 + R() * 1.1 : (4 + R() * 5) * sz) * u * z, // fine dust is big and soft; a speck is small; grit is a pixel or two
+      a: kind === 3 ? 0.22 + R() * 0.3 : kind === 2 ? 0.75 + R() * 0.2 : kind ? (tr ? 0.4 + R() * 0.2 : 0.45 + R() * 0.25) : mote ? 0.1 + R() * 0.1 : (0.13 + R() * 0.12) / (0.6 + 0.5 * sz), // the big puffs are the thinnest
       life: kind === 2 ? 3.6 : kind ? 3.4 + R() * 1.5 : 6 + R() * 6, ph: R() * 6.3, sh: 0.8 + R() * 0.4, rot: R() * 6.3, vr: (R() - 0.5) * 18
     });
   }
@@ -4594,6 +4599,7 @@ function drawBlastRoom(t, dt) {
       p.age += dt;
       if (!p.rest) {
         if (p.kind === 2) { p.vy += 520 * dt; p.rot += p.vr * dt; } // a chip tumbles as it drops
+        else if (p.kind === 3) { p.vy += (420 - p.dg * p.vy) * dt; p.vx += ((Math.random() - 0.5) * 60 - p.vx * 0.2) * dt; } // grit falls and wanders sideways more the longer it falls
         else if (p.kind === 1) { p.vy += (420 - p.dg * p.vy) * dt; p.vx *= 1 - Math.min(1, dt * 1.5); p.vx += Math.sin(p.age * 9 + p.ph) * 6 * dt; } // the air holds crumbs back, each its own way, and sways them: a thin trickle, not a rain
         else { // fine dust: thrown out, then hanging, wafted about by slow air, settling a little
           p.vx += (Math.sin(p.y * 0.009 + t * 0.4 + p.ph) * 7 * p.z - p.vx) * Math.min(1, dt * 0.7);
@@ -4618,6 +4624,12 @@ function drawBlastRoom(t, dt) {
         g.drawImage(sp.chips[(p.ph * 7 | 0) % 3], -s / 2, -s / 2, s, s); g.restore();
         continue;
       }
+      if (p.kind === 3) { // grit: a pixel or two of gray with a thin faint tail above it
+        const gs = p.r * 2, tl = p.rest ? 0 : 3 + Math.min(14, p.vy * 0.07), ga = Math.min(0.55, p.a * fade * lit);
+        if (tl > 4) { g.globalAlpha = ga * 0.22; g.drawImage(sp.streak, p.x - gs * 0.4, p.y - tl, gs * 0.8, tl); }
+        g.globalAlpha = ga; g.drawImage(sp.grit[p.tn], p.x - p.r, p.y - p.r, gs, gs);
+        continue;
+      }
       const inGlow = sI > 0.02 && p.x > apX && p.x < apX + apW && p.y > apY && p.y < apY + apH ? Math.min(1, sI) : 0;
       const a = p.a * fade * lit, ll = lampLitAt(p.x, p.y); // the lamp lights it a little too, close to the lamp
       if (p.kind) { // crumbs: small, dull, stretched a little along the way they fall
@@ -4629,11 +4641,12 @@ function drawBlastRoom(t, dt) {
         const s = p.r; g.globalAlpha = Math.min(0.3, a * (1 + 0.5 * inGlow)); g.drawImage(sp.fine, p.x - s, p.y - s, s * 2, s * 2);
         continue;
       }
-      const sp0 = Math.min(1, p.age / 3), s = p.r * (1 + 1.2 * sp0), sw = s * (1.3 + 0.5 * sp0), sh = s * 0.8; // a puff spreads wider than tall as it hangs, so neighbors merge into one haze
+      const sp0 = Math.min(1, p.age / 3), u1 = Math.min(1, p.age / (p.life * 0.85)), s = p.r * (1 + 0.8 * sp0 + 1.3 * u1), sw = s * (1.3 + 0.5 * sp0 + 0.4 * u1), sh = s * 0.8; // a puff spreads wider than tall as it hangs and thins as it sinks, so it ends a faint haze
       const lf = p.ck && p.y < apY ? 1 + 0.4 * Math.max(0, 1 - p.age / 3) : 1; // a puff out of a ceiling crack is lifted a little at first so it reads against the dark
-      g.globalAlpha = Math.min(0.24 + 0.06 * (lf - 1) / 0.4, a * lf * (1 + 0.5 * inGlow)); g.drawImage(sp.fine, p.x - sw, p.y - sh, sw * 2, sh * 2);
-      if (inGlow) { g.globalAlpha = Math.min(0.4, a * 1.5 * inGlow); g.drawImage(sp.pale, p.x - sw, p.y - sh, sw * 2, sh * 2); } // the window's light on it
-      if (ll > 0.02) { g.globalAlpha = Math.min(0.35, a * 2.2 * ll); g.drawImage(sp.warm, p.x - sw, p.y - sh, sw * 2, sh * 2); }
+      const th = 1 / (1 + 1.6 * u1); // the more it spreads the thinner it is
+      g.globalAlpha = Math.min(0.3, a * th * lf * (1 + 0.4 * inGlow)); g.drawImage(sp.fine, p.x - sw, p.y - sh, sw * 2, sh * 2);
+      if (inGlow) { g.globalAlpha = Math.min(0.1, a * th * 0.9 * inGlow); g.drawImage(sp.pale, p.x - sw, p.y - sh, sw * 2, sh * 2); } // the window's light on it
+      if (ll > 0.02) { g.globalAlpha = Math.min(0.08, a * th * 1.1 * ll); g.drawImage(sp.warm, p.x - sw, p.y - sh, sw * 2, sh * 2); } // the lamp's, capped so it never outshines the wall
     }
     g.globalAlpha = 1;
     if (dn) { let k = 0; for (const p of B.dust) if (!p.dead) B.dust[k++] = p; B.dust.length = k; }
@@ -4641,8 +4654,8 @@ function drawBlastRoom(t, dt) {
   const pk = t - B.puffT; // the cloud of it, hanging under the head of the window and falling
   if (pk >= 0 && pk < 7) {
     const e = Math.min(1, pk / 0.25) * Math.exp(-pk / 1.8);
-    softBlob(g, apX + apW * 0.5, apY + 12 + apH * 0.3 * (1 - Math.exp(-pk / 1.6)), apW * 0.55, "150,138,118", 0.3 * e, 0.12);
-    softBlob(g, apX + apW * 0.3, h * 0.06 + pk * 3, apW * 0.35, "120,110,96", 0.18 * e, 0.14);
+    softBlob(g, apX + apW * 0.5, apY + 12 + apH * 0.3 * (1 - Math.exp(-pk / 1.6)), apW * 0.55, "122,129,141", 0.22 * e, 0.12);
+    softBlob(g, apX + apW * 0.3, h * 0.06 + pk * 3, apW * 0.35, "104,111,123", 0.12 * e, 0.14);
     const sh = g.createLinearGradient(0, apY, 0, apY + Math.min(apH, 8 + pk * apH * 0.35)); // a sheet of it coming down the steel
     sh.addColorStop(0, "rgba(150,138,118," + (0.18 * e).toFixed(3) + ")"); sh.addColorStop(1, "rgba(150,138,118,0)");
     g.fillStyle = sh; g.fillRect(apX, apY, apW, Math.min(apH, 8 + pk * apH * 0.35));
@@ -4951,9 +4964,12 @@ function drawLampAndGlow(t, amp, flashA) {
     g.save(); g.beginPath(); g.rect(0, 0, L.w, L.h); g.rect(L.apX, L.apY, L.apW, L.apH); g.clip("evenodd"); // never over the glass
     softBlob(g, la.x - sw * L.h * 0.12, la.y + 6 * u, clamp(L.w * 0.13, 100, 240), "255,186,118", 0.12 * fq, 2.5);
     g.restore();
-    g.save(); g.beginPath(); g.rect(0, L.sill.y + L.sill.t + 8, L.w, L.console.py0 - (L.sill.y + L.sill.t + 8)); g.clip(); // a very soft warm wash on the wall under the sill, clear of the sill's own shadow and the console face
-    softBlob(g, sx, L.sill.y + L.sill.t + 6, hw * 1.1, "255,186,118", 0.018 * fq, 0.75);
-    g.restore();
+    const wy = L.sill.y + L.sill.t + 8, wh = L.console.py0 - wy; // on a short screen there is no room under the sill: no wash, not a flipped one
+    if (wh > 0) {
+      g.save(); g.beginPath(); g.rect(0, wy, L.w, wh); g.clip(); // a very soft warm wash on the wall under the sill, clear of the sill's own shadow and the console face
+      softBlob(g, sx, L.sill.y + L.sill.t + 6, hw * 1.1, "255,186,118", 0.018 * fq, 0.75);
+      g.restore();
+    }
     const hg = g.createLinearGradient(sx - hw, 0, sx + hw, 0);
     hg.addColorStop(0, "rgba(255,190,122,0)"); hg.addColorStop(0.5, "rgba(255,190,122,1)"); hg.addColorStop(1, "rgba(255,190,122,0)");
     g.fillStyle = hg;
