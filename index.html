@@ -4749,10 +4749,14 @@ function drawLampAndGlow(t, amp, flashA) {
   softBlob(g, la.x, la.y, Math.min(L.w, L.h) * 0.30, "226,168,104", 0.09 * fl, 1);
   softBlob(g, la.x, la.y + Math.min(L.w, L.h) * 0.3, Math.min(L.w, L.h) * 0.35, "226,168,104", 0.035 * fl, 1); // its light on the wall below
   softBlob(g, la.x, la.y - 1 * u, 26 * u, "255,190,120", 0.16 * fl, 0.85); // the hot pool around the fixture
+  g.restore(); // the wall light below stays level with the baked sill and console: only the fixture swings
   if (STORY.deadT < 0 && L.sill && L.console && fl > 0.01) { // its light reaching the room: a gentle spill down the wall, a sheen on the sill, a catch on the console's top edge (all scale with the lamp, none in the dark)
     const fq = Math.min(fl, 1.15), sx = la.x - sw * L.sill.y * 0.5, hw = clamp(L.apW * 0.26, 110, 300), cs = L.console; // the spill slides a little when the lamp swings
     g.save(); g.beginPath(); g.rect(0, 0, L.w, L.h); g.rect(L.apX, L.apY, L.apW, L.apH); g.clip("evenodd"); // never over the glass
-    softBlob(g, la.x - sw * L.h * 0.12, la.y + 6 * u, clamp(L.w * 0.11, 90, 200), "255,186,118", 0.12 * fq, 2.5);
+    softBlob(g, la.x - sw * L.h * 0.12, la.y + 6 * u, clamp(L.w * 0.13, 100, 240), "255,186,118", 0.12 * fq, 2.5);
+    g.restore();
+    g.save(); g.beginPath(); g.rect(0, L.sill.y + L.sill.t + 8, L.w, L.console.py0 - (L.sill.y + L.sill.t + 8)); g.clip(); // a very soft warm wash on the wall under the sill, clear of the sill's own shadow and the console face
+    softBlob(g, sx, L.sill.y + L.sill.t + 6, hw * 1.1, "255,186,118", 0.018 * fq, 0.75);
     g.restore();
     const hg = g.createLinearGradient(sx - hw, 0, sx + hw, 0);
     hg.addColorStop(0, "rgba(255,190,122,0)"); hg.addColorStop(0.5, "rgba(255,190,122,1)"); hg.addColorStop(1, "rgba(255,190,122,0)");
@@ -4765,6 +4769,7 @@ function drawLampAndGlow(t, amp, flashA) {
     softBlob(g, sx, cs.py0 + 1, hw * 0.9, "255,190,122", 0.07 * fq, 0.2); // a faint sheen just under it
     g.restore();
   }
+  g.save(); swing(); // the hood, bulb and cage swing with the lamp
   g.fillStyle = "rgba(255,196,128," + (0.32 * fl).toFixed(3) + ")"; // the hood's mouth, lit from inside
   g.beginPath(); g.ellipse(la.x, la.y - 6 * u, 11.6 * u, 2 * u, 0, 0, Math.PI); g.fill();
   const by = la.y - 1.5 * u, ba = STORY.deadT >= 0 ? 0 : Math.min(1, 0.8 * fl + 0.1);
