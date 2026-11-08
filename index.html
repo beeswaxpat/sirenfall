@@ -3274,7 +3274,7 @@ function buildFrame() {
   cloud(Math.ceil(w / 170) + 1, Math.ceil(h / 170) + 1, 0.05, 0.10, 170);
   cloud(Math.ceil(w / 40) + 1, Math.ceil(h / 40) + 1, 0.035, 0.07, 40);
   cloud(Math.ceil(w / 9) + 1, Math.ceil(h / 9) + 1, 0.022, 0.05, 9);
-  cloud(Math.ceil(w / 2), 4, 0.025, 0.05, 0); // faint vertical streaking where the water bled down the form
+  cloud(Math.ceil(w / 14) + 1, 3, 0.014, 0.03, 14); // faint soft streaks where the water bled down the form
   // fine cold grain
   {
     const gw = Math.min(512, Math.ceil(w)), gh = Math.min(512, Math.ceil(h)), n = document.createElement("canvas");
@@ -3287,11 +3287,11 @@ function buildFrame() {
     x.restore();
   }
   // a streak running down: wet and darker, soft edged, fading out
-  function weep(sx, sy, len, wd, a, rgb) {
+  function weep(sx, sy, len, wd, a, rgb, jt, dr) {
     const g = x.createLinearGradient(0, sy, 0, sy + len);
     g.addColorStop(0, "rgba(" + rgb + "," + a.toFixed(3) + ")"); g.addColorStop(0.6, "rgba(" + rgb + "," + (a * 0.5).toFixed(3) + ")"); g.addColorStop(1, "rgba(" + rgb + ",0)");
     const pts = [[sx, sy]]; let wx = sx;
-    for (let yy = 12; yy < len; yy += 12) { wx += (rc() - 0.5) * 1.6; pts.push([wx, sy + yy]); }
+    for (let yy = 12; yy < len; yy += 12) { wx += (rc() - 0.5) * (jt || 1.6) + (dr || 0) * 12; pts.push([wx, sy + yy]); }
     pts.push([wx, sy + len]);
     x.save(); x.strokeStyle = g; x.lineCap = "round"; x.lineJoin = "round";
     for (const [lw, ga] of [[wd * 3, 0.3], [wd * 1.7, 0.5], [wd * 0.8, 0.75]]) {
@@ -3306,7 +3306,8 @@ function buildFrame() {
   for (let ri = 0, y0 = ((sillY + 8) % rowH) - rowH; y0 < h; ri++, y0 += rowH) {
     const x0 = -pw * 0.37 + (ri % 2) * pw * 0.5;
     for (let px = x0; px < w; px += pw) {
-      const v = rc() - 0.5;
+      let v = rc() - 0.5;
+      if (Math.abs(y0 - sillY - 8) < 1) v = -Math.abs(v); // the row under the sill is never lifted
       x.fillStyle = v > 0 ? "rgba(" + CC + "," + (v * 0.045).toFixed(3) + ")" : "rgba(0,0,0," + (-v * 0.10).toFixed(3) + ")";
       x.fillRect(px, y0, pw, rowH);
       x.strokeStyle = "rgba(0,0,0,0.26)"; x.lineWidth = 1.2; x.beginPath(); x.moveTo(px, y0);
@@ -3323,38 +3324,40 @@ function buildFrame() {
       softBlob(x, w * 0.5, y0 + 3, w * 0.5, "0,0,0", 0.05, 0.012);
     }
   }
+  const dw = clamp(w * 0.011, 8, 14), dc = Math.min(Math.max(34, h * 0.075), apY - 6), df = h - Math.max(10, h * 0.03);
   for (const [tx, ty] of ties) {
-    const kind = rc(), rust = rc() < 0.42, wl = 22 + rc() * 58;
+    const kind = rc(), rust = rc() < 0.25, wl = 20 + rc() * 30;
     if (tx > apX - 12 && tx < apX + apW + 12 && ty > apY - 12 && ty < apY + apH + 20) continue;
+    if (ty < dc + 8 || ty > df - 8 || tx < dw + 6 || tx > w - dw - 6) continue; // none on the ceiling, floor or side walls
     softBlob(x, tx, ty, 6.5, "0,0,0", 0.26, 1);
+    if (rust) weep(tx, ty + 1, Math.min(wl, df - 6 - ty), 3, 0.14, "96,56,34", 1.2, 0); // a faint rust-brown smear under it
     if (kind < 0.28) { // rusty bolt end
       x.fillStyle = "#15181c"; x.beginPath(); x.arc(tx, ty, 2.2, 0, 7); x.fill();
-      x.strokeStyle = "rgba(124,66,36,0.30)"; x.lineWidth = 1; x.beginPath(); x.arc(tx, ty, 2.6, 0, 7); x.stroke();
-      x.fillStyle = "rgba(" + CC + ",0.16)"; x.beginPath(); x.arc(tx - 0.6, ty - 0.7, 0.8, 0, 7); x.fill();
+      x.strokeStyle = "rgba(96,56,34,0.2)"; x.lineWidth = 1.2; x.beginPath(); x.arc(tx, ty, 2.6, 0, 7); x.stroke();
     } else { // empty cone hole
       x.fillStyle = "rgba(1,2,4,0.72)"; x.beginPath(); x.arc(tx, ty, 2.5, 0, 7); x.fill();
       x.strokeStyle = "rgba(" + CC + ",0.10)"; x.lineWidth = 1; x.beginPath(); x.arc(tx, ty, 3, 0.3, 2.84); x.stroke();
     }
-    if (rust) { weep(tx, ty + 2, wl, 1.5, 0.26, "128,70,38"); weep(tx, ty + 2, wl * 0.8, 2.2, 0.1, "0,0,0"); }
   }
   // bug holes: small air pits in the face, a faint catch of light on the lower lip
   for (let i = 0, n = Math.round(w * h / 6500); i < n; i++) {
     const bx = rc() * w, by = rc() * h, br = 0.5 + rc() * rc() * 1.9, ba = 0.2 + rc() * 0.4;
+    if (by < dc + 4 || by > df - 4 || bx < dw + 4 || bx > w - dw - 4) continue;
     x.fillStyle = "rgba(0,0,0," + ba.toFixed(2) + ")"; x.beginPath(); x.ellipse(bx, by, br * 1.1, br, 0, 0, 7); x.fill();
     if (br > 1.1) { x.strokeStyle = "rgba(" + CC + ",0.07)"; x.lineWidth = 0.8; x.beginPath(); x.arc(bx, by, br + 0.5, 0.5, 2.6); x.stroke(); }
   }
-  // water stains running down from under the window corners and down the jambs (darker, with a pale trace beside them)
-  for (const [sx, sy, len, wd, a] of [
-    [apX - 6, sillY + 6, h * 0.5, 4.6, 0.55], [apX - 14, sillY + 6, h * 0.3, 2.4, 0.4], [apX + apW + 6, sillY + 6, h * 0.46, 5, 0.55], [apX + apW + 14, sillY + 6, h * 0.24, 2.2, 0.4],
-    [apX - 5, apY + apH * 0.1, apH * 0.62, 2.6, 0.4], [apX + apW + 5, apY + apH * 0.06, apH * 0.7, 3, 0.4], [apX + apW * 0.27, sillY + 6, 32, 2.2, 0.36], [apX + apW * 0.71, sillY + 6, 40, 2, 0.36]]) {
-    weep(sx, sy, len, wd, a, "0,2,6");
-    weep(sx + wd * 1.7, sy + 8, len * 0.8, 0.7, a * 0.16, CC);
+  // water stains: a soft dark fan under each sill end that breaks into a few short uneven tendrils, and faint runs down the jambs
+  for (const [sx, dir] of [[apX - 5, -1], [apX + apW + 5, 1]]) {
+    softBlob(x, sx + dir * 4, sillY + 14, 20, "0,2,6", 0.2, 1.5);
+    for (const [ox, len, wd, a, dr] of [[0, h * 0.12, 4.5, 0.28, -0.04], [5, h * 0.3, 3.2, 0.26, 0.04], [11, h * 0.18, 2.6, 0.22, 0.09]]) weep(sx + ox * dir, sillY + 7, len, wd, a, "0,2,6", 3.2, dr * dir);
   }
+  for (const [sx, sy, len, wd, a, dr] of [[apX - 5, apY + apH * 0.12, apH * 0.5, 2.6, 0.26, -0.03], [apX + apW + 5, apY + apH * 0.08, apH * 0.56, 3, 0.26, 0.03], [apX + apW * 0.27, sillY + 6, 32, 2.2, 0.3, 0.02], [apX + apW * 0.71, sillY + 6, 40, 2, 0.3, -0.02]]) weep(sx, sy, len, wd, a, "0,2,6", 3, dr);
+  // the wall just under the projecting sill sits in its shade, never lifted
+  softBlob(x, apX + apW * 0.5, sillY + 8, apW * 0.7, "0,0,0", 0.5, 0.26);
   // rising damp: the foot of the wall is darker and blotchy
   for (let i = 0; i < 9; i++) softBlob(x, rc() * w, h * (0.97 + rc() * 0.03), 50 + rc() * 110, "0,0,0", 0.16 + rc() * 0.1, 0.3);
 
   // room depth: the wall meets the ceiling, the floor and the side walls (the wall stays put, only the edges around it are drawn)
-  const dw = clamp(w * 0.011, 8, 14), dc = Math.max(34, h * 0.075), df = h - Math.max(10, h * 0.03);
   const vy = (yy, xx) => h * 0.5 + (xx - w / 2) * (yy - h * 0.5) / (dw - w / 2); // the edge runs out from the vanishing point at the middle
   const dcl = vy(dc, 0), dfl = vy(df, 0);
   function shape(pts, fill) { x.fillStyle = fill; x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) x.lineTo(pts[i][0], pts[i][1]); x.closePath(); x.fill(); }
