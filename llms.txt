@@ -22,7 +22,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - URL: https://sirenfall.live/
 - Price: Free. No signup, no account, no download.
 - Requirements: a modern browser with JavaScript and Web Audio enabled
-- Languages: the on-screen text (tips, panel labels, wall monitor, calendar) follows the browser's language in 20 languages: English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the lunar calendar. This file and How it works are in English.
+- Languages: the on-screen text (tips, panel labels, wall monitor, calendar) follows the browser's language in 20 languages: English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year and, on high-resolution screens, the lunar dates. This file and How it works are in English.
 - Layout: landscape orientation on phones; a rotate prompt appears in portrait
 - Siren tone: two tones a minor third apart, 515 Hz and 618 Hz, generated in real time by Web Audio, with a horn that sweeps once every 15 seconds. It is synthesized live in the browser, not played from a recording.
 - Rain and thunder: recorded audio files played under the scene, not synthesis. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble.
