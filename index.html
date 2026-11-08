@@ -4534,20 +4534,20 @@ function spawnDust(n) {
     const mote = kind === 0 && R() < 0.4; // a few small specks among the puffs
     let x, y, vx, vy, age;
     if (ck) {
-      x = ck.x + (R() - 0.5) * (kind === 0 ? 8 : kind === 3 ? 1.2 : 2.5) * u; y = h * (0.016 + R() * 0.008);
+      x = ck.x + (R() - 0.5) * (kind === 0 ? 8 : kind === 3 ? 1.2 : 2.5) * u; y = h * (0.003 + R() * 0.006);
       vx = kind === 3 ? ck.dr + (R() - 0.5) * 6 : (R() - 0.5) * (kind === 0 ? 26 : 5); vy = kind === 0 ? 5 + R() * 18 : kind === 3 ? 18 + R() * 40 : 10 + R() * 25;
       if (kind === 3 && tr) { ck.clk += -Math.log(1 - R() * 0.999) * 0.035 + (R() < 0.07 ? 0.15 + R() * 0.5 : 0); age = -ck.clk; } // grains come in little bursts with random gaps between
       else age = -(ck.t + (kind === 0 ? Math.floor(R() * ck.np) * (0.7 + R() * 0.5) + R() * 0.3 : R() * ck.sp));
     } else if (kind === 0) { // a puff off the head of the window: the middle of it thick, the edges thin
-      x = hd.x + (R() + R() + R() - 1.5) * apW * hd.wd * 2; y = h * 0.02 + R() * R() * Math.max(30, apY - h * 0.02); // it lets go up where the ceiling meets the wall, a few lower down by the head
+      x = hd.x + (R() + R() + R() - 1.5) * apW * hd.wd * 2; y = h * 0.005 + R() * R() * Math.max(30, apY - h * 0.005); // it lets go up at the ceiling, a few lower down by the head
       vx = (R() - 0.5) * 30 + (x - hd.x) * 0.4; vy = 3 + R() * 14; age = -(hd.t + R() * 0.5);
     } else {
-      x = apX + R() * apW; y = h * (0.02 + R() * 0.03); vx = (R() - 0.5) * (kind === 2 ? 14 : 10); vy = kind === 2 ? 30 + R() * 60 : 20 + R() * 30; age = -R() * (kind === 2 ? 0.4 : 1.2);
+      x = apX + R() * apW; y = h * (0.004 + R() * 0.02); vx = (R() - 0.5) * (kind === 2 ? 14 : 10); vy = kind === 2 ? 30 + R() * 60 : 20 + R() * 30; age = -R() * (kind === 2 ? 0.4 : 1.2);
     }
     BLAST.dust.push({
       x, y, vx, vy, z, kind, age, mote, rest: false, bn: 0, tr, ck: !!ck, dg: kind === 3 ? 2.2 + R() * 2 : 2 + R() * 1.6, tn: Math.floor(R() * 3),
       r: kind === 3 ? (0.5 + R() * 0.5) * Math.min(u, 1.6) : (kind === 2 ? 1.1 + R() * 0.9 : kind ? 0.8 + R() * 0.6 : mote ? 1.1 + R() * 1.1 : (4 + R() * 5) * sz) * u * z, // fine dust is big and soft; a speck is small; grit is a pixel or two
-      a: kind === 3 ? 0.22 + R() * 0.3 : kind === 2 ? 0.75 + R() * 0.2 : kind ? (tr ? 0.4 + R() * 0.2 : 0.45 + R() * 0.25) : mote ? 0.1 + R() * 0.1 : (0.13 + R() * 0.12) / (0.6 + 0.5 * sz), // the big puffs are the thinnest
+      a: kind === 3 ? 0.22 + R() * 0.3 : kind === 2 ? 0.75 + R() * 0.2 : kind ? (tr ? 0.4 + R() * 0.2 : 0.45 + R() * 0.25) : mote ? 0.1 + R() * 0.1 : (ck ? 1.7 : 1) * (0.13 + R() * 0.12) / (0.6 + 0.5 * sz), // the big puffs are the thinnest; a crack's own puff shows plainly as it lets go
       life: kind === 2 ? 3.6 : kind ? 3.4 + R() * 1.5 : 6 + R() * 6, ph: R() * 6.3, sh: 0.8 + R() * 0.4, rot: R() * 6.3, vr: (R() - 0.5) * 18
     });
   }
