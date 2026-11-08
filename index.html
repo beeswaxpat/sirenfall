@@ -173,16 +173,17 @@
   #nbtn { position: fixed; display: none; padding: 0; border: 0; background: none; opacity: 0; pointer-events: none; z-index: 4; }
   #nbtn:focus-visible { opacity: 1; outline: 1px dashed rgba(214,196,166,0.6); outline-offset: 4px; }
   #note {
-    position: fixed; z-index: 5; display: none; width: 86px; padding: 8px 5px 3px; --r: -1.3deg; transform: rotate(var(--r)); cursor: default;
+    position: fixed; z-index: 5; display: none; width: 86px; padding: 8px 5px 3px; --r: -1.3deg; --s: var(--so, 1.75); transform: rotate(var(--r)) scale(var(--s)); transform-origin: 0 0; cursor: default;
+    transition: transform 0.55s ease, filter 0.55s ease; /* opens big enough to write in; once pinned it shrinks and dims onto the wall */
     color: #17120b; font: 7px/8px Georgia, "Times New Roman", serif; text-align: start;
-    background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 55%, rgba(30,20,8,0.4) 100%), linear-gradient(172deg, #4a4538, #3d392e); /* paper in the lamp's dim light, not white */
+    background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 55%, rgba(30,20,8,0.35) 100%), linear-gradient(172deg, #736c57, #625c4a); /* paper in the lamp's dim light, not white */
     border-radius: 1px 2px 3px 1px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.5);
   }
   #note.open { display: block; animation: noteIn 0.4s ease backwards; }
   #note::before { content: ""; position: absolute; left: 50%; top: 2px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a4e58, #1e2026 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.55); }
   #note::after { content: ""; position: absolute; right: 0; bottom: 0; width: 8px; height: 8px; background: linear-gradient(135deg, rgba(0,0,0,0) 50%, rgba(30,20,8,0.3) 50%, rgba(40,28,10,0.12) 100%); pointer-events: none; }
-  @keyframes noteIn { from { opacity: 0; transform: translateY(-6px) rotate(var(--r)); } to { opacity: 1; transform: rotate(var(--r)); } }
+  @keyframes noteIn { from { opacity: 0; transform: translateY(-6px) rotate(var(--r)) scale(var(--s)); } to { opacity: 1; transform: rotate(var(--r)) scale(var(--s)); } }
   #note .np { font-size: 7px; line-height: 8px; font-weight: 600; margin-bottom: 2px; padding-inline-end: 7px; user-select: none; }
   #note textarea {
     display: block; width: 100%; height: 24px; resize: none; border: 0; outline: 0; padding: 0 2px; margin: 0; border-radius: 0; user-select: text; -webkit-user-select: text; cursor: text;
@@ -202,11 +203,11 @@
   #note .nm:empty { display: none; }
   #note.bad .nm { color: #6b2a1a; }
   #note .nh { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; opacity: 0; }
-  #note.done { display: flex; flex-direction: column; justify-content: center; }
+  #note.done { --s: 1; filter: brightness(0.68); display: flex; flex-direction: column; justify-content: center; }
   #note.done .np, #note.done textarea, #note.done .nf, #note.done .nx { display: none; }
   #note.done .nm { margin: 0; font-size: 8px; line-height: 10px; text-align: center; }
   #note.fold { transition: transform 0.6s ease-in, opacity 0.6s ease-in; transform: translateY(16px) rotate(calc(var(--r) * 4)) scale(0.86, 0.12); opacity: 0; }
-  @media (prefers-reduced-motion: reduce) { #note.open { animation: none; } #note.fold { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { #note, #note.fold { transition: none; } #note.open { animation: none; } }
   html.nols #note, html.nols #note * { letter-spacing: 0; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
@@ -5717,6 +5718,7 @@ const NT = { on: false, open: false, busy: false, hov: false, dn: false, at: 0, 
 const noteFine = matchMedia("(pointer: fine)");
 function paperAt(px, py) { if (!NT.on) return false; for (const p of L.papers) if (px >= p.x - 4 && px <= p.x + p.w + 4 && py >= p.y - 4 && py <= p.y + p.h + 4) return true; return false; }
 // where the note goes: on the left wall beside the papers if the wall is wide enough, else under the window sill; never over the glass
+let NS = 1.75; // the open note is drawn this much bigger than the pinned one: as big as the left wall allows, up to 2.4x (#note --so)
 function noteSpot(nw, nh) {
   const { apX, sillY, papers } = L;
   if (apX - 8 - 4 - 12 >= nw) return { x: 12, y: clamp(papers[0].y - 30, 12, H - 14 - nh) };
@@ -5725,7 +5727,7 @@ function noteSpot(nw, nh) {
 }
 function noteLayout() {
   const ps = L.papers || [];
-  NT.on = ps.length > 0 && noteFine.matches && W >= 720 && H >= 480 && !rotShown && (L.apX - 24 >= 86 || H - 14 - (L.sillY + 12) >= 70);
+  NT.on = ps.length > 0 && noteFine.matches && W >= 720 && H >= 480 && !rotShown && (L.apX - 24 >= 86 * 1.75 || H - 14 - (L.sillY + 12) >= 70 * 1.75);
   if (!NT.on && NT.hov) { NT.hov = false; cv.classList.remove("paper"); }
   if (!NT.on) { NT.btn.style.display = "none"; if (NT.open) noteClose(true); return; }
   const x0 = Math.min(...ps.map(p => p.x)) - 6, y0 = Math.min(...ps.map(p => p.y)) - 6, x1 = Math.max(...ps.map(p => p.x + p.w)) + 6, y1 = Math.max(...ps.map(p => p.y + p.h)) + 6;
@@ -5734,9 +5736,10 @@ function noteLayout() {
 }
 function notePlace() {
   const b = NT.box, ta = NT.ta; ta.style.height = "";
+  NS = clamp((L.apX - 30) / 86, 1.75, 2.4); b.style.setProperty("--so", NS.toFixed(3));
   if (!ta.value) { ta.value = ta.placeholder; const ph = ta.scrollHeight; ta.value = ""; if (ph > ta.clientHeight) ta.style.height = ph + "px"; } // the privacy line lives in the placeholder: never clip it
-  let sp = noteSpot(86, b.offsetHeight);
-  if (!sp) { NT.ta.style.height = "16px"; sp = noteSpot(86, b.offsetHeight); } // a long prompt: fewer lines rather than none
+  let sp = noteSpot(86 * NS, b.offsetHeight * NS);
+  if (!sp) { NT.ta.style.height = "16px"; sp = noteSpot(86 * NS, b.offsetHeight * NS); } // a long prompt: fewer lines rather than none
   if (!sp) { noteClose(true); return false; }
   b.style.left = sp.x + "px"; b.style.top = sp.y + "px";
   return true;
