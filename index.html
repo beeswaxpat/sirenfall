@@ -167,16 +167,17 @@
   #rot .rt1 { font-size: 15px; letter-spacing: 1.4px; color: #d6c4a6; margin-top: 18px; }
   #rot .rt2 { font-size: 12px; letter-spacing: 0.4px; color: #8a93a6; margin-top: 9px; line-height: 1.6; }
   #rot .rt3 { font-size: 12px; letter-spacing: 0.2px; color: #8a93a6; line-height: 1.65; text-align: left; max-width: 440px; margin: 16px auto 0; }
+  html.nols #hint, html.nols #hp, html.nols #disc, html.nols #rot .rt1 { letter-spacing: 0; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
 <div class="sr">
-<h1>SIRENFALL: a browser civil-defense siren scene</h1>
-<p>SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.</p>
-<p>Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.</p>
-<p><a href="/how-it-works">How it works</a>: the siren physics, the numbers, and answers to common questions. Double-click the window or press F for fullscreen; click the wall monitor or press S to save a picture.</p>
-<p>Built by <a href="https://github.com/beeswaxpat">Beeswaxpat</a>. Source code: <a href="https://github.com/beeswaxpat/sirenfall">github.com/beeswaxpat/sirenfall</a> (MIT).</p>
+<h1 data-i="sr_h1">SIRENFALL: a browser civil-defense siren scene</h1>
+<p data-i="sr_p1">SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.</p>
+<p data-i="sr_p2">Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.</p>
+<p data-i="sr_p3"><a href="/how-it-works">How it works</a>: the siren physics, the numbers, and answers to common questions. Double-click the window or press F for fullscreen; click the wall monitor or press S to save a picture.</p>
+<p data-i="sr_p4">Built by <a href="https://github.com/beeswaxpat">Beeswaxpat</a>. Source code: <a href="https://github.com/beeswaxpat/sirenfall">github.com/beeswaxpat/sirenfall</a> (MIT).</p>
 </div>
 <canvas id="scene"></canvas>
 <div class="ov" id="wm">SIRENFALL</div>
@@ -196,6 +197,88 @@
 </div>
 <script>
 "use strict";
+
+/* ============================== LANGUAGE: picked once at load, English unless the browser asks for another ============================== */
+// i18n:begin
+const I18N = {
+"en":{"label_siren":"SIREN","label_distance":"DISTANCE","label_storm":"STORM","label_lamp":"LAMP","label_camera":"CAMERA","label_wipe":"WIPE","label_shutter":"SHUTTER","label_breaker":"BREAKER","month_01":"JANUARY","month_02":"FEBRUARY","month_03":"MARCH","month_04":"APRIL","month_05":"MAY","month_06":"JUNE","month_07":"JULY","month_08":"AUGUST","month_09":"SEPTEMBER","month_10":"OCTOBER","month_11":"NOVEMBER","month_12":"DECEMBER","card_l1":"STAY INSIDE","card_l2":"DO NOT OPEN","card_l3":"THE DOOR","rad_l1":"RADIATION","rad_l2":"DETECTED","hint_click_sound":"Click anywhere for sound.","hint_tap_sound":"Tap anywhere for sound.","hint_breaker_desktop":"Pull the breaker to power the siren.","hint_breaker_touch":"Pull the breaker.","hp_initial":"Headphones recommended","hp_desktop":"Headphones recommended. F for fullscreen.","hp_touch":"Headphones. Double-tap for fullscreen.","disclaimer":"The siren is synthesized live in your browser. It is not a recording.","audio_failed":"Audio failed: ","rotate_phone":"Turn your phone sideways.","sr_h1":"SIRENFALL: a browser civil-defense siren scene","sr_p1":"SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.","sr_p2":"Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.","sr_p3_link":"How it works","sr_p3":"{link}: the siren physics, the numbers, and answers to common questions. Double-click the window or press F for fullscreen; click the wall monitor or press S to save a picture.","sr_p4":"Built by {author}. Source code: {repo} (MIT)."},
+"zh-Hans":{"label_siren":"警报","label_distance":"距离","label_storm":"风雨","label_lamp":"照明","label_camera":"监控","label_wipe":"雨刷","label_shutter":"防爆窗","label_breaker":"电闸","month_01":"一月","month_02":"二月","month_03":"三月","month_04":"四月","month_05":"五月","month_06":"六月","month_07":"七月","month_08":"八月","month_09":"九月","month_10":"十月","month_11":"十一月","month_12":"十二月","card_l1":"留在室内","card_l2":"切勿打开","card_l3":"此门","rad_l1":"检测到","rad_l2":"辐射","hint_click_sound":"点击任意位置开启声音。","hint_tap_sound":"轻触任意位置开启声音。","hint_breaker_desktop":"合上电闸，为警报器供电。","hint_breaker_touch":"合上电闸。","hp_initial":"建议佩戴耳机","hp_desktop":"建议佩戴耳机。按 F 键全屏。","hp_touch":"建议佩戴耳机。双击全屏。","disclaimer":"警报声由浏览器实时合成，并非录音。","audio_failed":"音频启动失败：","rotate_phone":"请将手机横过来。","sr_h1":"SIRENFALL：浏览器中的民防警报场景","sr_p1":"SIRENFALL 是一个免费的浏览器场景：一座俯瞰雨中城市的防空掩体。推上电闸手柄，为民防警报器供电。警报声由 Web Audio 在你的浏览器中实时合成，并非播放录音。警报由相隔小三度的两个音组成，分别为 515 Hz 和 618 Hz，实时生成，喇叭每 15 秒转动扫过一次。","sr_p2":"场景中雨声和雷声持续不断，另有防爆窗和 CRT 监视器可供操作。无需注册，无需安装，任何现代浏览器均可运行。","sr_p3_link":"工作原理","sr_p3":"{link}：警报的物理原理、相关数据和常见问题解答。双击画面或按 F 键进入全屏；点击墙上的监视器或按 S 键保存图片。","sr_p4":"制作：{author}。源代码：{repo}（MIT 许可）。"},
+"zh-Hant":{"label_siren":"警報","label_distance":"距離","label_storm":"風雨","label_lamp":"照明","label_camera":"閉路電視","label_wipe":"雨刷","label_shutter":"防爆窗","label_breaker":"電閘","month_01":"一月","month_02":"二月","month_03":"三月","month_04":"四月","month_05":"五月","month_06":"六月","month_07":"七月","month_08":"八月","month_09":"九月","month_10":"十月","month_11":"十一月","month_12":"十二月","card_l1":"留在室內","card_l2":"切勿打開","card_l3":"此門","rad_l1":"探測到","rad_l2":"輻射","hint_click_sound":"點擊任意位置開啟聲音。","hint_tap_sound":"輕觸任意位置開啟聲音。","hint_breaker_desktop":"合上電閘，為警報器供電。","hint_breaker_touch":"合上電閘。","hp_initial":"建議使用耳機","hp_desktop":"建議使用耳機。按 F 鍵切換全屏。","hp_touch":"建議使用耳機。雙擊切換全屏。","disclaimer":"警報聲由瀏覽器實時合成，並非錄音。","audio_failed":"聲音啟動失敗：","rotate_phone":"請將手機轉為橫向。","sr_h1":"SIRENFALL：瀏覽器中的民防警報場景","sr_p1":"SIRENFALL 是一個免費的瀏覽器場景：一座俯瞰雨中城市的防空掩體。推上電閘手柄，為民防警報器供電。警報聲由 Web Audio 在你的瀏覽器中實時合成，並非播放錄音。警報由相隔小三度的兩個音組成，分別為 515 Hz 和 618 Hz，實時生成，喇叭每 15 秒轉動掃過一次。","sr_p2":"場景中雨聲和雷聲持續不斷，另有防爆窗和 CRT 顯示器可供操作。無需註冊，無需安裝，任何現代瀏覽器均可運行。","sr_p3_link":"運作原理","sr_p3":"{link}：警報的物理原理、相關數據及常見問題解答。雙擊畫面或按 F 鍵切換全屏；點擊牆上的顯示器或按 S 鍵儲存圖片。","sr_p4":"製作：{author}。原始碼：{repo}（MIT 授權）。"},
+"es":{"label_siren":"SIRENA","label_distance":"DISTANCIA","label_storm":"TORMENTA","label_lamp":"LUZ","label_camera":"CÁMARA","label_wipe":"LIMPIAR","label_shutter":"PERSIANA","label_breaker":"DISYUNTOR","month_01":"ENERO","month_02":"FEBRERO","month_03":"MARZO","month_04":"ABRIL","month_05":"MAYO","month_06":"JUNIO","month_07":"JULIO","month_08":"AGOSTO","month_09":"SEPTIEMBRE","month_10":"OCTUBRE","month_11":"NOVIEMBRE","month_12":"DICIEMBRE","card_l1":"QUÉDESE DENTRO","card_l2":"NO ABRA","card_l3":"LA PUERTA","rad_l1":"RADIACIÓN","rad_l2":"DETECTADA","hint_click_sound":"Haz clic en cualquier parte para activar el sonido.","hint_tap_sound":"Toca en cualquier parte para activar el sonido.","hint_breaker_desktop":"Acciona el disyuntor para encender la sirena.","hint_breaker_touch":"Acciona el disyuntor.","hp_initial":"Se recomiendan auriculares","hp_desktop":"Se recomiendan auriculares. F para pantalla completa.","hp_touch":"Usa auriculares. Toca dos veces para pantalla completa.","disclaimer":"La sirena se sintetiza en tiempo real en tu navegador. No es una grabación.","audio_failed":"Error de audio: ","rotate_phone":"Pon el teléfono en horizontal.","sr_h1":"SIRENFALL: una escena de sirena de defensa civil en el navegador","sr_p1":"SIRENFALL es una escena gratuita para el navegador: un refugio con vistas a una ciudad bajo la lluvia. Acciona la palanca del disyuntor para encender una sirena de defensa civil, sintetizada en tiempo real en tu navegador con Web Audio, no reproducida desde una grabación. La sirena son dos tonos separados por una tercera menor, 515 Hz y 618 Hz, generados en tiempo real, con una bocina que gira una vez cada 15 segundos.","sr_p2":"La lluvia y los truenos continúan en la escena, con una persiana y un monitor CRT como controles adicionales. Sin registro ni instalación; funciona en cualquier navegador moderno.","sr_p3_link":"Cómo funciona","sr_p3":"{link}: la física de la sirena, las cifras y respuestas a preguntas frecuentes. Haz doble clic en la ventana o pulsa F para pantalla completa; haz clic en el monitor de la pared o pulsa S para guardar una imagen.","sr_p4":"Creado por {author}. Código fuente: {repo} (MIT)."},
+"ja":{"label_siren":"サイレン","label_distance":"距離","label_storm":"風雨","label_lamp":"照明","label_camera":"カメラ","label_wipe":"ワイパー","label_shutter":"シャッター","label_breaker":"ブレーカー","month_01":"1月","month_02":"2月","month_03":"3月","month_04":"4月","month_05":"5月","month_06":"6月","month_07":"7月","month_08":"8月","month_09":"9月","month_10":"10月","month_11":"11月","month_12":"12月","card_l1":"屋内退避","card_l2":"扉の開放","card_l3":"厳禁","rad_l1":"放射線","rad_l2":"検知","hint_click_sound":"どこかをクリックすると音が出ます。","hint_tap_sound":"画面のどこかをタップすると音が出ます。","hint_breaker_desktop":"ブレーカーを入れて、サイレンに電気を送りましょう。","hint_breaker_touch":"ブレーカーを入れましょう。","hp_initial":"ヘッドホン推奨","hp_desktop":"ヘッドホン推奨。F キーで全画面表示。","hp_touch":"ヘッドホン推奨。ダブルタップで全画面表示。","disclaimer":"サイレン音はブラウザ上でリアルタイムに合成しています。録音ではありません。","audio_failed":"音声を開始できませんでした: ","rotate_phone":"スマートフォンを横向きにしてください。","sr_h1":"SIRENFALL：ブラウザで体験する民間防衛サイレンのシーン","sr_p1":"SIRENFALL は無料のブラウザシーンです。舞台は雨の街を見下ろすシェルター。ブレーカーのレバーを入れると、民間防衛用サイレンに電気が送られます。サイレン音は録音の再生ではなく、Web Audio を使ってブラウザ上でリアルタイムに合成されます。サイレンは短三度離れた 515 Hz と 618 Hz の二つの音でできており、どちらもリアルタイムで生成され、ホーンは 15 秒ごとに一周します。","sr_p2":"シーンでは雨と雷が続き、シャッターと CRT モニターも操作できます。登録もインストールも不要で、最新のブラウザならどれでも動作します。","sr_p3_link":"仕組み","sr_p3":"{link}：サイレンの物理、数値、よくある質問への回答。画面をダブルクリックするか F キーで全画面表示、壁のモニターをクリックするか S キーで画像を保存できます。","sr_p4":"制作：{author}。ソースコード：{repo}（MIT ライセンス）。"},
+"ko":{"label_siren":"사이렌","label_distance":"거리","label_storm":"폭풍","label_lamp":"조명","label_camera":"카메라","label_wipe":"와이퍼","label_shutter":"셔터","label_breaker":"차단기","month_01":"1월","month_02":"2월","month_03":"3월","month_04":"4월","month_05":"5월","month_06":"6월","month_07":"7월","month_08":"8월","month_09":"9월","month_10":"10월","month_11":"11월","month_12":"12월","card_l1":"실내 대피","card_l2":"문을","card_l3":"열지 마시오","rad_l1":"방사능","rad_l2":"감지","hint_click_sound":"아무 곳이나 클릭하면 소리가 나옵니다.","hint_tap_sound":"아무 곳이나 탭하면 소리가 나옵니다.","hint_breaker_desktop":"차단기를 당겨 사이렌에 전원을 넣으세요.","hint_breaker_touch":"차단기를 당기세요.","hp_initial":"헤드폰 사용 권장","hp_desktop":"헤드폰 사용 권장. F 키로 전체 화면.","hp_touch":"헤드폰 사용 권장. 두 번 탭하면 전체 화면.","disclaimer":"사이렌 소리는 브라우저에서 실시간으로 합성됩니다. 녹음이 아닙니다.","audio_failed":"오디오 오류: ","rotate_phone":"휴대폰을 가로로 돌려 주세요.","sr_h1":"SIRENFALL: 브라우저 민방위 사이렌 장면","sr_p1":"SIRENFALL은 무료 브라우저 장면입니다. 비 내리는 도시를 내려다보는 대피소에서 차단기 레버를 당기면 민방위 사이렌에 전원이 들어갑니다. 사이렌 소리는 녹음을 재생하는 것이 아니라 Web Audio로 브라우저에서 실시간 합성됩니다. 사이렌은 단3도 간격의 두 음, 515 Hz와 618 Hz로 실시간 생성되며, 혼은 15초마다 한 바퀴 돕니다.","sr_p2":"장면 속에서는 비와 천둥이 계속되며, 셔터와 CRT 모니터도 조작할 수 있습니다. 가입이나 설치 없이 최신 브라우저라면 어디서나 작동합니다.","sr_p3_link":"작동 원리","sr_p3":"{link}: 사이렌의 물리, 수치, 자주 묻는 질문에 대한 답. 화면을 더블클릭하거나 F 키를 누르면 전체 화면, 벽의 모니터를 클릭하거나 S 키를 누르면 사진이 저장됩니다.","sr_p4":"제작: {author}. 소스 코드: {repo} (MIT)."},
+"ar":{"label_siren":"صفارة","label_distance":"مسافة","label_storm":"عاصفة","label_lamp":"إضاءة","label_camera":"كاميرا","label_wipe":"مسّاحة","label_shutter":"مصراع","label_breaker":"قاطع","month_01":"يناير","month_02":"فبراير","month_03":"مارس","month_04":"أبريل","month_05":"مايو","month_06":"يونيو","month_07":"يوليو","month_08":"أغسطس","month_09":"سبتمبر","month_10":"أكتوبر","month_11":"نوفمبر","month_12":"ديسمبر","card_l1":"ابقوا في الداخل","card_l2":"لا تفتحوا","card_l3":"الباب","rad_l1":"تم رصد","rad_l2":"إشعاع","hint_click_sound":"انقر في أي مكان لتشغيل الصوت.","hint_tap_sound":"انقر على أي مكان في الشاشة لتشغيل الصوت.","hint_breaker_desktop":"اسحب ذراع القاطع لتشغيل الصفارة.","hint_breaker_touch":"اسحب ذراع القاطع.","hp_initial":"يُنصح باستخدام سماعات الرأس","hp_desktop":"يُنصح باستخدام سماعات الرأس. اضغط F لملء الشاشة.","hp_touch":"يُنصح بسماعات الرأس. انقر مرتين لملء الشاشة.","disclaimer":"صوت الصفارة يُولَّد مباشرةً في متصفحك، وليس تسجيلًا.","audio_failed":"تعذّر تشغيل الصوت: ","rotate_phone":"أدِر هاتفك أفقيًا.","sr_h1":"SIRENFALL: مشهد صفارة إنذار للدفاع المدني في المتصفح","sr_p1":"SIRENFALL مشهد مجاني في المتصفح: ملجأ يطل على مدينة ماطرة. اسحب ذراع القاطع لتشغيل صفارة إنذار الدفاع المدني، التي تُولَّد مباشرةً في متصفحك باستخدام Web Audio ولا تُشغَّل من تسجيل. تتكون الصفارة من نغمتين تفصل بينهما ثالثة صغيرة، 515 هرتز و618 هرتز، تُولَّدان في الوقت الفعلي، مع بوق يدور دورة واحدة كل 15 ثانية.","sr_p2":"يستمر المطر والرعد في المشهد، مع مصراع وشاشة CRT كأداتَي تحكم إضافيتين. لا حاجة إلى تسجيل أو تثبيت، ويعمل في أي متصفح حديث.","sr_p3_link":"كيف يعمل","sr_p3":"{link}: فيزياء الصفارة والأرقام وإجابات عن الأسئلة الشائعة. انقر نقرًا مزدوجًا على النافذة أو اضغط F لملء الشاشة؛ وانقر على الشاشة المعلقة على الجدار أو اضغط S لحفظ صورة.","sr_p4":"من إعداد {author}. الشيفرة المصدرية: {repo} (MIT)."},
+"he":{"label_siren":"צופר","label_distance":"מרחק","label_storm":"סערה","label_lamp":"תאורה","label_camera":"מצלמה","label_wipe":"מגב","label_shutter":"תריס","label_breaker":"מפסק","month_01":"ינואר","month_02":"פברואר","month_03":"מרץ","month_04":"אפריל","month_05":"מאי","month_06":"יוני","month_07":"יולי","month_08":"אוגוסט","month_09":"ספטמבר","month_10":"אוקטובר","month_11":"נובמבר","month_12":"דצמבר","card_l1":"הישארו בפנים","card_l2":"אין לפתוח","card_l3":"את הדלת","rad_l1":"זוהתה","rad_l2":"קרינה","hint_click_sound":"לחצו בכל מקום כדי להפעיל את הקול.","hint_tap_sound":"הקישו בכל מקום כדי להפעיל את הקול.","hint_breaker_desktop":"משכו את המפסק כדי להפעיל את הצופר.","hint_breaker_touch":"משכו את המפסק.","hp_initial":"מומלץ להשתמש באוזניות","hp_desktop":"מומלץ להשתמש באוזניות. F למסך מלא.","hp_touch":"מומלץ עם אוזניות. הקשה כפולה למסך מלא.","disclaimer":"הצפירה מסונתזת בזמן אמת בדפדפן שלכם. זו אינה הקלטה.","audio_failed":"שגיאת שמע: ","rotate_phone":"סובבו את הטלפון לרוחב.","sr_h1":"SIRENFALL: סצנת צופר הגנה אזרחית בדפדפן","sr_p1":"SIRENFALL היא סצנה חינמית בדפדפן: מקלט הצופה אל עיר גשומה. משכו את ידית המפסק כדי להפעיל צופר של הגנה אזרחית, שמסונתז בזמן אמת בדפדפן שלכם באמצעות Web Audio ולא מושמע מהקלטה. הצפירה מורכבת משני צלילים במרווח של טרצה קטנה, 515 הרץ ו-618 הרץ, הנוצרים בזמן אמת, וראש הצופר מסתובב סיבוב אחד בכל 15 שניות.","sr_p2":"הגשם והרעמים נמשכים בסצנה, ויש גם תריס ומסך CRT כפקדים נוספים. בלי הרשמה, בלי התקנה, עובד בכל דפדפן מודרני.","sr_p3_link":"איך זה עובד","sr_p3":"{link}: הפיזיקה של הצופר, המספרים ותשובות לשאלות נפוצות. לחצו לחיצה כפולה על החלון או הקישו F למסך מלא; לחצו על המסך שעל הקיר או הקישו S כדי לשמור תמונה.","sr_p4":"נבנה על ידי {author}. קוד מקור: {repo} (MIT)."},
+"fr":{"label_siren":"SIRÈNE","label_distance":"DISTANCE","label_storm":"ORAGE","label_lamp":"LAMPE","label_camera":"CAMÉRA","label_wipe":"ESSUYAGE","label_shutter":"VOLET","label_breaker":"DISJONCTEUR","month_01":"JANVIER","month_02":"FÉVRIER","month_03":"MARS","month_04":"AVRIL","month_05":"MAI","month_06":"JUIN","month_07":"JUILLET","month_08":"AOÛT","month_09":"SEPTEMBRE","month_10":"OCTOBRE","month_11":"NOVEMBRE","month_12":"DÉCEMBRE","card_l1":"RESTEZ À L’ABRI","card_l2":"N’OUVREZ PAS","card_l3":"LA PORTE","rad_l1":"RADIOACTIVITÉ","rad_l2":"DÉTECTÉE","hint_click_sound":"Cliquez n’importe où pour activer le son.","hint_tap_sound":"Touchez n’importe où pour activer le son.","hint_breaker_desktop":"Actionnez le disjoncteur pour alimenter la sirène.","hint_breaker_touch":"Actionnez le disjoncteur.","hp_initial":"Casque recommandé","hp_desktop":"Casque recommandé. F pour le plein écran.","hp_touch":"Casque recommandé. Touchez deux fois pour le plein écran.","disclaimer":"La sirène est synthétisée en direct dans votre navigateur. Ce n’est pas un enregistrement.","audio_failed":"Erreur audio : ","rotate_phone":"Tournez votre téléphone à l’horizontale.","sr_h1":"SIRENFALL : une scène de sirène de protection civile dans le navigateur","sr_p1":"SIRENFALL est une scène gratuite dans le navigateur : un abri qui domine une ville sous la pluie. Actionnez le levier du disjoncteur pour alimenter une sirène de protection civile, synthétisée en direct dans votre navigateur avec Web Audio, et non lue depuis un enregistrement. La sirène se compose de deux sons à une tierce mineure d’écart, 515 Hz et 618 Hz, générés en temps réel, avec un pavillon qui fait un tour complet toutes les 15 secondes.","sr_p2":"La pluie et l’orage continuent dans la scène, avec un volet et un moniteur CRT comme commandes supplémentaires. Sans inscription ni installation, fonctionne dans tout navigateur récent.","sr_p3_link":"Comment ça marche","sr_p3":"{link} : la physique de la sirène, les chiffres et les réponses aux questions courantes. Double-cliquez sur la fenêtre ou appuyez sur F pour le plein écran ; cliquez sur le moniteur mural ou appuyez sur S pour enregistrer une image.","sr_p4":"Créé par {author}. Code source : {repo} (MIT)."},
+"de":{"label_siren":"SIRENE","label_distance":"ENTFERNUNG","label_storm":"UNWETTER","label_lamp":"LICHT","label_camera":"KAMERA","label_wipe":"WISCHER","label_shutter":"ROLLLADEN","label_breaker":"HAUPTSCHALTER","month_01":"JANUAR","month_02":"FEBRUAR","month_03":"MÄRZ","month_04":"APRIL","month_05":"MAI","month_06":"JUNI","month_07":"JULI","month_08":"AUGUST","month_09":"SEPTEMBER","month_10":"OKTOBER","month_11":"NOVEMBER","month_12":"DEZEMBER","card_l1":"DRINNEN BLEIBEN","card_l2":"TÜR NICHT","card_l3":"ÖFFNEN","rad_l1":"STRAHLUNG","rad_l2":"FESTGESTELLT","hint_click_sound":"Klicke irgendwo, um den Ton einzuschalten.","hint_tap_sound":"Tippe irgendwo, um den Ton einzuschalten.","hint_breaker_desktop":"Lege den Hauptschalter um, damit die Sirene Strom bekommt.","hint_breaker_touch":"Lege den Hauptschalter um.","hp_initial":"Kopfhörer empfohlen","hp_desktop":"Kopfhörer empfohlen. F für Vollbild.","hp_touch":"Kopfhörer empfohlen. Doppeltippen für Vollbild.","disclaimer":"Die Sirene wird live in deinem Browser erzeugt. Das ist keine Aufnahme.","audio_failed":"Audiofehler: ","rotate_phone":"Dreh dein Handy ins Querformat.","sr_h1":"SIRENFALL: eine Zivilschutzsirene als Browser-Szene","sr_p1":"SIRENFALL ist eine kostenlose Browser-Szene: ein Schutzraum mit Blick auf eine verregnete Stadt. Lege den Hebel des Hauptschalters um, damit eine Zivilschutzsirene Strom bekommt. Sie wird mit Web Audio live in deinem Browser erzeugt und nicht von einer Aufnahme abgespielt. Die Sirene besteht aus zwei Tönen im Abstand einer kleinen Terz, 515 Hz und 618 Hz, in Echtzeit erzeugt, mit einem Schalltrichter, der sich alle 15 Sekunden einmal herumdreht.","sr_p2":"Regen und Donner gehen in der Szene weiter, dazu kommen ein Rollladen und ein Röhrenmonitor als weitere Bedienelemente. Keine Anmeldung, keine Installation, läuft in jedem modernen Browser.","sr_p3_link":"So funktioniert es","sr_p3":"{link}: die Physik der Sirene, die Zahlen und Antworten auf häufige Fragen. Doppelklicke auf das Fenster oder drücke F für Vollbild; klicke auf den Wandmonitor oder drücke S, um ein Bild zu speichern.","sr_p4":"Erstellt von {author}. Quellcode: {repo} (MIT)."},
+"th":{"label_siren":"ไซเรน","label_distance":"ระยะทาง","label_storm":"พายุ","label_lamp":"ไฟ","label_camera":"กล้อง","label_wipe":"ปัดน้ำฝน","label_shutter":"บานเหล็ก","label_breaker":"เบรกเกอร์","month_01":"มกราคม","month_02":"กุมภาพันธ์","month_03":"มีนาคม","month_04":"เมษายน","month_05":"พฤษภาคม","month_06":"มิถุนายน","month_07":"กรกฎาคม","month_08":"สิงหาคม","month_09":"กันยายน","month_10":"ตุลาคม","month_11":"พฤศจิกายน","month_12":"ธันวาคม","card_l1":"อยู่ภายในอาคาร","card_l2":"ห้ามเปิด","card_l3":"ประตู","rad_l1":"ตรวจพบ","rad_l2":"รังสี","hint_click_sound":"คลิกที่ใดก็ได้เพื่อเปิดเสียง","hint_tap_sound":"แตะที่ใดก็ได้เพื่อเปิดเสียง","hint_breaker_desktop":"ดึงคันเบรกเกอร์เพื่อจ่ายไฟให้ไซเรน","hint_breaker_touch":"ดึงคันเบรกเกอร์","hp_initial":"แนะนำให้ใช้หูฟัง","hp_desktop":"แนะนำให้ใช้หูฟัง กด F เพื่อดูแบบเต็มจอ","hp_touch":"แนะนำให้ใช้หูฟัง แตะสองครั้งเพื่อดูแบบเต็มจอ","disclaimer":"เสียงไซเรนสังเคราะห์แบบเรียลไทม์ในเบราว์เซอร์ของคุณ ไม่ใช่เสียงที่บันทึกไว้","audio_failed":"เปิดเสียงไม่สำเร็จ: ","rotate_phone":"หมุนโทรศัพท์เป็นแนวนอน","sr_h1":"SIRENFALL: ฉากไซเรนป้องกันภัยฝ่ายพลเรือนบนเบราว์เซอร์","sr_p1":"SIRENFALL เป็นฉากฟรีบนเบราว์เซอร์ ในที่หลบภัยที่มองออกไปเห็นเมืองท่ามกลางสายฝน ดึงคันเบรกเกอร์เพื่อจ่ายไฟให้ไซเรนป้องกันภัยฝ่ายพลเรือน ซึ่งสังเคราะห์แบบเรียลไทม์ในเบราว์เซอร์ของคุณด้วย Web Audio ไม่ได้เล่นจากเสียงที่บันทึกไว้ ไซเรนประกอบด้วยเสียงสองระดับที่ห่างกันหนึ่งไมเนอร์เทิร์ด คือ 515 Hz และ 618 Hz สร้างขึ้นแบบเรียลไทม์ พร้อมปากแตรที่หมุนหนึ่งรอบทุก 15 วินาที","sr_p2":"ฝนและฟ้าร้องดำเนินต่อไปในฉาก พร้อมบานเหล็กและจอ CRT เป็นตัวควบคุมเพิ่มเติม ไม่ต้องสมัคร ไม่ต้องติดตั้ง ใช้งานได้บนเบราว์เซอร์สมัยใหม่ทุกตัว","sr_p3_link":"หลักการทำงาน","sr_p3":"{link}: ฟิสิกส์ของไซเรน ตัวเลข และคำตอบสำหรับคำถามที่พบบ่อย ดับเบิลคลิกที่หน้าต่างหรือกด F เพื่อดูแบบเต็มจอ คลิกที่จอบนผนังหรือกด S เพื่อบันทึกภาพ","sr_p4":"สร้างโดย {author} ซอร์สโค้ด: {repo} (MIT)"},
+"pt":{"label_siren":"SIRENE","label_distance":"DISTÂNCIA","label_storm":"TEMPORAL","label_lamp":"LUZ","label_camera":"CÂMERA","label_wipe":"LIMPAR","label_shutter":"PERSIANA","label_breaker":"DISJUNTOR","month_01":"JANEIRO","month_02":"FEVEREIRO","month_03":"MARÇO","month_04":"ABRIL","month_05":"MAIO","month_06":"JUNHO","month_07":"JULHO","month_08":"AGOSTO","month_09":"SETEMBRO","month_10":"OUTUBRO","month_11":"NOVEMBRO","month_12":"DEZEMBRO","card_l1":"FIQUE ABRIGADO","card_l2":"NÃO ABRA","card_l3":"A PORTA","rad_l1":"RADIAÇÃO","rad_l2":"DETECTADA","hint_click_sound":"Clique em qualquer lugar para ativar o som.","hint_tap_sound":"Toque em qualquer lugar para ativar o som.","hint_breaker_desktop":"Acione o disjuntor para ligar a sirene.","hint_breaker_touch":"Acione o disjuntor.","hp_initial":"Fones de ouvido recomendados","hp_desktop":"Fones de ouvido recomendados. F para tela cheia.","hp_touch":"Use fones de ouvido. Toque duas vezes para tela cheia.","disclaimer":"A sirene é sintetizada em tempo real no seu navegador. Não é uma gravação.","audio_failed":"Falha no áudio: ","rotate_phone":"Gire o celular para a horizontal.","sr_h1":"SIRENFALL: uma cena de sirene de defesa civil no navegador","sr_p1":"SIRENFALL é uma cena gratuita no navegador: um abrigo com vista para uma cidade chuvosa. Acione a alavanca do disjuntor para ligar uma sirene de defesa civil, sintetizada em tempo real no seu navegador com Web Audio, e não reproduzida de uma gravação. A sirene tem dois tons separados por uma terça menor, 515 Hz e 618 Hz, gerados em tempo real, com uma corneta que gira uma vez a cada 15 segundos.","sr_p2":"A chuva e os trovões continuam na cena, com uma persiana e um monitor CRT como controles adicionais. Sem cadastro, sem instalação, funciona em qualquer navegador moderno.","sr_p3_link":"Como funciona","sr_p3":"{link}: a física da sirene, os números e respostas para perguntas frequentes. Clique duas vezes na janela ou pressione F para tela cheia; clique no monitor da parede ou pressione S para salvar uma imagem.","sr_p4":"Criado por {author}. Código-fonte: {repo} (MIT)."},
+"uk":{"label_siren":"СИРЕНА","label_distance":"ВІДСТАНЬ","label_storm":"НЕГОДА","label_lamp":"СВІТЛО","label_camera":"КАМЕРА","label_wipe":"ДВІРНИК","label_shutter":"РОЛЕТА","label_breaker":"РУБИЛЬНИК","month_01":"СІЧЕНЬ","month_02":"ЛЮТИЙ","month_03":"БЕРЕЗЕНЬ","month_04":"КВІТЕНЬ","month_05":"ТРАВЕНЬ","month_06":"ЧЕРВЕНЬ","month_07":"ЛИПЕНЬ","month_08":"СЕРПЕНЬ","month_09":"ВЕРЕСЕНЬ","month_10":"ЖОВТЕНЬ","month_11":"ЛИСТОПАД","month_12":"ГРУДЕНЬ","card_l1":"НЕ ВИХОДЬТЕ","card_l2":"НЕ ВІДЧИНЯЙТЕ","card_l3":"ДВЕРІ","rad_l1":"ВИЯВЛЕНО","rad_l2":"РАДІАЦІЮ","hint_click_sound":"Натисніть будь-де, щоб увімкнути звук.","hint_tap_sound":"Торкніться будь-де, щоб увімкнути звук.","hint_breaker_desktop":"Увімкніть рубильник, щоб подати живлення на сирену.","hint_breaker_touch":"Увімкніть рубильник.","hp_initial":"Радимо навушники","hp_desktop":"Радимо навушники. F: повний екран.","hp_touch":"Радимо навушники. Подвійний дотик: повний екран.","disclaimer":"Звук сирени синтезується в реальному часі у вашому браузері. Це не запис.","audio_failed":"Помилка звуку: ","rotate_phone":"Поверніть телефон горизонтально.","sr_h1":"SIRENFALL: сцена із сиреною цивільного захисту в браузері","sr_p1":"Безкоштовна сцена SIRENFALL працює просто в браузері: укриття з видом на дощове місто. Перемкніть важіль рубильника, щоб подати живлення на сирену цивільного захисту. Вона синтезується в реальному часі у вашому браузері за допомогою Web Audio, а не відтворюється із запису. Сирена звучить двома тонами на відстані малої терції, 515 Гц і 618 Гц, що генеруються в реальному часі, а її рупор робить один оберт кожні 15 секунд.","sr_p2":"Дощ і грім у сцені не вщухають, а додатково можна керувати ролетою та CRT-монітором. Без реєстрації, без встановлення, працює в будь-якому сучасному браузері.","sr_p3_link":"Як це працює","sr_p3":"{link}: фізика сирени, цифри та відповіді на поширені запитання. Двічі клацніть вікно або натисніть F, щоб увімкнути повноекранний режим; клацніть монітор на стіні або натисніть S, щоб зберегти зображення.","sr_p4":"Автор: {author}. Вихідний код: {repo} (MIT)."},
+"ru":{"label_siren":"СИРЕНА","label_distance":"ДАЛЬНОСТЬ","label_storm":"НЕПОГОДА","label_lamp":"СВЕТ","label_camera":"КАМЕРА","label_wipe":"ДВОРНИК","label_shutter":"СТАВНЯ","label_breaker":"РУБИЛЬНИК","month_01":"ЯНВАРЬ","month_02":"ФЕВРАЛЬ","month_03":"МАРТ","month_04":"АПРЕЛЬ","month_05":"МАЙ","month_06":"ИЮНЬ","month_07":"ИЮЛЬ","month_08":"АВГУСТ","month_09":"СЕНТЯБРЬ","month_10":"ОКТЯБРЬ","month_11":"НОЯБРЬ","month_12":"ДЕКАБРЬ","card_l1":"НЕ ВЫХОДИТЕ","card_l2":"НЕ ОТКРЫВАЙТЕ","card_l3":"ДВЕРЬ","rad_l1":"ОБНАРУЖЕНА","rad_l2":"РАДИАЦИЯ","hint_click_sound":"Нажмите в любом месте, чтобы включить звук.","hint_tap_sound":"Коснитесь в любом месте экрана, чтобы включить звук.","hint_breaker_desktop":"Включите рубильник, чтобы подать питание на сирену.","hint_breaker_touch":"Включите рубильник.","hp_initial":"Рекомендуем наушники","hp_desktop":"Рекомендуем наушники. F: полный экран.","hp_touch":"Рекомендуем наушники. Двойное касание: полный экран.","disclaimer":"Звук сирены синтезируется в реальном времени в вашем браузере. Это не запись.","audio_failed":"Ошибка звука: ","rotate_phone":"Поверните телефон горизонтально.","sr_h1":"SIRENFALL: сцена с сиреной гражданской обороны в браузере","sr_p1":"Бесплатная сцена SIRENFALL работает прямо в браузере: укрытие с видом на дождливый город. Переключите рычаг рубильника, чтобы подать питание на сирену гражданской обороны. Она синтезируется в реальном времени в вашем браузере с помощью Web Audio, а не воспроизводится из записи. Сирена звучит двумя тонами на расстоянии малой терции, 515 Гц и 618 Гц, которые генерируются в реальном времени, а её рупор делает один оборот каждые 15 секунд.","sr_p2":"Дождь и гром в сцене не стихают, а дополнительно можно управлять ставней и ЭЛТ-монитором. Без регистрации и установки, работает в любом современном браузере.","sr_p3_link":"Как это работает","sr_p3":"{link}: физика сирены, цифры и ответы на частые вопросы. Дважды щёлкните по окну или нажмите F для полноэкранного режима; щёлкните по монитору на стене или нажмите S, чтобы сохранить снимок.","sr_p4":"Автор: {author}. Исходный код: {repo} (MIT)."},
+"it":{"label_siren":"SIRENA","label_distance":"DISTANZA","label_storm":"TEMPORALE","label_lamp":"LUCE","label_camera":"TELECAMERA","label_wipe":"TERGI","label_shutter":"SERRANDA","label_breaker":"INTERRUTTORE","month_01":"GENNAIO","month_02":"FEBBRAIO","month_03":"MARZO","month_04":"APRILE","month_05":"MAGGIO","month_06":"GIUGNO","month_07":"LUGLIO","month_08":"AGOSTO","month_09":"SETTEMBRE","month_10":"OTTOBRE","month_11":"NOVEMBRE","month_12":"DICEMBRE","card_l1":"RESTATE AL CHIUSO","card_l2":"NON APRITE","card_l3":"LA PORTA","rad_l1":"RADIAZIONI","rad_l2":"RILEVATE","hint_click_sound":"Fai clic in un punto qualsiasi per attivare l’audio.","hint_tap_sound":"Tocca un punto qualsiasi per attivare l’audio.","hint_breaker_desktop":"Aziona l’interruttore per alimentare la sirena.","hint_breaker_touch":"Aziona l’interruttore.","hp_initial":"Cuffie consigliate","hp_desktop":"Cuffie consigliate. F per lo schermo intero.","hp_touch":"Cuffie consigliate. Doppio tocco per lo schermo intero.","disclaimer":"La sirena è sintetizzata in tempo reale nel tuo browser. Non è una registrazione.","audio_failed":"Errore audio: ","rotate_phone":"Ruota il telefono in orizzontale.","sr_h1":"SIRENFALL: una sirena di protezione civile in una scena nel browser","sr_p1":"SIRENFALL è una scena gratuita nel browser: un rifugio che si affaccia su una città sotto la pioggia. Aziona la leva dell’interruttore per alimentare una sirena di protezione civile, sintetizzata in tempo reale nel tuo browser con Web Audio, non riprodotta da una registrazione. La sirena è composta da due toni a distanza di una terza minore, 515 Hz e 618 Hz, generati in tempo reale, con una tromba che ruota una volta ogni 15 secondi.","sr_p2":"Pioggia e tuoni continuano nella scena, con una serranda e un monitor CRT come comandi aggiuntivi. Nessuna registrazione, nessuna installazione: funziona in qualsiasi browser moderno.","sr_p3_link":"Come funziona","sr_p3":"{link}: la fisica della sirena, i numeri e le risposte alle domande più comuni. Fai doppio clic sulla finestra o premi F per lo schermo intero; fai clic sul monitor a parete o premi S per salvare un’immagine.","sr_p4":"Realizzato da {author}. Codice sorgente: {repo} (MIT)."},
+"nl":{"label_siren":"SIRENE","label_distance":"AFSTAND","label_storm":"STORM","label_lamp":"LAMP","label_camera":"CAMERA","label_wipe":"WISSER","label_shutter":"ROLLUIK","label_breaker":"SCHAKELAAR","month_01":"JANUARI","month_02":"FEBRUARI","month_03":"MAART","month_04":"APRIL","month_05":"MEI","month_06":"JUNI","month_07":"JULI","month_08":"AUGUSTUS","month_09":"SEPTEMBER","month_10":"OKTOBER","month_11":"NOVEMBER","month_12":"DECEMBER","card_l1":"BLIJF BINNEN","card_l2":"DEUR NIET","card_l3":"OPENEN","rad_l1":"STRALING","rad_l2":"GEDETECTEERD","hint_click_sound":"Klik ergens om het geluid aan te zetten.","hint_tap_sound":"Tik ergens om het geluid aan te zetten.","hint_breaker_desktop":"Zet de schakelaar om, zodat de sirene stroom krijgt.","hint_breaker_touch":"Zet de schakelaar om.","hp_initial":"Koptelefoon aanbevolen","hp_desktop":"Koptelefoon aanbevolen. F voor volledig scherm.","hp_touch":"Koptelefoon aanbevolen. Dubbeltik voor volledig scherm.","disclaimer":"De sirene wordt live in je browser gegenereerd. Het is geen opname.","audio_failed":"Audiofout: ","rotate_phone":"Houd je telefoon horizontaal.","sr_h1":"SIRENFALL: een sirene van de civiele bescherming als scène in je browser","sr_p1":"SIRENFALL is een gratis scène in je browser: een schuilkelder met uitzicht op een regenachtige stad. Zet de hendel van de schakelaar om, zodat een alarmsirene van de civiele bescherming stroom krijgt. De sirene wordt live in je browser gegenereerd met Web Audio en niet afgespeeld vanaf een opname. Ze bestaat uit twee tonen op een kleine terts van elkaar, 515 Hz en 618 Hz, in realtime gegenereerd, met een hoorn die elke 15 seconden één keer ronddraait.","sr_p2":"Regen en onweer gaan door in de scène, met een rolluik en een CRT-monitor als extra bediening. Geen account, geen installatie, werkt in elke moderne browser.","sr_p3_link":"Hoe het werkt","sr_p3":"{link}: de natuurkunde van de sirene, de getallen en antwoorden op veelgestelde vragen. Dubbelklik op het venster of druk op F voor volledig scherm; klik op de monitor aan de muur of druk op S om een afbeelding op te slaan.","sr_p4":"Gemaakt door {author}. Broncode: {repo} (MIT)."},
+"cs":{"label_siren":"SIRÉNA","label_distance":"VZDÁLENOST","label_storm":"BOUŘKA","label_lamp":"SVĚTLO","label_camera":"KAMERA","label_wipe":"STĚRAČ","label_shutter":"ROLETA","label_breaker":"JISTIČ","month_01":"LEDEN","month_02":"ÚNOR","month_03":"BŘEZEN","month_04":"DUBEN","month_05":"KVĚTEN","month_06":"ČERVEN","month_07":"ČERVENEC","month_08":"SRPEN","month_09":"ZÁŘÍ","month_10":"ŘÍJEN","month_11":"LISTOPAD","month_12":"PROSINEC","card_l1":"ZŮSTAŇTE UVNITŘ","card_l2":"NEOTVÍREJTE","card_l3":"DVEŘE","rad_l1":"ZJIŠTĚNO","rad_l2":"ZÁŘENÍ","hint_click_sound":"Klikněte kamkoli a zapněte zvuk.","hint_tap_sound":"Klepněte kamkoli a zapněte zvuk.","hint_breaker_desktop":"Nahoďte jistič, aby siréna dostala proud.","hint_breaker_touch":"Nahoďte jistič.","hp_initial":"Doporučujeme sluchátka","hp_desktop":"Doporučujeme sluchátka. F pro celou obrazovku.","hp_touch":"Doporučujeme sluchátka. Dvojím klepnutím na celou obrazovku.","disclaimer":"Siréna se syntetizuje živě ve vašem prohlížeči. Nejde o nahrávku.","audio_failed":"Chyba zvuku: ","rotate_phone":"Otočte telefon na šířku.","sr_h1":"SIRENFALL: scéna se sirénou civilní ochrany v prohlížeči","sr_p1":"SIRENFALL je bezplatná scéna v prohlížeči: kryt s výhledem na deštivé město. Nahoďte páku jističe a napájejte sirénu civilní ochrany, která se syntetizuje živě ve vašem prohlížeči pomocí Web Audio a nepřehrává se z nahrávky. Siréna se skládá ze dvou tónů vzdálených o malou tercii, 515 Hz a 618 Hz, generovaných v reálném čase, s hlavicí, která se jednou za 15 sekund otočí dokola.","sr_p2":"Déšť a hromy ve scéně pokračují a jako další ovládací prvky slouží roleta a CRT monitor. Bez registrace, bez instalace, funguje v každém moderním prohlížeči.","sr_p3_link":"Jak to funguje","sr_p3":"{link}: fyzika sirény, čísla a odpovědi na časté otázky. Dvojklikem na okno nebo klávesou F přepnete na celou obrazovku; kliknutím na monitor na stěně nebo klávesou S uložíte obrázek.","sr_p4":"Vytvořil {author}. Zdrojový kód: {repo} (MIT)."},
+"sk":{"label_siren":"SIRÉNA","label_distance":"VZDIALENOSŤ","label_storm":"BÚRKA","label_lamp":"SVETLO","label_camera":"KAMERA","label_wipe":"STIERAČ","label_shutter":"ROLETA","label_breaker":"ISTIČ","month_01":"JANUÁR","month_02":"FEBRUÁR","month_03":"MAREC","month_04":"APRÍL","month_05":"MÁJ","month_06":"JÚN","month_07":"JÚL","month_08":"AUGUST","month_09":"SEPTEMBER","month_10":"OKTÓBER","month_11":"NOVEMBER","month_12":"DECEMBER","card_l1":"ZOSTAŇTE VNÚTRI","card_l2":"NEOTVÁRAJTE","card_l3":"DVERE","rad_l1":"ZISTENÉ","rad_l2":"ŽIARENIE","hint_click_sound":"Kliknite kamkoľvek a zapnite zvuk.","hint_tap_sound":"Ťuknite kamkoľvek a zapnite zvuk.","hint_breaker_desktop":"Nahoďte istič, aby siréna dostala prúd.","hint_breaker_touch":"Nahoďte istič.","hp_initial":"Odporúčame slúchadlá","hp_desktop":"Odporúčame slúchadlá. F pre celú obrazovku.","hp_touch":"Odporúčame slúchadlá. Dvojitým ťuknutím na celú obrazovku.","disclaimer":"Siréna sa syntetizuje naživo vo vašom prehliadači. Nie je to nahrávka.","audio_failed":"Chyba zvuku: ","rotate_phone":"Otočte telefón na šírku.","sr_h1":"SIRENFALL: scéna so sirénou civilnej ochrany v prehliadači","sr_p1":"SIRENFALL je bezplatná scéna v prehliadači: kryt s výhľadom na daždivé mesto. Nahoďte páku ističa a napájajte sirénu civilnej ochrany, ktorá sa syntetizuje naživo vo vašom prehliadači pomocou Web Audio a neprehráva sa z nahrávky. Siréna sa skladá z dvoch tónov vzdialených o malú terciu, 515 Hz a 618 Hz, generovaných v reálnom čase, s hlavicou, ktorá sa raz za 15 sekúnd otočí dookola.","sr_p2":"Dážď a hromy v scéne pokračujú a ako ďalšie ovládacie prvky slúžia roleta a CRT monitor. Bez registrácie, bez inštalácie, funguje v každom modernom prehliadači.","sr_p3_link":"Ako to funguje","sr_p3":"{link}: fyzika sirény, čísla a odpovede na časté otázky. Dvojitým kliknutím na okno alebo klávesom F prepnete na celú obrazovku; kliknutím na monitor na stene alebo klávesom S uložíte obrázok.","sr_p4":"Vytvoril {author}. Zdrojový kód: {repo} (MIT)."},
+"hi":{"label_siren":"सायरन","label_distance":"दूरी","label_storm":"तूफ़ान","label_lamp":"बत्ती","label_camera":"कैमरा","label_wipe":"वाइपर","label_shutter":"शटर","label_breaker":"ब्रेकर","month_01":"जनवरी","month_02":"फ़रवरी","month_03":"मार्च","month_04":"अप्रैल","month_05":"मई","month_06":"जून","month_07":"जुलाई","month_08":"अगस्त","month_09":"सितंबर","month_10":"अक्टूबर","month_11":"नवंबर","month_12":"दिसंबर","card_l1":"अंदर ही रहें","card_l2":"दरवाज़ा","card_l3":"न खोलें","rad_l1":"विकिरण","rad_l2":"पाया गया","hint_click_sound":"आवाज़ के लिए कहीं भी क्लिक करें।","hint_tap_sound":"आवाज़ के लिए कहीं भी टैप करें।","hint_breaker_desktop":"सायरन चालू करने के लिए ब्रेकर खींचें।","hint_breaker_touch":"ब्रेकर खींचें।","hp_initial":"हेडफ़ोन की सलाह दी जाती है","hp_desktop":"हेडफ़ोन की सलाह दी जाती है। फ़ुल स्क्रीन के लिए F दबाएँ।","hp_touch":"हेडफ़ोन की सलाह दी जाती है। फ़ुल स्क्रीन के लिए डबल-टैप करें।","disclaimer":"सायरन की आवाज़ आपके ब्राउज़र में लाइव बनाई जाती है। यह रिकॉर्डिंग नहीं है।","audio_failed":"ऑडियो शुरू नहीं हो सका: ","rotate_phone":"अपना फ़ोन आड़ा करें।","sr_h1":"SIRENFALL: ब्राउज़र में नागरिक सुरक्षा सायरन का दृश्य","sr_p1":"SIRENFALL ब्राउज़र में चलने वाला एक मुफ़्त दृश्य है: बारिश में भीगे शहर की ओर देखता एक आश्रय। नागरिक सुरक्षा सायरन को बिजली देने के लिए ब्रेकर का लीवर खींचें। सायरन की आवाज़ Web Audio की मदद से आपके ब्राउज़र में लाइव बनाई जाती है, किसी रिकॉर्डिंग से नहीं चलाई जाती। सायरन में दो सुर हैं जिनके बीच माइनर थर्ड का अंतर है, 515 Hz और 618 Hz, जो रियल टाइम में बनते हैं, और इसका हॉर्न हर 15 सेकंड में एक चक्कर घूमता है।","sr_p2":"दृश्य में बारिश और गरज जारी रहती है, साथ ही शटर और CRT मॉनिटर भी चलाए जा सकते हैं। न साइन-अप, न इंस्टॉल, किसी भी आधुनिक ब्राउज़र में चलता है।","sr_p3_link":"यह कैसे काम करता है","sr_p3":"{link}: सायरन की भौतिकी, आँकड़े और आम सवालों के जवाब। फ़ुल स्क्रीन के लिए विंडो पर डबल-क्लिक करें या F दबाएँ; तस्वीर सहेजने के लिए दीवार पर लगे मॉनिटर पर क्लिक करें या S दबाएँ।","sr_p4":"निर्माता: {author}। सोर्स कोड: {repo} (MIT)।"},
+"fil":{"label_siren":"SIRENA","label_distance":"LAYO","label_storm":"BAGYO","label_lamp":"ILAW","label_camera":"KAMERA","label_wipe":"WIPER","label_shutter":"TABING","label_breaker":"BREAKER","month_01":"JANUARY","month_02":"FEBRUARY","month_03":"MARCH","month_04":"APRIL","month_05":"MAY","month_06":"JUNE","month_07":"JULY","month_08":"AUGUST","month_09":"SEPTEMBER","month_10":"OCTOBER","month_11":"NOVEMBER","month_12":"DECEMBER","card_l1":"MANATILI SA LOOB","card_l2":"HUWAG BUKSAN","card_l3":"ANG PINTO","rad_l1":"MAY NATUKOY","rad_l2":"NA RADYASYON","hint_click_sound":"Mag-click kahit saan para sa tunog.","hint_tap_sound":"Mag-tap kahit saan para sa tunog.","hint_breaker_desktop":"Hilahin ang breaker para mapagana ang sirena.","hint_breaker_touch":"Hilahin ang breaker.","hp_initial":"Mas maganda kung naka-headphones","hp_desktop":"Mas maganda kung naka-headphones. Pindutin ang F para sa fullscreen.","hp_touch":"Mas maganda kung naka-headphones. I-double tap para sa fullscreen.","disclaimer":"Live na binubuo ang sirena sa iyong browser. Hindi ito recording.","audio_failed":"Pumalya ang audio: ","rotate_phone":"Ipihit nang pahiga ang iyong phone.","sr_h1":"SIRENFALL: isang eksena ng civil-defense siren sa browser","sr_p1":"Ang SIRENFALL ay isang libreng eksena sa browser: isang shelter na tanaw ang maulang lungsod. Hilahin ang lever ng breaker para mapagana ang isang civil-defense siren na live na binubuo sa iyong browser gamit ang Web Audio, at hindi pinapatugtog mula sa recording. Ang sirena ay dalawang tono na magkalayo ng isang minor third, 515 Hz at 618 Hz, na binubuo nang real time, at may busina itong umiikot nang isang beses bawat 15 segundo.","sr_p2":"Tuloy-tuloy ang ulan at kulog sa eksena, at may tabing at CRT monitor bilang dagdag na kontrol. Walang sign-up, walang install, gumagana sa kahit anong modernong browser.","sr_p3_link":"Paano ito gumagana","sr_p3":"{link}: ang physics ng sirena, ang mga numero at mga sagot sa karaniwang tanong. I-double click ang window o pindutin ang F para sa fullscreen; i-click ang monitor sa pader o pindutin ang S para mag-save ng larawan.","sr_p4":"Gawa ni {author}. Source code: {repo} (MIT)."},
+"zh-TW":{"label_camera":"監視器","label_breaker":"總開關","rad_l1":"偵測到","hint_breaker_desktop":"打開總開關，為警報器供電。","hint_breaker_touch":"打開總開關。","hp_initial":"建議配戴耳機","hp_desktop":"建議配戴耳機。按 F 鍵切換全螢幕。","hp_touch":"建議配戴耳機。點兩下切換全螢幕。","disclaimer":"警報聲由瀏覽器即時合成，並非錄音。","sr_p1":"SIRENFALL 是一個免費的瀏覽器場景：一座俯瞰雨中城市的防空避難所。扳起總開關的拉桿，為民防警報器供電。警報聲由 Web Audio 在你的瀏覽器中即時合成，並非播放錄音。警報由相隔小三度的兩個音組成，分別為 515 Hz 和 618 Hz，即時生成，喇叭每 15 秒轉動掃過一次。","sr_p2":"場景中雨聲和雷聲持續不斷，另有防爆窗和 CRT 螢幕可供操作。無需註冊，無需安裝，任何現代瀏覽器皆可執行。","sr_p3":"{link}：警報的物理原理、相關數據及常見問題解答。點兩下畫面或按 F 鍵切換全螢幕；點一下牆上的螢幕或按 S 鍵儲存圖片。"}
+};
+// i18n:end
+const LG = (() => {
+  const one = tag => { // one browser language tag -> {k: table, h: html lang, tw: zh-TW overrides} or null
+    const p = String(tag || "").toLowerCase().split(/[-_]/), l = p[0];
+    if (l === "en") return { k: "en", h: "en", tw: 0 };
+    if (l === "zh") {
+      const sc = p.find((z, i) => i && z.length === 4), rg = p.find((z, i) => i && z.length === 2), hant = sc ? sc === "hant" : (rg === "tw" || rg === "hk" || rg === "mo");
+      return hant ? { k: "zh-Hant", h: rg ? "zh-" + rg.toUpperCase() : "zh-Hant", tw: rg === "tw" ? 1 : 0 } : { k: "zh-Hans", h: "zh-Hans", tw: 0 };
+    }
+    const k = l === "pt" ? "pt" : l === "iw" ? "he" : l === "tl" ? "fil" : "es ja ko ar he fr de th uk ru it nl cs sk hi fil".split(" ").indexOf(l) >= 0 ? l : "";
+    return k && I18N[k] ? { k, h: k, tw: 0 } : null;
+  };
+  let q = null;
+  try { q = new URLSearchParams(location.search).get("lang"); } catch (e) {} // ?lang=xx for testing
+  let r = q ? one(q) : null;
+  if (!r) { const ls = (navigator.languages && navigator.languages.length ? Array.from(navigator.languages) : []).concat(navigator.language || []); for (let i = 0; i < ls.length && !r; i++) r = one(ls[i]); }
+  return r || { k: "en", h: "en", tw: 0 };
+})();
+const TT = Object.assign({}, I18N.en, I18N[LG.k], LG.tw ? I18N["zh-TW"] : null), t = id => id in TT ? TT[id] : "";
+const RTL = LG.k === "ar" || LG.k === "he", NOLS = /^(ar|th|hi|ja|ko|zh)/.test(LG.k); // arabic joins, thai/hindi marks and CJK break with letter spacing
+const FEX = { "zh-Hans": "'Microsoft YaHei','PingFang SC','Noto Sans CJK SC','Noto Sans SC','Hiragino Sans GB'", "zh-Hant": "'Microsoft JhengHei','PingFang TC','Noto Sans CJK TC','Noto Sans TC'", ja: "'Yu Gothic UI','Meiryo','Hiragino Kaku Gothic ProN','Noto Sans CJK JP','Noto Sans JP'", ko: "'Malgun Gothic','Apple SD Gothic Neo','Noto Sans CJK KR','Noto Sans KR'", th: "'Leelawadee UI','Tahoma','Thonburi','Noto Sans Thai'", hi: "'Nirmala UI','Kohinoor Devanagari','Noto Sans Devanagari','Mangal'", ar: "'Tahoma','Geeza Pro','Noto Sans Arabic','Arial'", he: "'Arial Hebrew','Noto Sans Hebrew','Arial'" }[LG.k];
+const FFA = "'Segoe UI', " + (FEX ? FEX + ", " : "") + "sans-serif", FFB = "'Segoe UI', " + (FEX ? FEX + ", " : "") + "system-ui, sans-serif"; // canvas font stacks with glyph fallbacks, no web fonts
+const CARDL = [t("card_l1"), t("card_l2"), t("card_l3")].filter(Boolean), RADL = [t("rad_l1"), t("rad_l2")].filter(Boolean); // an empty line is dropped, not drawn
+document.documentElement.lang = LG.h;
+if (NOLS) document.documentElement.classList.add("nols");
+if (FEX) document.body.style.fontFamily = FFB;
+{
+  const set = (sel, txt) => { const e = document.querySelector(sel); if (e) { e.textContent = txt; if (RTL) e.dir = "rtl"; } };
+  set("#hint", t("hint_breaker_desktop")); set("#hp", "\u{1F3A7} " + t("hp_initial")); set("#disc", t("disclaimer")); set("#rot .rt1", t("rotate_phone"));
+  const lnk = (h, k) => '<a href="' + h + '">' + k + "</a>"; // hidden screen-reader text, only where the language has it; {link} {author} {repo} are the three links
+  for (const e of document.querySelectorAll("[data-i]")) {
+    const k = e.getAttribute("data-i"); if (!(k in I18N[LG.k])) continue;
+    e.innerHTML = t(k).replace("{link}", lnk("/how-it-works", t("sr_p3_link"))).replace("{author}", lnk("https://github.com/beeswaxpat", "Beeswaxpat")).replace("{repo}", lnk("https://github.com/beeswaxpat/sirenfall", "github.com/beeswaxpat/sirenfall"));
+  }
+}
+// calendar extras, worked out once when the calendar is baked: the second header line and, for Chinese, a lunar line under each day
+const CAL_YEAR = false; // the calendar is timeless: no year line in any language; true brings the year back (Chinese: before the zodiac year)
+function calExtra(d0) {
+  const y = d0.getFullYear(), m = d0.getMonth(), o = { sub: CAL_YEAR ? String(y) : "", lun: null };
+  try {
+    if (LG.k[0] === "z" && LG.k[1] === "h") {
+      const hant = LG.k === "zh-Hant", cf = new Intl.DateTimeFormat("zh-u-ca-chinese", { year: "numeric", month: "numeric", day: "numeric" });
+      const ry = parseInt((cf.formatToParts(d0).find(z => z.type === "relatedYear") || {}).value, 10) || y; // the lunar year that holds today
+      const a = ((ry - 4) % 10 + 10) % 10, b = ((ry - 4) % 12 + 12) % 12;
+      o.sub = (CAL_YEAR ? y + " " : "") + "甲乙丙丁戊己庚辛壬癸"[a] + "子丑寅卯辰巳午未申酉戌亥"[b] + (hant ? "鼠牛虎兔龍蛇馬羊猴雞狗豬" : "鼠牛虎兔龙蛇马羊猴鸡狗猪")[b] + "年";
+      const lf = new Intl.DateTimeFormat("zh-u-ca-chinese", { month: "numeric", day: "numeric" }), MN = hant ? "正二三四五六七八九十冬臘" : "正二三四五六七八九十冬腊", D1 = "一二三四五六七八九十", n = new Date(y, m + 1, 0).getDate();
+      o.lun = [];
+      for (let d = 1; d <= n; d++) {
+        const ps = lf.formatToParts(new Date(y, m, d)), mo = (ps.find(z => z.type === "month") || {}).value || "", dy = parseInt((ps.find(z => z.type === "day") || {}).value, 10), mn = parseInt(mo.replace(/\D/g, ""), 10);
+        if (!dy || !mn) { o.lun.push(""); continue; }
+        o.lun.push(dy === 1 ? (/闰|閏|bis/.test(mo) ? (hant ? "閏" : "闰") : "") + MN[mn - 1] + "月" : dy <= 10 ? "初" + D1[dy - 1] : dy < 20 ? "十" + D1[dy - 11] : dy === 20 ? "二十" : dy < 30 ? "廿" + D1[dy - 21] : "三十");
+      }
+    }
+  } catch (e) { o.lun = null; }
+  return o;
+}
 
 /* ============================== AUDIO: the v4 STEADY hero voice (ported from siren-lab) ============================== */
 let ctx = null, built = false;
@@ -393,7 +476,7 @@ function ensureAudio() {
   if (ctx.state !== "running") ctx.resume();
   if (!built) {
     try { build(); }
-    catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = "Audio failed: " + e.message; }
+    catch (e) { console.error("build failed:", e); document.getElementById("disc").textContent = t("audio_failed") + e.message; }
   }
   if (built) { loadWeatherAudio(); if (STORY.clk < 0) STORY.clk = 0; hintAfterSound(); if (BLAST.lifted) startRoar(); rumbleCatchUp(performance.now() / 1000); doorAsk(); }
 }
@@ -3493,26 +3576,47 @@ function buildFrame() {
   }
   x.fillStyle = "#8a7f6d"; x.textAlign = "center";
   const labelY = py + Math.max(p.vol.r + 16, p.lever.arm * 0.52);
-  const LABS = [["SIREN", p.vol.x], ["DISTANCE", p.dist.x], ["STORM", p.storm.x], ["LAMP", p.dim.x], ["CAMERA", p.radio.x], ["WIPE", p.wipe.x], ["SHUTTER", p.shutter.x], ["BREAKER", lx]];
-  let fpx = p.portrait ? 7.5 : 9, lsp = p.portrait ? 1 : 2, lws = [];
+  const LABS = [[t("label_siren"), p.vol.x], [t("label_distance"), p.dist.x], [t("label_storm"), p.storm.x], [t("label_lamp"), p.dim.x], [t("label_camera"), p.radio.x], [t("label_wipe"), p.wipe.x], [t("label_shutter"), p.shutter.x], [t("label_breaker"), lx]];
+  let fpx = p.portrait ? 7.5 : 9, lsp = NOLS ? 0 : p.portrait ? 1 : 2, lws = [];
   for (let pass = 0; pass < 14; pass++) { // narrow screens: less letter spacing first, then a smaller size
     try { x.letterSpacing = "0px"; } catch (e) {}
-    x.font = "600 " + fpx + "px 'Segoe UI', sans-serif";
-    lws = LABS.map(([t]) => x.measureText(t).width + lsp * t.length);
+    x.font = "600 " + fpx + "px " + FFA;
+    lws = LABS.map(([s6]) => x.measureText(s6).width + lsp * s6.length);
+    const ref = x.measureText("DISTANCE").width + lsp * 8; // one long word must not shrink every label: the shared size is judged with no label wider than DISTANCE
     let worst = 99;
-    for (let i = 0; i + 1 < LABS.length; i++) worst = Math.min(worst, (LABS[i + 1][1] - lws[i + 1] / 2) - (LABS[i][1] + lws[i] / 2));
+    for (let i = 0; i + 1 < LABS.length; i++) worst = Math.min(worst, (LABS[i + 1][1] - Math.min(lws[i + 1], ref) / 2) - (LABS[i][1] + Math.min(lws[i], ref) / 2));
     if (worst >= 6) break;
     if (lsp > 0.6) lsp -= 0.5; else if (fpx > 7) fpx -= 0.5; else break;
   }
-  const lxs = LABS.map(l => l[1]);
+  const lsc = lws.map(() => 1); // per label: squeeze only the label that is too wide (flat to 0.72, then a smaller font), the others keep the shared size
+  for (let it = 0; it < 10; it++) {
+    let moved = false;
+    for (let i = 0; i + 1 < LABS.length; i++) {
+      const e0 = lws.map((w, j) => w * lsc[j]), gap = (LABS[i + 1][1] - e0[i + 1] / 2) - (LABS[i][1] + e0[i] / 2);
+      if (gap >= 6) continue;
+      let need = (6 - gap) * 2;
+      for (const k of e0[i] >= e0[i + 1] ? [i, i + 1] : [i + 1, i]) {
+        const cut = Math.min(need, Math.max(0, e0[k] - lws[k] * 0.58));
+        if (cut > 0) { lsc[k] = (e0[k] - cut) / lws[k]; need -= cut; moved = true; }
+        if (need <= 0.01) break;
+      }
+    }
+    if (!moved) break;
+  }
+  const ews = lws.map((w, j) => w * lsc[j]), lxs = LABS.map(l => l[1]);
   for (let it = 0; it < 4; it++) for (let i = 0; i + 1 < lxs.length; i++) {
-    const gap = (lxs[i + 1] - lws[i + 1] / 2) - (lxs[i] + lws[i] / 2);
+    const gap = (lxs[i + 1] - ews[i + 1] / 2) - (lxs[i] + ews[i] / 2);
     if (gap < 6) { lxs[i] -= (6 - gap) / 2; lxs[i + 1] += (6 - gap) / 2; }
   }
   try { x.letterSpacing = lsp + "px"; } catch (e) {}
+  if (RTL) x.direction = "rtl";
   LABS.forEach(([txt], i) => {
-    x.save(); x.globalAlpha = 0.8; x.translate(lxs[i], labelY); x.rotate((r() - 0.5) * 0.02); x.fillText(txt, 0, 0); x.restore();
+    x.save(); x.globalAlpha = 0.8; x.translate(lxs[i], labelY); x.rotate((r() - 0.5) * 0.02);
+    const q = lsc[i];
+    if (q < 1) { x.scale(Math.max(0.72, q), 1); if (q < 0.72) x.font = "600 " + (fpx * q / 0.72).toFixed(2) + "px " + FFA; }
+    x.fillText(txt, 0, 0); x.restore();
   });
+  if (RTL) x.direction = "ltr";
 
   // ---- shelter props ----
   // ceiling conduit with a seep stain
@@ -3557,7 +3661,7 @@ function buildFrame() {
     // wall calendar, right wall: every survived day crossed off in red
     x.save();
     const now2 = new Date();
-    const MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+    const cal = calExtra(now2);
     const dInM = new Date(now2.getFullYear(), now2.getMonth() + 1, 0).getDate();
     const firstDow = new Date(now2.getFullYear(), now2.getMonth(), 1).getDay();
     const today2 = now2.getDate();
@@ -3573,11 +3677,16 @@ function buildFrame() {
     x.fillStyle = "#2c2f37"; x.beginPath(); x.arc(calX + calW / 2, calY - 3, 1.8, 0, 7); x.fill();
     try { x.letterSpacing = "1px"; } catch (e) {}
     x.fillStyle = "#3a332a"; x.textAlign = "center";
-    x.font = "700 " + Math.round(calW * 0.095) + "px 'Segoe UI', sans-serif";
-    x.fillText(MONTHS[now2.getMonth()], calX + calW / 2, calY + calW * 0.14);
-    x.font = "600 " + Math.round(calW * 0.055) + "px 'Segoe UI', sans-serif";
+    const mon = t("month_" + String(now2.getMonth() + 1).padStart(2, "0")), mfs = Math.round(calW * 0.095);
+    x.font = "700 " + mfs + "px " + FFA;
+    const mmw = x.measureText(mon).width;
+    if (mmw > calW - 12) x.font = "700 " + (mfs * (calW - 12) / mmw).toFixed(1) + "px " + FFA; // a long month name shrinks to the page
+    if (RTL) x.direction = "rtl";
+    x.fillText(mon, calX + calW / 2, calY + calW * (cal.sub ? 0.14 : 0.17)); // alone in the header it sits a little lower, centered over the grid
+    x.font = "600 " + Math.round(calW * 0.055) + "px " + FFA;
     x.fillStyle = "rgba(58,51,42,0.7)";
-    x.fillText(String(now2.getFullYear()), calX + calW / 2, calY + calW * 0.21);
+    if (cal.sub) x.fillText(cal.sub, calX + calW / 2, calY + calW * 0.21);
+    if (RTL) x.direction = "ltr";
     const gx0 = calX + 5, gy0 = calY + calW * 0.26;
     const cellW = (calW - 10) / 7, rows2 = Math.ceil((firstDow + dInM) / 7);
     const cellH = (calH - calW * 0.26 - 6) / Math.max(5, rows2);
@@ -3585,11 +3694,17 @@ function buildFrame() {
     for (let i = 0; i <= 7; i++) { x.beginPath(); x.moveTo(gx0 + i * cellW, gy0); x.lineTo(gx0 + i * cellW, gy0 + rows2 * cellH); x.stroke(); }
     for (let i = 0; i <= rows2; i++) { x.beginPath(); x.moveTo(gx0, gy0 + i * cellH); x.lineTo(gx0 + 7 * cellW, gy0 + i * cellH); x.stroke(); }
     x.textAlign = "left";
-    x.font = "600 " + Math.max(5, Math.round(cellW * 0.36)) + "px 'Segoe UI', sans-serif";
+    const dfs = Math.max(5, Math.round(cellW * 0.36)), lfs = cellW * 0.29;
     for (let d = 1; d <= dInM; d++) {
       const idx = firstDow + d - 1, cx5 = gx0 + (idx % 7) * cellW, cy5 = gy0 + Math.floor(idx / 7) * cellH;
+      x.font = "600 " + dfs + "px " + FFA; x.textAlign = "left";
       x.fillStyle = "rgba(40,35,28,0.7)";
       x.fillText(String(d), cx5 + 1.5, cy5 + cellH * 0.42);
+      if (cal.lun && cal.lun[d - 1] && lfs * DPR >= 8) { // only where legible (not on a 1x screen); small lunar day under the number, the lunar month name on its first day
+        const lt = cal.lun[d - 1]; x.font = "500 " + lfs.toFixed(1) + "px " + FFA; x.textAlign = "center";
+        x.fillStyle = lt.includes("月") ? "rgba(122,32,26,0.92)" : "rgba(40,35,28,0.74)";
+        x.fillText(lt, cx5 + cellW / 2, cy5 + cellH * 0.86);
+      }
       if (d < today2) {
         x.strokeStyle = "rgba(122,32,26," + (0.5 + r() * 0.22).toFixed(2) + ")";
         x.lineWidth = 1.7;
@@ -5230,13 +5345,15 @@ function drawRadCard(c, rt, flick) {
   g.save();
   g.globalAlpha = 0.9 + 0.1 * flick;
   g.textAlign = "center"; g.textBaseline = "middle";
-  try { g.letterSpacing = c.w < 90 ? "0px" : "1px"; } catch (e) {}
-  const ink = "rgb(240,237,228)", fitPx = (txt, maxW, maxPx) => { g.font = "800 " + maxPx.toFixed(1) + "px 'Segoe UI', system-ui, sans-serif"; const mw = g.measureText(txt).width; return mw > maxW ? maxPx * maxW / mw : maxPx; };
-  const px = Math.min(fitPx("RADIATION", c.w * 0.92, c.h * 0.17), fitPx("DETECTED", c.w * 0.92, c.h * 0.17));
-  g.font = "800 " + px.toFixed(1) + "px 'Segoe UI', system-ui, sans-serif";
+  try { g.letterSpacing = NOLS || c.w < 90 ? "0px" : "1px"; } catch (e) {}
+  if (RTL) g.direction = "rtl";
+  const ink = "rgb(240,237,228)", fitPx = (txt, maxW, maxPx) => { g.font = "800 " + maxPx.toFixed(1) + "px " + FFB; const mw = g.measureText(txt).width; return mw > maxW ? maxPx * maxW / mw : maxPx; };
+  const px = Math.min(...RADL.map(s7 => fitPx(s7, c.w * 0.92, c.h * 0.17)));
+  g.font = "800 " + px.toFixed(1) + "px " + FFB;
   g.shadowColor = "rgba(240,237,228,0.5)"; g.shadowBlur = 6; g.fillStyle = ink;
-  g.fillText("RADIATION", cx, c.y + c.h * 0.72); g.fillText("DETECTED", cx, c.y + c.h * 0.88);
+  if (RADL.length === 1) g.fillText(RADL[0], cx, c.y + c.h * 0.8); else RADL.forEach((s7, i) => g.fillText(s7, cx, c.y + c.h * (0.72 + 0.16 * i)));
   try { g.letterSpacing = "0px"; } catch (e) {}
+  if (RTL) g.direction = "ltr";
   g.restore();
 }
 function drawCard(c, ct, flick) {
@@ -5246,21 +5363,30 @@ function drawCard(c, ct, flick) {
   g.globalAlpha = 0.9 + 0.1 * flick;
   g.textAlign = "center"; g.textBaseline = "middle";
   const ink = "rgb(240,237,228)";
+  if (RTL) g.direction = "rtl";
   const fit = (txt, wt, maxW, maxPx, y) => {
-    try { g.letterSpacing = "1px"; } catch (e) {}
-    g.font = wt + " " + maxPx.toFixed(1) + "px 'Segoe UI', system-ui, sans-serif";
-    const mw = g.measureText(txt).width;
-    if (mw > maxW) g.font = wt + " " + (maxPx * maxW / mw).toFixed(1) + "px 'Segoe UI', system-ui, sans-serif";
+    try { g.letterSpacing = NOLS ? "0px" : "1px"; } catch (e) {}
+    g.font = wt + " " + maxPx.toFixed(1) + "px " + FFB;
+    const mw = g.measureText(txt).width, k = mw > maxW ? maxW / mw : 1;
+    if (k < 1) g.font = wt + " " + (maxPx * k).toFixed(1) + "px " + FFB;
     g.shadowColor = "rgba(240,237,228,0.55)"; g.shadowBlur = 6; g.fillStyle = ink;
     g.fillText(txt, c.x + c.w / 2, y);
-    return Math.min(maxPx, maxPx * maxW / mw);
+    return maxPx * k;
   };
-  fit("STAY INSIDE", 800, c.w * 0.88, c.h * 0.24, c.y + c.h * 0.27);
-  g.shadowBlur = 0; g.fillStyle = "rgba(240,237,228,0.45)";
-  g.fillRect(c.x + c.w * 0.18, c.y + c.h * 0.445, c.w * 0.64, Math.max(1, c.h * 0.012));
-  const px2 = fit("DO NOT OPEN", 700, c.w * 0.82, c.h * 0.17, c.y + c.h * 0.60);
-  fit("THE DOOR", 700, c.w * 0.82, px2, c.y + c.h * 0.79); // same size as the line above it
+  const rule = y => { g.shadowBlur = 0; g.fillStyle = "rgba(240,237,228,0.45)"; g.fillRect(c.x + c.w * 0.18, c.y + c.h * y, c.w * 0.64, Math.max(1, c.h * 0.012)); };
+  const n = CARDL.length;
+  if (n >= 3) { // three lines as the English slate: the second and third read as one sentence
+    const px1 = fit(CARDL[0], 800, c.w * 0.88, c.h * 0.24, c.y + c.h * 0.27), kk = 0.8 + 0.15 * Math.min(1, Math.max(0, (px1 / (c.h * 0.24) - 0.45) / 0.2));
+    rule(0.445);
+    const px2 = fit(CARDL[1], 700, c.w * 0.82, Math.min(c.h * 0.17, px1 * kk), c.y + c.h * 0.60); // lines 2 and 3 stay under line 1: 0.8 of it when line 1 had to shrink a lot, up to 0.95 (the English look) when it hardly did
+    fit(CARDL[2], 700, c.w * 0.82, px2, c.y + c.h * 0.79); // same size as the line above it
+  } else if (n === 2) { // an empty line is dropped and the two left sit in the middle of the screen
+    const px1 = fit(CARDL[0], 800, c.w * 0.88, c.h * 0.24, c.y + c.h * 0.34);
+    rule(0.52);
+    fit(CARDL[1], 700, c.w * 0.82, Math.min(c.h * 0.19, px1 * 0.9), c.y + c.h * 0.70);
+  } else if (n === 1) fit(CARDL[0], 800, c.w * 0.88, c.h * 0.24, c.y + c.h * 0.5);
   try { g.letterSpacing = "0px"; } catch (e) {}
+  if (RTL) g.direction = "ltr";
   g.restore();
 }
 function stepStory(t, dt) {
@@ -5469,12 +5595,14 @@ function snapshot() {
   x.setTransform(DPR, 0, 0, DPR, 0, 0);
   const ls = "letterSpacing" in x;
   x.textBaseline = "top"; x.textAlign = "left";
-  x.font = "600 13px 'Segoe UI', system-ui, sans-serif"; if (ls) x.letterSpacing = "6px";
+  x.font = "600 13px " + FFB; if (ls) x.letterSpacing = "6px";
   x.fillStyle = "rgba(214,196,166,0.42)"; x.fillText("SIRENFALL", 18, 16);
   x.textBaseline = "bottom";
-  x.font = "11px 'Segoe UI', system-ui, sans-serif"; if (ls) x.letterSpacing = "0.4px";
+  x.font = "11px " + FFB; if (ls) x.letterSpacing = NOLS ? "0px" : "0.4px";
   x.textAlign = "center"; x.fillStyle = "rgba(160,150,135,0.38)";
-  x.fillText("The siren is synthesized live in your browser. It is not a recording.", W / 2, H - 9);
+  if (RTL) x.direction = "rtl";
+  x.fillText(t("disclaimer"), W / 2, H - 9);
+  if (RTL) x.direction = "ltr";
   x.textAlign = "right"; x.fillStyle = "rgba(214,196,166,0.42)"; if (ls) x.letterSpacing = "1px";
   x.fillText("sirenfall.live", W - 18, H - 9);
   c.toBlob(b => {
@@ -5489,8 +5617,8 @@ function snapshot() {
 addEventListener("keydown", e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (!rotShown) ensureAudio(); // any key brings the sound up too
-  if (e.key === "f" || e.key === "F") toggleFullscreen();
-  else if (e.key === "s" || e.key === "S") snapshot();
+  if (e.code === "KeyF" || e.key === "f" || e.key === "F") toggleFullscreen(); // the key by position, so other keyboard layouts work too
+  else if (e.code === "KeyS" || e.key === "s" || e.key === "S") snapshot();
 });
 
 /* ---------- weather engine: nothing changes fast enough to catch it changing ---------- */
@@ -5654,9 +5782,9 @@ function frame(now) {
 {
   // one line each, and fullscreen told the way this device does it
   const coarse = matchMedia("(pointer: coarse)").matches;
-  breakerHint = coarse ? "Pull the breaker." : "Pull the breaker to power the siren.";
-  { const h = document.getElementById("hint"); h.textContent = coarse ? "Tap anywhere for sound." : "Click anywhere for sound."; if (!built) h.classList.add("call"); } // bright until the first tap, so the sound is found at once
-  document.getElementById("hp").textContent = coarse ? "\u{1F3A7} Headphones. Double-tap for fullscreen." : "\u{1F3A7} Headphones recommended. F for fullscreen.";
+  breakerHint = coarse ? t("hint_breaker_touch") : t("hint_breaker_desktop");
+  { const h = document.getElementById("hint"); h.textContent = coarse ? t("hint_tap_sound") : t("hint_click_sound"); if (!built) h.classList.add("call"); } // bright until the first tap, so the sound is found at once
+  document.getElementById("hp").textContent = "\u{1F3A7} " + (coarse ? t("hp_touch") : t("hp_desktop"));
 }
 resize();
 requestAnimationFrame(frame);
