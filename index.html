@@ -168,6 +168,46 @@
   #rot .rt2 { font-size: 12px; letter-spacing: 0.4px; color: #8a93a6; margin-top: 9px; line-height: 1.6; }
   #rot .rt3 { font-size: 12px; letter-spacing: 0.2px; color: #8a93a6; line-height: 1.65; text-align: left; max-width: 440px; margin: 16px auto 0; }
   html.nols #hint, html.nols #hp, html.nols #disc, html.nols #rot .rt1 { letter-spacing: 0; }
+  /* the private note: an aged paper on the wall, only after a pinned notice is clicked */
+  #scene.paper { cursor: pointer; }
+  #nbtn { position: fixed; display: none; padding: 0; border: 0; background: none; opacity: 0; pointer-events: none; z-index: 4; }
+  #nbtn:focus-visible { opacity: 1; outline: 1px dashed rgba(214,196,166,0.6); outline-offset: 4px; }
+  #note {
+    position: fixed; z-index: 5; display: none; width: 260px; padding: 28px 18px 12px; --r: -1.3deg; transform: rotate(var(--r)); cursor: default;
+    color: #2b2317; font: 14px/22px Georgia, "Times New Roman", serif; text-align: start;
+    background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 55%, rgba(70,48,20,0.3) 100%), linear-gradient(172deg, #cdc2a3, #bdb18d);
+    border-radius: 1px 2px 3px 1px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 14px 30px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,250,230,0.06);
+  }
+  #note.open { display: block; animation: noteIn 0.4s ease backwards; }
+  #note::before { content: ""; position: absolute; left: 50%; top: 8px; width: 11px; height: 11px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #5a5f6b, #22252c 70%); box-shadow: 0 2px 3px rgba(0,0,0,0.55); }
+  #note::after { content: ""; position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; background: linear-gradient(135deg, rgba(0,0,0,0) 50%, rgba(40,28,10,0.32) 50%, rgba(40,28,10,0.12) 100%); pointer-events: none; }
+  @keyframes noteIn { from { opacity: 0; transform: translateY(-6px) rotate(var(--r)); } to { opacity: 1; transform: rotate(var(--r)); } }
+  #note .np { font-size: 14.5px; line-height: 19px; font-weight: 600; margin-bottom: 8px; padding-inline-end: 14px; user-select: none; }
+  #note textarea {
+    display: block; width: 100%; height: 88px; resize: none; border: 0; outline: 0; padding: 0 2px; margin: 0; border-radius: 0; user-select: text; -webkit-user-select: text; cursor: text;
+    font: inherit; color: #2b2317; caret-color: #3a2e1c; background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 21px, rgba(62,46,22,0.26) 21px 22px) local;
+  }
+  #note textarea::placeholder { color: rgba(60,46,24,0.45); }
+  #note textarea:focus-visible { background-color: rgba(255,246,214,0.1); }
+  #note .nf { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  #note .nv { font-size: 11px; line-height: 14px; color: rgba(52,40,20,0.7); }
+  #note .ny { flex: none; font: 600 12.5px/1 Georgia, "Times New Roman", serif; letter-spacing: 0.6px; padding: 7px 12px; color: #d9cfb8; background: #2c2f37; border: 0; border-radius: 2px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  #note .ny:hover:not(:disabled) { background: #3a3e48; }
+  #note .ny:disabled { opacity: 0.55; cursor: default; }
+  #note .nx { position: absolute; top: 3px; inset-inline-end: 4px; width: 26px; height: 26px; padding: 0; border: 0; background: none; font: 20px/26px Georgia, serif; color: rgba(46,34,16,0.55); cursor: pointer; }
+  #note .nx:hover { color: rgba(46,34,16,0.9); }
+  #note button:focus-visible { outline: 1px dashed #2b2317; outline-offset: 2px; }
+  #note .nm { min-height: 0; margin-top: 6px; font-size: 12.5px; line-height: 16px; font-style: italic; }
+  #note .nm:empty { display: none; }
+  #note.bad .nm { color: #6b2a1a; }
+  #note .nh { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; opacity: 0; }
+  #note.done { display: flex; flex-direction: column; justify-content: center; }
+  #note.done .np, #note.done textarea, #note.done .nf, #note.done .nx { display: none; }
+  #note.done .nm { margin: 0; font-size: 19px; line-height: 26px; text-align: center; }
+  #note.fold { transition: transform 0.6s ease-in, opacity 0.6s ease-in; transform: translateY(16px) rotate(calc(var(--r) * 4)) scale(0.86, 0.12); opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { #note.open { animation: none; } #note.fold { transition: none; } }
+  html.nols #note, html.nols #note * { letter-spacing: 0; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -195,13 +235,22 @@
     <div class="rt1">Turn your phone sideways.</div>
   </div>
 </div>
+<button id="nbtn" type="button"></button>
+<div id="note" role="dialog" aria-labelledby="notep">
+  <button class="nx" type="button">&times;</button>
+  <p class="np" id="notep" dir="auto"></p>
+  <textarea id="notet" maxlength="1000"></textarea>
+  <input class="nh" type="text" name="nk" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <div class="nf"><span class="nv" dir="auto"></span><button class="ny" type="button"></button></div>
+  <div class="nm" dir="auto" role="status" aria-live="polite"></div>
+</div>
 <script>
 "use strict";
 
 /* ============================== LANGUAGE: picked once at load, English unless the browser asks for another ============================== */
 // i18n:begin
 const I18N = {
-"en":{"label_siren":"SIREN","label_distance":"DISTANCE","label_storm":"STORM","label_lamp":"LAMP","label_camera":"CAMERA","label_wipe":"WIPE","label_shutter":"SHUTTER","label_breaker":"BREAKER","month_01":"JANUARY","month_02":"FEBRUARY","month_03":"MARCH","month_04":"APRIL","month_05":"MAY","month_06":"JUNE","month_07":"JULY","month_08":"AUGUST","month_09":"SEPTEMBER","month_10":"OCTOBER","month_11":"NOVEMBER","month_12":"DECEMBER","card_l1":"STAY INSIDE","card_l2":"DO NOT OPEN","card_l3":"THE DOOR","rad_l1":"RADIATION","rad_l2":"DETECTED","hint_click_sound":"Click anywhere for sound.","hint_tap_sound":"Tap anywhere for sound.","hint_breaker_desktop":"Pull the breaker to power the siren.","hint_breaker_touch":"Pull the breaker.","hp_initial":"Headphones recommended","hp_desktop":"Headphones recommended. F for fullscreen.","hp_touch":"Headphones. Double-tap for fullscreen.","disclaimer":"The siren is synthesized live in your browser. It is not a recording.","audio_failed":"Audio failed: ","rotate_phone":"Turn your phone sideways.","sr_h1":"SIRENFALL: a browser civil-defense siren scene","sr_p1":"SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.","sr_p2":"Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.","sr_p3_link":"How it works","sr_p3":"{link}: the siren physics, the numbers, and answers to common questions. Double-click the window or press F for fullscreen; click the wall monitor or press S to save a picture.","sr_p4":"Built by {author}. Source code: {repo} (MIT)."},
+"en":{"label_siren":"SIREN","label_distance":"DISTANCE","label_storm":"STORM","label_lamp":"LAMP","label_camera":"CAMERA","label_wipe":"WIPE","label_shutter":"SHUTTER","label_breaker":"BREAKER","month_01":"JANUARY","month_02":"FEBRUARY","month_03":"MARCH","month_04":"APRIL","month_05":"MAY","month_06":"JUNE","month_07":"JULY","month_08":"AUGUST","month_09":"SEPTEMBER","month_10":"OCTOBER","month_11":"NOVEMBER","month_12":"DECEMBER","card_l1":"STAY INSIDE","card_l2":"DO NOT OPEN","card_l3":"THE DOOR","rad_l1":"RADIATION","rad_l2":"DETECTED","hint_click_sound":"Click anywhere for sound.","hint_tap_sound":"Tap anywhere for sound.","hint_breaker_desktop":"Pull the breaker to power the siren.","hint_breaker_touch":"Pull the breaker.","hp_initial":"Headphones recommended","hp_desktop":"Headphones recommended. F for fullscreen.","hp_touch":"Headphones. Double-tap for fullscreen.","disclaimer":"The siren is synthesized live in your browser. It is not a recording.","audio_failed":"Audio failed: ","rotate_phone":"Turn your phone sideways.","sr_h1":"SIRENFALL: a browser civil-defense siren scene","sr_p1":"SIRENFALL is a free browser scene: a shelter overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in your browser with Web Audio, not played from a recording. The siren is two tones a minor third apart, 515 Hz and 618 Hz, generated in real time, with a horn that sweeps once every 15 seconds.","sr_p2":"Rain and thunder carry on in the scene, with a shutter and a CRT monitor as additional controls. No signup, no install, works in any modern browser.","sr_p3_link":"How it works","sr_p3":"{link}: the siren physics, the numbers, and answers to common questions. Double-click the window or press F for fullscreen; click the wall monitor or press S to save a picture.","sr_p4":"Built by {author}. Source code: {repo} (MIT).","note_open":"Leave a note","note_prompt":"What would make this shelter better?","note_placeholder":"Write a note...","note_private":"Private. Only we read these. No name needed.","note_pin":"Pin it","note_thanks":"Pinned. Thank you.","note_fail":"The note did not stick. Try again later.","note_close":"Close"},
 "zh-Hans":{"label_siren":"警报","label_distance":"距离","label_storm":"风雨","label_lamp":"照明","label_camera":"监控","label_wipe":"雨刷","label_shutter":"防爆窗","label_breaker":"电闸","month_01":"一月","month_02":"二月","month_03":"三月","month_04":"四月","month_05":"五月","month_06":"六月","month_07":"七月","month_08":"八月","month_09":"九月","month_10":"十月","month_11":"十一月","month_12":"十二月","card_l1":"留在室内","card_l2":"切勿打开","card_l3":"此门","rad_l1":"检测到","rad_l2":"辐射","hint_click_sound":"点击任意位置开启声音。","hint_tap_sound":"轻触任意位置开启声音。","hint_breaker_desktop":"合上电闸，为警报器供电。","hint_breaker_touch":"合上电闸。","hp_initial":"建议佩戴耳机","hp_desktop":"建议佩戴耳机。按 F 键全屏。","hp_touch":"建议佩戴耳机。双击全屏。","disclaimer":"警报声由浏览器实时合成，并非录音。","audio_failed":"音频启动失败：","rotate_phone":"请将手机横过来。","sr_h1":"SIRENFALL：浏览器中的民防警报场景","sr_p1":"SIRENFALL 是一个免费的浏览器场景：一座俯瞰雨中城市的防空掩体。推上电闸手柄，为民防警报器供电。警报声由 Web Audio 在你的浏览器中实时合成，并非播放录音。警报由相隔小三度的两个音组成，分别为 515 Hz 和 618 Hz，实时生成，喇叭每 15 秒转动扫过一次。","sr_p2":"场景中雨声和雷声持续不断，另有防爆窗和 CRT 监视器可供操作。无需注册，无需安装，任何现代浏览器均可运行。","sr_p3_link":"工作原理","sr_p3":"{link}：警报的物理原理、相关数据和常见问题解答。双击画面或按 F 键进入全屏；点击墙上的监视器或按 S 键保存图片。","sr_p4":"制作：{author}。源代码：{repo}（MIT 许可）。"},
 "zh-Hant":{"label_siren":"警報","label_distance":"距離","label_storm":"風雨","label_lamp":"照明","label_camera":"閉路電視","label_wipe":"雨刷","label_shutter":"防爆窗","label_breaker":"電閘","month_01":"一月","month_02":"二月","month_03":"三月","month_04":"四月","month_05":"五月","month_06":"六月","month_07":"七月","month_08":"八月","month_09":"九月","month_10":"十月","month_11":"十一月","month_12":"十二月","card_l1":"留在室內","card_l2":"切勿打開","card_l3":"此門","rad_l1":"探測到","rad_l2":"輻射","hint_click_sound":"點擊任意位置開啟聲音。","hint_tap_sound":"輕觸任意位置開啟聲音。","hint_breaker_desktop":"合上電閘，為警報器供電。","hint_breaker_touch":"合上電閘。","hp_initial":"建議使用耳機","hp_desktop":"建議使用耳機。按 F 鍵切換全屏。","hp_touch":"建議使用耳機。雙擊切換全屏。","disclaimer":"警報聲由瀏覽器實時合成，並非錄音。","audio_failed":"聲音啟動失敗：","rotate_phone":"請將手機轉為橫向。","sr_h1":"SIRENFALL：瀏覽器中的民防警報場景","sr_p1":"SIRENFALL 是一個免費的瀏覽器場景：一座俯瞰雨中城市的防空掩體。推上電閘手柄，為民防警報器供電。警報聲由 Web Audio 在你的瀏覽器中實時合成，並非播放錄音。警報由相隔小三度的兩個音組成，分別為 515 Hz 和 618 Hz，實時生成，喇叭每 15 秒轉動掃過一次。","sr_p2":"場景中雨聲和雷聲持續不斷，另有防爆窗和 CRT 顯示器可供操作。無需註冊，無需安裝，任何現代瀏覽器均可運行。","sr_p3_link":"運作原理","sr_p3":"{link}：警報的物理原理、相關數據及常見問題解答。雙擊畫面或按 F 鍵切換全屏；點擊牆上的顯示器或按 S 鍵儲存圖片。","sr_p4":"製作：{author}。原始碼：{repo}（MIT 授權）。"},
 "es":{"label_siren":"SIRENA","label_distance":"DISTANCIA","label_storm":"TORMENTA","label_lamp":"LUZ","label_camera":"CÁMARA","label_wipe":"LIMPIAR","label_shutter":"PERSIANA","label_breaker":"DISYUNTOR","month_01":"ENERO","month_02":"FEBRERO","month_03":"MARZO","month_04":"ABRIL","month_05":"MAYO","month_06":"JUNIO","month_07":"JULIO","month_08":"AGOSTO","month_09":"SEPTIEMBRE","month_10":"OCTUBRE","month_11":"NOVIEMBRE","month_12":"DICIEMBRE","card_l1":"QUÉDESE DENTRO","card_l2":"NO ABRA","card_l3":"LA PUERTA","rad_l1":"RADIACIÓN","rad_l2":"DETECTADA","hint_click_sound":"Haz clic en cualquier parte para activar el sonido.","hint_tap_sound":"Toca en cualquier parte para activar el sonido.","hint_breaker_desktop":"Acciona el disyuntor para encender la sirena.","hint_breaker_touch":"Acciona el disyuntor.","hp_initial":"Se recomiendan auriculares","hp_desktop":"Se recomiendan auriculares. F para pantalla completa.","hp_touch":"Usa auriculares. Toca dos veces para pantalla completa.","disclaimer":"La sirena se sintetiza en tiempo real en tu navegador. No es una grabación.","audio_failed":"Error de audio: ","rotate_phone":"Pon el teléfono en horizontal.","sr_h1":"SIRENFALL: una escena de sirena de defensa civil en el navegador","sr_p1":"SIRENFALL es una escena gratuita para el navegador: un refugio con vistas a una ciudad bajo la lluvia. Acciona la palanca del disyuntor para encender una sirena de defensa civil, sintetizada en tiempo real en tu navegador con Web Audio, no reproducida desde una grabación. La sirena son dos tonos separados por una tercera menor, 515 Hz y 618 Hz, generados en tiempo real, con una bocina que gira una vez cada 15 segundos.","sr_p2":"La lluvia y los truenos continúan en la escena, con una persiana y un monitor CRT como controles adicionales. Sin registro ni instalación; funciona en cualquier navegador moderno.","sr_p3_link":"Cómo funciona","sr_p3":"{link}: la física de la sirena, las cifras y respuestas a preguntas frecuentes. Haz doble clic en la ventana o pulsa F para pantalla completa; haz clic en el monitor de la pared o pulsa S para guardar una imagen.","sr_p4":"Creado por {author}. Código fuente: {repo} (MIT)."},
@@ -3645,8 +3694,10 @@ function buildFrame() {
     for (let i = 1; i <= 5; i++) { x.beginPath(); x.moveTo(spx + 6, spy + i * 7.6); x.lineTo(spx + 32, spy + i * 7.6); x.stroke(); }
     x.fillStyle = "rgba(140,210,150,0.45)"; x.beginPath(); x.arc(spx + 30, spy + 46, 1.7, 0, 7); x.fill();
     // pinned notices, curling
+    L.papers = []; // where they hang, for the click that opens the note
     for (let i = 0; i < 3; i++) {
       const nx = apX * 0.5 - 28 + i * 16 + r() * 6, ny = h * 0.50 + i * 40 + r() * 9;
+      L.papers.push({ x: nx, y: ny, w: 24, h: 32 });
       x.save(); x.translate(nx, ny); x.rotate((r() - 0.5) * 0.22);
       x.fillStyle = "rgba(158,150,132," + (0.36 - i * 0.06).toFixed(2) + ")";
       x.fillRect(0, 0, 24, 32);
@@ -3838,6 +3889,7 @@ function resize() {
   vigGrad.addColorStop(1, "rgba(0,0,0,0.46)");
   document.getElementById("hint").style.top = L.hintY + "px";
   document.getElementById("hp").style.top = (L.hintY + 26) + "px";
+  noteLayout();
 }
 let rsT = null;
 addEventListener("resize", () => { clearTimeout(rsT); rsT = setTimeout(resize, 140); });
@@ -5486,8 +5538,10 @@ function hitTest(px, py) {
   return null;
 }
 cv.addEventListener("pointerdown", e => {
+  const was = !!ctx;
   ensureAudio(); // a tap anywhere brings the sound up, not only on a control
   const k = hitTest(e.clientX, e.clientY);
+  NT.dn = !k && was && e.button === 0 && paperAt(e.clientX, e.clientY); // the note opens on the click that follows
   if (!k) return;
   cv.setPointerCapture(e.pointerId);
   grab = { kind: k, x0: e.clientX, y0: e.clientY, th0: leverTh, moved: 0 };
@@ -5504,6 +5558,7 @@ cv.addEventListener("pointermove", e => {
   if (!grab) {
     const k = hitTest(e.clientX, e.clientY);
     if (k !== hover) { hover = k; cv.classList.toggle("hand", !!k); }
+    if (NT.on && ctx) { const pp = !k && paperAt(e.clientX, e.clientY); if (pp !== NT.hov) { NT.hov = pp; cv.classList.toggle("paper", pp); } }
     return;
   }
   const dy = e.clientY - grab.y0;
@@ -5563,7 +5618,7 @@ cv.addEventListener("wheel", e => {
 }, { passive: false });
 cv.addEventListener("dblclick", e => {
   const k = hitTest(e.clientX, e.clientY);
-  if (!k) toggleFullscreen();
+  if (!k && !(NT.on && paperAt(e.clientX, e.clientY)) && performance.now() - NT.last > 600) toggleFullscreen();
 });
 
 /* ---------- fullscreen, idle cursor, snapshot ---------- */
@@ -5616,10 +5671,94 @@ function snapshot() {
 }
 addEventListener("keydown", e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+  const tg = e.target && e.target.tagName; if (tg === "TEXTAREA" || tg === "INPUT" || tg === "BUTTON") return; // typing in the note is not a shortcut
   if (!rotShown) ensureAudio(); // any key brings the sound up too
   if (e.code === "KeyF" || e.key === "f" || e.key === "F") toggleFullscreen(); // the key by position, so other keyboard layouts work too
   else if (e.code === "KeyS" || e.key === "s" || e.key === "S") snapshot();
 });
+
+/* ---------- the private note: click a pinned notice on the left wall and pin a few words for the makers (fine pointer, after the scene has started) ---------- */
+const NT = { on: false, open: false, busy: false, hov: false, dn: false, at: 0, last: -1e9, tm: 0, opener: null, box: document.getElementById("note"), btn: document.getElementById("nbtn") };
+{
+  const q = s => NT.box.querySelector(s);
+  NT.ta = q("textarea"); NT.hp = q(".nh"); NT.msg = q(".nm"); NT.yes = q(".ny"); NT.x = q(".nx");
+  q(".np").textContent = t("note_prompt"); q(".nv").textContent = t("note_private"); NT.yes.textContent = t("note_pin"); NT.x.setAttribute("aria-label", t("note_close"));
+  NT.ta.placeholder = t("note_placeholder"); NT.ta.lang = LG.h; NT.ta.dir = "auto"; NT.btn.setAttribute("aria-label", t("note_open"));
+  if (RTL) NT.box.dir = "rtl";
+  if (FEX) NT.box.style.fontFamily = FFB;
+  NT.yes.addEventListener("click", noteSend); NT.x.addEventListener("click", () => noteClose());
+  NT.btn.addEventListener("click", () => noteOpen());
+  cv.addEventListener("click", () => { if (NT.dn) { NT.dn = false; noteOpen(); } });
+}
+const noteFine = matchMedia("(pointer: fine)");
+function paperAt(px, py) { if (!NT.on) return false; for (const p of L.papers) if (px >= p.x - 4 && px <= p.x + p.w + 4 && py >= p.y - 4 && py <= p.y + p.h + 4) return true; return false; }
+// where the note goes: on the left wall beside the papers if the wall is wide enough, else under the window sill; never over the glass
+function noteSpot(nw, nh) {
+  const { apX, sillY, papers } = L;
+  if (apX - 8 - 4 - 12 >= nw) return { x: 12, y: clamp(papers[0].y - 30, 12, H - 14 - nh) };
+  const y = sillY + 12;
+  return y + nh <= H - 14 ? { x: clamp(apX * 0.5 - 36, 12, W - nw - 12), y } : null;
+}
+function noteLayout() {
+  const ps = L.papers || [];
+  NT.on = ps.length > 0 && noteFine.matches && W >= 720 && H >= 480 && !rotShown && (L.apX - 24 >= 260 || H - 14 - (L.sillY + 12) >= 190);
+  if (!NT.on && NT.hov) { NT.hov = false; cv.classList.remove("paper"); }
+  if (!NT.on) { NT.btn.style.display = "none"; if (NT.open) noteClose(true); return; }
+  const x0 = Math.min(...ps.map(p => p.x)) - 6, y0 = Math.min(...ps.map(p => p.y)) - 6, x1 = Math.max(...ps.map(p => p.x + p.w)) + 6, y1 = Math.max(...ps.map(p => p.y + p.h)) + 6;
+  Object.assign(NT.btn.style, { display: "block", left: x0 + "px", top: y0 + "px", width: x1 - x0 + "px", height: y1 - y0 + "px" });
+  if (NT.open) notePlace();
+}
+function notePlace() {
+  const b = NT.box; NT.ta.style.height = "";
+  let sp = noteSpot(260, b.offsetHeight);
+  if (!sp) { NT.ta.style.height = "44px"; sp = noteSpot(260, b.offsetHeight); } // a long prompt: fewer lines rather than none
+  if (!sp) { noteClose(true); return false; }
+  b.style.left = sp.x + "px"; b.style.top = sp.y + "px";
+  return true;
+}
+function noteOpen() {
+  if (!NT.on || NT.open) return;
+  const b = NT.box; NT.opener = document.activeElement; NT.msg.textContent = ""; b.className = "open"; b.style.minHeight = ""; b.style.visibility = "hidden";
+  if (!notePlace()) { b.style.visibility = ""; return; }
+  b.style.visibility = ""; NT.open = true; NT.at = performance.now(); NT.yes.disabled = false;
+  addEventListener("pointerdown", noteOut, true); addEventListener("keydown", noteKey, true);
+  NT.ta.focus({ preventScroll: true });
+}
+function noteClose(force) {
+  if (!NT.open || (NT.busy && !force)) return;
+  clearTimeout(NT.tm); removeEventListener("pointerdown", noteOut, true); removeEventListener("keydown", noteKey, true);
+  NT.box.className = ""; NT.open = false; NT.last = performance.now();
+  const o = NT.opener; NT.opener = null;
+  if (o && o !== document.body && o.focus && document.contains(o)) o.focus({ preventScroll: true });
+}
+function noteOut(e) { // a click outside only closes the note; the scene never sees it
+  if (NT.box.contains(e.target) || e.target === NT.btn) return;
+  e.stopPropagation();
+  if (performance.now() - NT.at > 500) noteClose();
+}
+function noteKey(e) {
+  if (e.key === "Escape") { e.preventDefault(); noteClose(); }
+  else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target === NT.ta) { e.preventDefault(); noteSend(); }
+}
+function noteSend() {
+  if (NT.busy) return;
+  const text = NT.ta.value.trim();
+  if (!text) { NT.ta.focus(); return; }
+  NT.busy = true; NT.yes.disabled = true; NT.msg.textContent = ""; NT.box.classList.remove("bad");
+  fetch("/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, lang: LG.h, hp: NT.hp.value }) })
+    .then(r => r.ok ? r.json().then(j => !!j && j.ok === true, () => false) : false, () => false)
+    .then(ok => {
+      NT.busy = false; NT.yes.disabled = false;
+      if (ok) NT.ta.value = ""; // sent: the words are gone from the page
+      if (!NT.open) return;
+      if (ok) { NT.box.style.minHeight = NT.box.offsetHeight + "px"; NT.box.classList.add("done"); NT.msg.textContent = t("note_thanks"); NT.tm = setTimeout(noteFold, 2500); }
+      else { NT.msg.textContent = t("note_fail"); NT.box.classList.add("bad"); }
+    });
+}
+function noteFold() { // the paper folds away and the wall is as it was
+  if (RM) { noteClose(true); return; }
+  NT.box.classList.add("fold"); NT.tm = setTimeout(() => noteClose(true), 650);
+}
 
 /* ---------- weather engine: nothing changes fast enough to catch it changing ---------- */
 function stepWeather(t, dt) {
