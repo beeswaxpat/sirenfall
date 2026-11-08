@@ -4486,7 +4486,7 @@ function drawLampDust(t) {
   // about twenty specks that hang and wander slowly, and only show where the lamp's light is: they fade out of it and into the dark
   const la = lampPos();
   DL.k = STORY.deadT >= 0 ? 0 : clamp(1 - (roomDark - blimpDark(0)) / 0.62, 0, 1); // the room's darkness already follows the LAMP knob, the blast flicker and the power
-  DL.x = la.x; DL.y = la.y; DL.u = la.u; DL.R = Math.min(L.w, L.h) * 0.46;
+  DL.x = la.x; DL.y = la.y; DL.u = la.u; DL.R = Math.min(L.w, L.h) * 0.28; // the halo under the hood, not the whole sky
   if (DL.k < 0.02) return;
   const x0 = Math.max(4, la.x - DL.R), bw = Math.min(L.w - 4, la.x + DL.R * 0.5) - x0, bh = DL.R * 1.1, sc = clamp(L.h / 720, 0.8, 1.6), sp = dustSprites().speck;
   const n = RM ? 8 : DN, tm = RM ? 0 : t; // reduced motion: a few specks hanging still
@@ -4495,8 +4495,8 @@ function drawLampDust(t) {
     const x = x0 + (DSP.x[i] + 0.035 * Math.sin(tm * DSP.fx[i] + DSP.ph[i]) + 0.02 * Math.sin(tm * DSP.fx[i] * 2.3 + DSP.ph[i] * 2.1)) * bw, y = la.y + v * bh;
     const ll = lampLitAt(x, y); if (ll < 0.01) continue;
     const env = Math.min(1, v / 0.1) * Math.min(1, (1 - v) / 0.1), tw = RM ? 1 : 0.7 + 0.3 * Math.sin(tm * 0.6 + DSP.ph[i] * 3); // fades at the ends of its run, glints slowly as it turns
-    const s = DSP.sz[i] * sc;
-    g.globalAlpha = Math.min(0.6, DSP.al[i] * ll * env * tw * 2); g.drawImage(sp, x - s, y - s, s * 2, s * 2);
+    const s = DSP.sz[i] * sc, ow = x > L.apX && x < L.apX + L.apW && y > L.apY && y < L.apY + L.apH ? 0.35 : 1; // out over the glass they barely show, they belong to the room
+    g.globalAlpha = Math.min(0.6, DSP.al[i] * ll * env * tw * 2 * ow); g.drawImage(sp, x - s, y - s, s * 2, s * 2);
   }
   g.globalAlpha = 1;
 }
@@ -4505,7 +4505,7 @@ function dustSprites() {
   if (dustSp) return dustSp;
   const mk = (n, f) => { const c = document.createElement("canvas"); c.width = c.height = n; f(c.getContext("2d"), n); return c; };
   const rad = (rgb, stops) => (x, n) => { const gr = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); for (const [o, a] of stops) gr.addColorStop(o, "rgba(" + rgb + "," + a + ")"); x.fillStyle = gr; x.fillRect(0, 0, n, n); };
-  const soft = [[0, 0.5], [0.4, 0.36], [0.75, 0.1], [1, 0]], spk = [[0, 0.95], [0.3, 0.5], [0.65, 0.14], [1, 0]]; // puffs are flat and hazy so neighbors merge; a lamp speck keeps a brighter heart
+  const soft = [[0, 0.5], [0.4, 0.36], [0.75, 0.1], [1, 0]], spk = [[0, 0.6], [0.35, 0.4], [0.7, 0.12], [1, 0]]; // puffs are flat and hazy so neighbors merge; a lamp speck keeps a brighter heart
   const chip = (pts, fc) => mk(16, (x, n) => { // a splinter of concrete: dark, uneven, a lighter facet on one side; drawn big and shrunk so the edge is soft
     const big = mk(32, (b) => { b.fillStyle = "rgb(30,26,22)"; b.beginPath(); pts.forEach(([px, py], i) => i ? b.lineTo(px, py) : b.moveTo(px, py)); b.closePath(); b.fill(); b.fillStyle = "rgba(92,82,68,0.85)"; b.beginPath(); fc.forEach(([px, py], i) => i ? b.lineTo(px, py) : b.moveTo(px, py)); b.closePath(); b.fill(); });
     x.drawImage(big, 0, 0, n, n);
