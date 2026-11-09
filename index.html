@@ -1161,7 +1161,7 @@ addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; 
    and then it comes after the bomb. ?score=b for the simpler version, ?sparse for the score's own (slower) clocks */
 const STORM_CYCLE_LIVE = false; // the storm swells and eases over the minutes (Patrick tests it on his phone first, ?wx=5&evtest=1; flip when he says go)
 const NEW_EVENTS_LIVE = true; // the second blast and the blimp happen on their own (Patrick passed them on his phone 2026-11-06)
-const HALL_LIVE = false; // something in the hall (about ten minutes in) stays off for ordinary visitors until Patrick has tried ?hall on his phone; the test flag works either way
+const HALL_LIVE = false; // something in the hall (about six minutes in) stays off for ordinary visitors until Patrick has tried ?hall on his phone; the test flag works either way
 const RAID_SCORE = "a", RAID_ODDS_POST = 1 / 3, RAID_ODDS_CITY = 0.4;
 const RAID = { at: -1, u: -1, rows: [], post: false, score: RAID_SCORE, tsc: 0.42, rev: 0, endAt: 0, snd: null, done: false };
 let planeC = null;
@@ -5648,16 +5648,16 @@ function stepStory(t, dt) {
 }
 
 /* ---------- SOMETHING IN THE HALL (event block: roll, score, steps, handle; hooks: HALL_LIVE by NEW_EVENTS_LIVE, one line in frame) ----------
-   About ten minutes into a stay, something walks up the corridor outside the shelter door: slow heavy steps, far off on wet concrete,
-   coming closer, stopping right outside. A few seconds of nothing but the storm. The handle is tried once: a lever pressed down, the
-   latch takes the strain with a dull clunk, the steel door shifts in its frame. A long wait. Then the steps go away, slower. The door
+   About six minutes into a stay, something walks up the corridor outside the shelter door: slow heavy steps, far off on wet concrete,
+   coming closer, stopping right outside. A few seconds of nothing but the storm. The handle is tried two or three times, a person
+   testing a locked door: the latch plays in the strike plate, the steel door barely shifts in its frame. A long wait. Then the steps go away, slower. The door
    holds and nothing comes in; the only thing to see is the lamp's small swing and a little dust. It sounds from behind the door (the
    knock's place, left of centre) through the room's own gate, so the STORM knob and the volume treat it as they treat the knock.
-   Natural odds: a visitor's first stay that reaches about ten minutes, then about 1 in 3 long stays (sf.hall), only once HALL_LIVE is true.
+   Natural odds: a visitor's first stay that reaches about six minutes, then about 1 in 3 long stays (sf.hall), only once HALL_LIVE is true.
    Never on top of another event: it waits for the bomb and what follows, the second blast, the raid, the blimp, a knock, the broadcast;
-   if no quiet moment comes by 14 minutes it skips that stay. A power failure skips it. It pauses while the sound is down or the page is away.
+   if no quiet moment comes by 10 minutes it skips that stay. A power failure skips it. It pauses while the sound is down or the page is away.
    Local test: ?hall (5 s after the sound comes on) or ?hall=N; on the live site only with &evtest=1. Times below are story seconds. */
-const HALL_AT0 = 570, HALL_AT1 = 660, HALL_LIMIT = 840, HALL_AHEAD = 0.3, HALL_GAIN = 0.45, HALL_CLUNK = 1.0; // when it may start (9:30 to 11:00), the latest it may start (14:00), how far ahead sounds are queued, loudness, the clunk's place in the handle
+const HALL_AT0 = 330, HALL_AT1 = 450, HALL_LIMIT = 600, HALL_AHEAD = 0.3, HALL_GAIN = 0.45; // when it may start (5:30 to 7:30), the latest it may start (10:00), how far ahead sounds are queued, loudness
 const HALL = { at: -1, test: false, limit: HALL_LIMIT, u: -1, done: false, sc: null, i: 0, rig: null, react: -1 };
 {
   const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
@@ -5693,8 +5693,9 @@ function hallScore() { // the whole thing as a list of sounds, each at a time in
   const tStop = ev[n - 1].t;
   ev.push({ t: tStop + 0.62, k: "step", d: 1.2, pit: 0.95, soft: 0.4, wet: false, scuff: true }); // the other foot comes up beside it
   const tH = tStop + 0.62 + rg(3.3, 4.8); // a few seconds of nothing, then the handle
-  ev.push({ t: tH, k: "handle" });
-  const tL = tH + 3.0 + rg(8, 12); // the long wait, then it turns
+  const hd = hallTries();
+  ev.push({ t: tH, k: "handle", tries: hd.tries, hit: hd.hit, end: hd.end });
+  const tL = tH + hd.end + rg(6.5, 10); // the long wait, then it turns
   ev.push({ t: tL, k: "step", d: 1.2, pit: 0.9, soft: 0.8, wet: false, scuff: true, turn: true });
   const m = 7 + Math.floor(R() * 2); let g = 1.4; t = tL + 0.75;
   for (let j = 0; j < m; j++) { // slower than it came, and fading
@@ -5776,34 +5777,43 @@ function hallStep(rig, e, at) { // one step: the heel lands, the forefoot comes 
   }
   if (e.scuff) hScuff(rig, mix, t2 + 0.03, rg(0.14, 0.26), rg(1300, 2200), 0.28 * h); // the sole drags
 }
-function hallHandle(rig, at) { // the handle tried once: a hand on the lever, the lever pressed down and held, the latch takes the strain, the door shifts, the lever lets go
-  const c = rig.c, R = Math.random, rg = (a, b) => a + R() * (b - a);
+function hallTries() { // the handle tried two or three times, a person testing a locked door: when each try starts and how hard it is
+  const R = Math.random, rg = (a, b) => a + R() * (b - a), n = R() < 0.5 ? 2 : 3, tries = [];
+  let t = rg(0.5, 0.7), hard = n - 1 - (n === 3 && R() < 0.4 ? 1 : 0); // which one is the hardest: usually the last
+  for (let i = 0; i < n; i++) { tries.push({ t, v: i === hard ? 1 : rg(0.45, 0.7) }); t += rg(0.8, 1.5) + (i === 0 ? 0.2 : 0); }
+  return { tries, hit: tries[hard].t + 0.2, end: tries[n - 1].t + 1.0 };
+}
+function hallTry(rig, mix, at, v) { // one try at the handle: it goes down a little way, the latch meets the strike plate and plays in it, the door barely leans, the handle comes back
+  const R = Math.random, rg = (a, b) => a + R() * (b - a);
+  hNoise(rig, mix, at, "bandpass", rg(650, 800), 3, 0.9 * v, 0.2, 0.07, rg(420, 520)); // a heavy handle moving: metal play
+  hNoise(rig, mix, at, "bandpass", 120, 0.8, 1.4 * v, 0.25, 0.08);
+  const l = at + rg(0.15, 0.24); // the tongue of the latch meets the plate: dull, short
+  hTone(rig, mix, l, 85, 55, 0.3 * v, 0.18);
+  hNoise(rig, mix, l, "bandpass", 180, 1.0, 3.5 * v, 0.12);
+  hNoise(rig, mix, l, "bandpass", rg(390, 440), 9, 2.2 * v, 0.28); // the door rings, low
+  for (let k = 0, nr = 2 + Math.floor(R() * 3), tk = l + rg(0.05, 0.1); k < nr; k++) { // the latch rattles in the plate, uneven and dying
+    hNoise(rig, mix, tk, "bandpass", rg(1000, 1500), 8, 2.4 * v * Math.pow(0.7, k) * rg(0.6, 1), rg(0.025, 0.05));
+    if (R() < 0.5) hNoise(rig, mix, tk, "bandpass", rg(260, 340), 3, 1.6 * v * rg(0.5, 1), 0.06);
+    tk += rg(0.05, 0.16);
+  }
+  hNoise(rig, mix, l + 0.05, "bandpass", 95, 2, 1.6 * v, 0.4, 0.1); // the door leans on its frame, barely
+  if (v > 0.9) { hTone(rig, mix, l + 0.04, 142, 141, 0.06, 0.5, 0.01); hTone(rig, mix, l + 0.2, 200, 225, 0.03, 0.4, 0.1, "sawtooth"); } // the hardest: the panel's own note, a hinge
+  hNoise(rig, mix, at + rg(0.5, 0.65), "bandpass", rg(800, 1000), 5, 0.7 * v, 0.05); // the handle comes back up
+}
+function hallHandle(rig, e, at) { // someone tries the door: a hand on the handle, two or three tries, unsuccessful, the handle let go
+  const c = rig.c, R = Math.random;
   const mix = new GainNode(c, { gain: 1 }), lp = new BiquadFilterNode(c, { type: "lowpass", frequency: 4200, Q: 0.5 });
   const dry = new GainNode(c, { gain: 0.72 }), snd = new GainNode(c, { gain: 0.15 });
   mix.connect(lp); lp.connect(dry).connect(rig.bus); lp.connect(snd).connect(rig.conv);
-  hNoise(rig, mix, at, "bandpass", 2300, 4, 0.5, 0.02); // a hand finds the lever
-  hNoise(rig, mix, at + 0.05, "bandpass", 700, 1, 0.4, 0.08);
-  const a = at + 0.32; // the lever goes down: steel grinding on steel, a weight behind it, the ratchet ticking
-  hNoise(rig, mix, a, "bandpass", 1100, 5, 1.6, 0.6, 0.22, 620);
-  hNoise(rig, mix, a, "bandpass", 130, 0.8, 1.6, 0.6, 0.3);
-  for (let k = 0, tk = a + 0.08; k < 5; k++) { hNoise(rig, mix, tk, "bandpass", rg(1500, 1900), 6, 1.2, 0.016); tk += 0.09 + k * 0.025 + R() * 0.02; }
-  const lt = at + HALL_CLUNK; // the latch takes the strain: dull, heavy
-  hTone(rig, mix, lt, 92, 48, 0.5, 0.3);
-  hNoise(rig, mix, lt, "bandpass", 170, 1.0, 5.5, 0.16);
-  hNoise(rig, mix, lt, "bandpass", 410, 9, 4.5, 0.36); // the door rings, low
-  hNoise(rig, mix, lt, "bandpass", 880, 12, 2.2, 0.22);
-  hNoise(rig, mix, lt, "bandpass", 2000, 1, 0.12, 0.012);
-  for (const [f, v, dd] of [[142, 0.1, 0.7], [237, 0.06, 0.5], [391, 0.035, 0.4]]) hTone(rig, mix, lt + 0.005, f, f * 0.995, v, dd, 0.01); // the panel's own notes
-  hNoise(rig, mix, lt + 0.1, "bandpass", 95, 2, 2.4, 0.6, 0.25); // the door leans on its frame
-  hTone(rig, mix, lt + 0.15, 200, 235, 0.05, 0.55, 0.12, "sawtooth"); // a hinge complains
-  for (const [d, v] of [[0.12, 0.9], [0.22, 0.6], [0.36, 0.65], [0.55, 0.3], [0.83, 0.2]]) hNoise(rig, mix, lt + d + R() * 0.03, "bandpass", rg(1100, 1400), 8, 3 * v, 0.04); // it rattles in the frame
-  const r = lt + 1.8; // the lever lets go and comes back up against its stop
-  hNoise(rig, mix, r, "bandpass", 1500, 3, 1.5, 0.03);
-  hNoise(rig, mix, r, "bandpass", 480, 5, 2.4, 0.12);
-  hTone(rig, mix, r, 72, 52, 0.22, 0.12);
-  hNoise(rig, mix, r + 0.14, "bandpass", 900, 8, 0.7, 0.05);
+  hNoise(rig, mix, at, "bandpass", 2300, 4, 0.4, 0.02); // a hand finds the handle
+  hNoise(rig, mix, at + 0.05, "bandpass", 700, 1, 0.35, 0.08);
+  for (const T of e.tries) hallTry(rig, mix, at + T.t, T.v);
+  const r = at + e.end - 0.1; // let go: it settles back against its stop
+  hNoise(rig, mix, r, "bandpass", 1500, 3, 1.0, 0.03);
+  hNoise(rig, mix, r, "bandpass", 480, 5, 1.8, 0.12);
+  hTone(rig, mix, r, 72, 52, 0.18, 0.12);
 }
-function hallPlay(rig, e, at) { if (e.k === "handle") hallHandle(rig, at); else hallStep(rig, e, at); }
+function hallPlay(rig, e, at) { if (e.k === "handle") hallHandle(rig, e, at); else hallStep(rig, e, at); }
 function hallEnd(quick) { // the walk is over (or cut short): close the corridor, let the tail die, drop it all
   const H = HALL, r = H.rig; H.done = true; H.rig = null; H.sc = null;
   if (!r) return;
@@ -5827,7 +5837,7 @@ function stepHall(t, dt) {
   while (H.i < ev.length && ev[H.i].t <= H.u + HALL_AHEAD) { // queue what is about to happen, a moment before it does
     const e = ev[H.i++];
     hallPlay(H.rig, e, ctx.currentTime + Math.max(0.01, e.t - H.u));
-    if (e.k === "handle") H.react = e.t + HALL_CLUNK;
+    if (e.k === "handle") H.react = e.t + e.hit;
   }
   if (H.react >= 0 && H.u >= H.react) { H.react = -1; if (!RM) { BLAST.swingV += 0.012; spawnDust(3); } } // the door takes the strain: the lamp stirs, a little dust comes down
   if (H.u > sc.tStop - 5 && H.u < sc.tL && nextStrikeT < t + 3) nextStrikeT = t + 3; // no lightning over the quiet part
