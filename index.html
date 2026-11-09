@@ -1067,6 +1067,8 @@ let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
 let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, shakeDur = 0.32, shakeAmp = 6, feedC = null, feedOpenC = null;
 let silC = null, lightC = null, mushC = null, cloudWarmC = null, cloudHotC = null, rotShown = false, variantT = null;
 let B2HIT = null; // the far blast's mark on the skyline (set while its broken plates are baked, and for good once they are on screen)
+let veilC = null; // far rain curtains: [pale for the night, dark for the morning]
+let bakeFlash = false, flashC = null, flashT = 0; // the city as a lightning flash shows it (made a moment after load, and again once the city is broken)
 let cityAfterC = null, silAfterC = null, fireL1 = null, fireL2 = null, afterFires = [], bakeAfter = false, nearM = null, silPallC = null, waveSilC = null, ruinSilC = null;
 let cloudC = null, cloudLitC = null, rainPhF = 0, rainPhN = 0, fogPh = 0, cloudPh = 0, wxAudioT = -9;
 /* weather: a slow random walk through calm, building, squall, passing; k is the rain intensity it drives */
@@ -1285,6 +1287,50 @@ function drawDayScud(t) { // the low scud catches a little of the grey along its
     const a = 0.85 * D.k * (1 - 0.3 * WX.k) * (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88);
     if (a > 0.003) softBlob(g, st.x + Math.sin(k * 4 + i * 2.1) * 3 * ps + k * k * apW * 0.08 * (0.5 + lean) * (0.7 + (i % 3) * 0.25), st.y - rise * apH * 0.32, (9 + k * 38) * ps, "12,13,16", a, 0.8 + 0.2 * k);
   }
+}
+function drawFlashRoom(flashA) {
+  // lightning comes in at the window: the deep side of the opening that faces the strike takes it hardest, then the sill and the
+  // top edge of the console, then the wall around the opening; the corners get nothing. It does not care how the lamp is set
+  if (flashA < 0.006 || !L) return;
+  const a = Math.min(1, flashA * 4.4) * (1 - 0.92 * shutterPos) * (1 - 0.6 * BLIMP.dk);
+  if (a < 0.01) return;
+  const { apX, apY, apW, apH } = L, sxk = strike ? clamp(strike.pts[0][0], 0, 1) : 0.5, rv = 16, key = W + "x" + H, F = drawFlashRoom;
+  if (F.k !== key) {
+    const cx = apX + apW / 2, cy = apY + apH * 0.5, gr = g.createRadialGradient(cx, cy, Math.min(apW, apH) * 0.34, cx, cy, Math.max(W, H) * 0.6);
+    for (const [p, q] of [[0, 1], [0.28, 0.42], [0.65, 0.1], [1, 0]]) gr.addColorStop(p, "rgba(30,37,54," + q + ")");
+    F.g = gr; F.k = key;
+  }
+  g.save(); g.beginPath(); g.rect(0, 0, W, H); g.rect(apX, apY, apW, apH); g.clip("evenodd"); // never over the glass
+  g.globalCompositeOperation = "lighter";
+  g.globalAlpha = a; g.fillStyle = F.g; g.fillRect(0, 0, W, H);
+  const gl = Math.max(22, apW * 0.02); // the edge of the opening burns into the wall for a moment
+  for (const [x0, y0, x1, y1, rx, ry, rw, rh, kk] of [[apX, 0, apX - gl, 0, apX - gl, apY, gl, apH, 1 - sxk], [apX + apW, 0, apX + apW + gl, 0, apX + apW, apY, gl, apH, sxk],
+    [0, apY, 0, apY - gl, apX, apY - gl, apW, gl, 0.5], [0, apY + apH, 0, apY + apH + gl, apX, apY + apH, apW, gl, 0.7]]) {
+    const eg = g.createLinearGradient(x0, y0, x1, y1);
+    eg.addColorStop(0, "rgba(96,114,156," + (0.3 * a * (0.5 + kk)).toFixed(3) + ")"); eg.addColorStop(1, "rgba(96,114,156,0)");
+    g.globalAlpha = 1; g.fillStyle = eg; g.fillRect(rx, ry, rw, rh);
+  }
+  for (const [cx2, cy2, sx, sy, kk] of [[apX, apY, -1, -1, (1 - sxk + 0.5) / 2], [apX + apW, apY, 1, -1, (sxk + 0.5) / 2], [apX, apY + apH, -1, 1, (1 - sxk + 0.7) / 2], [apX + apW, apY + apH, 1, 1, (sxk + 0.7) / 2]]) {
+    const cg = g.createRadialGradient(cx2, cy2, 0, cx2, cy2, gl); // rounded at the corners
+    cg.addColorStop(0, "rgba(96,114,156," + (0.3 * a * (0.5 + kk)).toFixed(3) + ")"); cg.addColorStop(1, "rgba(96,114,156,0)");
+    g.fillStyle = cg; g.fillRect(sx < 0 ? cx2 - gl : cx2, sy < 0 ? cy2 - gl : cy2, gl, gl);
+  }
+  g.restore();
+  g.save(); g.globalCompositeOperation = "lighter"; // the reveals: the one turned to the strike is the bright one
+  for (const [s, kk] of [[0, sxk], [1, 1 - sxk]]) {
+    const x0 = s ? apX + apW : apX, x1 = s ? apX + apW - rv : apX + rv;
+    g.fillStyle = "rgba(150,172,225," + (a * (0.08 + 0.3 * kk)).toFixed(3) + ")";
+    g.beginPath(); g.moveTo(x0, apY); g.lineTo(x1, apY + rv * 0.6); g.lineTo(x1, apY + apH - rv * 0.6); g.lineTo(x0, apY + apH); g.closePath(); g.fill();
+  }
+  if (L.sill && L.console) {
+    const cs = L.console, hg = g.createLinearGradient(apX - 10, 0, apX + apW + 10, 0), pk = clamp(0.2 + 0.6 * sxk, 0.2, 0.8); // the wet sill top and the console's top edge, brightest under the strike
+    hg.addColorStop(0, "rgba(160,182,232,0.25)"); hg.addColorStop(pk, "rgba(160,182,232,1)"); hg.addColorStop(1, "rgba(160,182,232,0.25)");
+    g.fillStyle = hg;
+    g.globalAlpha = 0.5 * a; g.fillRect(apX - 10, L.sill.y, apW + 20, L.sill.tt);
+    g.globalAlpha = 0.12 * a; g.fillRect(apX - 10, L.sill.y + L.sill.tt, apW + 20, L.sill.t - L.sill.tt);
+    g.globalAlpha = 0.4 * a; g.fillRect(cs.px0 + 6, cs.py0 + 0.5, cs.px1 - cs.px0 - 12, 1.6);
+  }
+  g.restore();
 }
 function drawDayRoom() { // a faint cold light from the window on the walls; daylight needs no power, so it stays when the lamp is gone
   const D = DAY;
@@ -2883,6 +2929,46 @@ function drawFarCrane(x, cx, base, aw, ah) {
   x.beginPath(); x.moveTo(cx + jib * 0.7, top + 2); x.lineTo(cx + jib * 0.7, top + 2 + ah * 0.05); x.stroke();
 }
 
+function drawSkeleton(x, aw, ah, ext, after) {
+  // the tower the crane was building: clad to a little over half way, bare frame above that, the top floors only columns.
+  // Nobody came back to it. Own stream; it stands the same before and after the bomb (it is far from it)
+  const q = hashRng(31337), ps = clamp(ah / 540, 0.5, 1), bw = Math.max(26 * ps, aw * 0.036), bx = aw * 0.176, base = ah * 0.60, top = ah * 0.372;
+  const fh = Math.max(4.2, 6.4 * ps), nF = Math.floor((base - top) / fh), nC = Math.max(4, Math.round(bw / (7.5 * ps))), clad = Math.floor(nF * 0.42), col = "#131a26";
+  x.fillStyle = col; x.fillRect(bx, base - clad * fh, bw, clad * fh + ext);
+  x.fillStyle = "rgba(120,140,170,0.07)";
+  for (let f = 1; f < clad; f++) for (let c = 0; c < nC; c++) if (q() < 0.6) x.fillRect(bx + 2 + (bw - 4) * c / nC, base - f * fh + 1.2, Math.max(1.4, bw / nC - 2.4), fh * 0.5);
+  x.strokeStyle = col; x.lineCap = "butt";
+  for (let f = clad; f <= nF; f++) { // slabs: each one whole across until the top few, where the pour stopped part way
+    const y = base - f * fh, part = f >= nF - 1 ? 0.45 + q() * 0.3 : 1;
+    x.lineWidth = Math.max(1, 1.5 * ps); x.beginPath(); x.moveTo(bx - 1, y); x.lineTo(bx + bw * part + 1, y); x.stroke();
+    if (f === nF) break;
+    x.lineWidth = Math.max(0.8, 1.1 * ps);
+    for (let c = 0; c <= nC; c++) { // columns up to the next slab; a few never went in
+      const cx = bx + bw * c / nC;
+      if (cx > bx + bw * part + 0.5 || (f > nF - 3 && q() < 0.25)) continue;
+      x.beginPath(); x.moveTo(cx, y); x.lineTo(cx, y - fh - (f === nF - 1 ? 2 * q() : 0)); x.stroke();
+    }
+  }
+  // the hoist mast up one side, and tarps of formwork left on two floors (dark, hanging dead straight: nothing here flies)
+  x.lineWidth = Math.max(0.8, 1 * ps); x.beginPath(); x.moveTo(bx + bw + 3 * ps, base); x.lineTo(bx + bw + 3 * ps, top + fh * 2); x.stroke();
+  x.fillStyle = "rgba(8,11,17,0.85)";
+  for (let i = 0; i < 2; i++) { const f = clad + 1 + Math.floor(q() * Math.max(1, nF - clad - 3)), c = Math.floor(q() * (nC - 1)); x.fillRect(bx + bw * c / nC, base - (f + 1) * fh, bw / nC, fh * (0.6 + q() * 0.4)); }
+}
+function roofKit(x, q, bx, by, bw, tone, near) {
+  // what was left on the roofs (own stream per building): plant boxes, a tank on a frame, a dish that points at nothing, pipes, a mast
+  const s = near ? 1 : 0.62;
+  x.fillStyle = tone; x.strokeStyle = tone; x.lineCap = "butt";
+  const n = bw > 40 ? 3 : bw > 22 ? 2 : 1;
+  for (let i = 0; i < n; i++) {
+    const k = q(), px = bx + 3 + (bw - 10) * ((i + 0.15 + q() * 0.7) / n), u = q(), v = q();
+    if (k < 0.24) { const w = (5 + u * 6) * s, h = (2.5 + v * 3) * s; x.fillRect(px, by - h, w, h); if (near && v > 0.5) x.fillRect(px + w * 0.25, by - h - 1.6, w * 0.3, 1.6); } // plant box, a fan cowl on some
+    else if (k < 0.38 && bw > 20) { const w = (6 + u * 4) * s, h = (6 + v * 4) * s, lg = 3.5 * s; x.lineWidth = Math.max(0.7, s); x.beginPath(); x.moveTo(px + 1, by); x.lineTo(px + 1, by - lg); x.moveTo(px + w - 1, by); x.lineTo(px + w - 1, by - lg); x.moveTo(px + 1, by - lg); x.lineTo(px + w - 1, by); x.stroke(); x.fillRect(px, by - lg - h, w, h); x.fillRect(px - 0.6, by - lg - h - 1, w + 1.2, 1.2); } // tank on a braced frame, flat lid
+    else if (k < 0.50 && near) { const r = (2.6 + u * 1.6) * s, a = (v < 0.5 ? -1 : 1) * (0.5 + u * 0.5); x.lineWidth = 0.9; x.beginPath(); x.moveTo(px, by); x.lineTo(px, by - r * 1.3); x.stroke(); x.beginPath(); x.ellipse(px + Math.sin(a) * r * 0.5, by - r * 1.6, r, r * 0.42, a, 0, 7); x.fill(); } // dish, tipped over on its mount
+    else if (k < 0.66) { const h = (7 + u * 15) * s, ln = (v - 0.5) * h * 0.22; x.lineWidth = Math.max(0.6, 0.8 * s); x.beginPath(); x.moveTo(px, by); x.lineTo(px + ln, by - h); x.stroke(); x.beginPath(); x.moveTo(px + ln * 0.7 - 2 * s, by - h * 0.7); x.lineTo(px + ln * 0.7 + 2 * s, by - h * 0.7); x.moveTo(px + ln * 0.5 - 1.4 * s, by - h * 0.5); x.lineTo(px + ln * 0.5 + 1.4 * s, by - h * 0.5); x.stroke(); } // aerial with two crossbars
+    else if (k < 0.78 && near && bw > 30) { const w = (9 + u * 12) * s; x.lineWidth = 1.2; x.beginPath(); x.moveTo(px, by - 1.6); x.lineTo(px + w, by - 1.6); x.moveTo(px + w, by - 1.6); x.lineTo(px + w, by); x.moveTo(px + w * 0.4, by - 1.6); x.lineTo(px + w * 0.4, by); x.stroke(); } // a pipe run on stubs
+  }
+}
+
 function tint(col, d) {
   // shift a color by d levels per channel; returns hex so shade() can take it
   const [r0, g0, b0] = rgbOf(col).split(",").map(Number);
@@ -2940,7 +3026,7 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
     const fx = sgn > 0 ? bx + bw : bx, f = Math.min(0.5, sw / Math.abs(toward));
     const yTop = roofAt(pts, sgn > 0 ? bx + bw - 0.5 : bx + 0.5), xFar = fx + sgn * sw;
     const yTopFar = yTop + (eyeY - yTop) * f, yBaseFar = baseY + ext + (eyeY - baseY - ext) * f;
-    x.fillStyle = tint(col, 9);
+    x.fillStyle = tint(col, bakeFlash ? 33 : 9); // in a flash the side that is turned to it is the bright one
     x.beginPath(); x.moveTo(fx, yTop); x.lineTo(xFar, yTopFar); x.lineTo(xFar, yBaseFar); x.lineTo(fx, baseY + ext); x.closePath(); x.fill();
     const wa = ly.winA * 0.8;
     for (let wy = yTop + 6; wy < baseY - 6; wy += gy) {
@@ -2987,7 +3073,7 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
         if (q < missP + brokenP) { x.fillStyle = "rgba(0,0,0,0.34)"; x.fillRect(wx - 0.4, wy - 0.4, www + 0.8, whh + 0.8); continue; }
         if (q < missP + brokenP + boardP) { x.fillStyle = "rgba(24,20,16,0.55)"; x.fillRect(wx - 0.3, wy - 0.3, www + 0.6, whh + 0.6); continue; }
         const a = ly.winA * fv * (0.5 + r() * 0.8) * (ft === 1 ? 0.8 : 1);
-        x.fillStyle = bakeAfter ? "rgba(3,3,5,0.5)" : "rgba(120,140,170," + a.toFixed(3) + ")"; x.fillRect(wx, wy, www, whh); // after the blast: blown out
+        x.fillStyle = bakeAfter ? "rgba(3,3,5,0.5)" : bakeFlash ? "rgba(150,172,212," + Math.min(0.6, a * 2.6).toFixed(3) + ")" : "rgba(120,140,170," + a.toFixed(3) + ")"; x.fillRect(wx, wy, www, whh); // after the blast: blown out; in a flash, what glass is left shows it
         if (near && ft !== 1 && !bakeAfter) { x.fillStyle = "rgba(170,190,220," + (a * 0.7).toFixed(3) + ")"; x.fillRect(wx, wy, www, 0.7); }
         pushSurvivor(wx, wy);
       }
@@ -2997,6 +3083,10 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
     if (o.cornice && !o.broken && !o.collapsed) {
       x.strokeStyle = "rgba(150,165,190,0.09)"; x.lineWidth = 1.4;
       x.beginPath(); x.moveTo(pts[0][0], pts[0][1] + 0.8); for (const p of pts) x.lineTo(p[0], p[1] + 0.8); x.stroke();
+    }
+    if (near && !o.broken && !o.collapsed) { // every roof is wet: the edge of it holds a little of the sky
+      x.strokeStyle = "rgba(150,168,196,0.075)"; x.lineWidth = 1;
+      x.beginPath(); x.moveTo(pts[0][0], pts[0][1] + 0.6); for (const p of pts) x.lineTo(p[0], p[1] + 0.6); x.stroke();
     }
   }
   // grime: soot under the roofline, a water stain, a scorched window or two
@@ -3011,6 +3101,13 @@ function drawBuilding(x, r, ly, li, bx, top, bw, baseY, ext, o) {
     }
     if (r() < 0.5) softBlob(x, bx + (r() < 0.5 ? 4 : bw - 4), top + bh * (0.1 + r() * 0.3), 6 + r() * 8, "0,0,0", 0.22, 2.2);
     if (r() < 0.45 || o.shell) { const n = (o.shell ? 3 : 1) + Math.floor(r() * 2); for (let i = 0; i < n; i++) softBlob(x, bx + 6 + r() * (bw - 12), top + 4 + r() * bh * 0.6, 4 + r() * 4, "0,0,0", 0.5, 0.8); }
+  }
+  if (bakeFlash && li >= 1) { // the flash: the wet roof edge burns white, and the light runs a little way down the face from it
+    const lg = x.createLinearGradient(0, top, 0, top + bh * 0.45);
+    lg.addColorStop(0, "rgba(126,146,186," + (near ? 0.2 : 0.12) + ")"); lg.addColorStop(1, "rgba(126,146,186,0)");
+    x.fillStyle = lg; x.fillRect(bx, top, bw, bh * 0.45);
+    x.strokeStyle = "rgba(186,203,236," + (near ? 0.62 : 0.4) + ")"; x.lineWidth = near ? 1.5 : 1.1; x.lineJoin = "miter";
+    x.beginPath(); x.moveTo(pts[0][0], pts[0][1] + 0.8); for (const p of pts) x.lineTo(p[0], p[1] + 0.8); x.stroke();
   }
   let out = null;
   if (o.broken) {
@@ -3086,9 +3183,13 @@ function bakeBackdrop(mode) {
   // same of the ruin, the rows that stood in front of the dust when the steel came down
   const aw = L.apW, ah = L.apH, md = mode || "", nearK = md.startsWith("near") ? +md.slice(4) : md.startsWith("silAfter") && md.length > 8 ? +md.slice(8) : 0;
   const sil = md === "sil" || md === "silS" || md.startsWith("silAfter") || nearK > 0;
-  const after = md === "after" || md.startsWith("silAfter") || md === "afterLo" || md.startsWith("fireLo"), lo = md === "afterLo" || md.startsWith("fireLo");
+  // "flash", "afterFlash": the same city in the instant of a lightning flash: the cloud lit from inside, the mist between the rows
+  // glowing, every roof edge and wet face catching it, the fronts still dark. Laid over the night one, only where it is lighter
+  const flash = md === "flash" || md === "afterFlash";
+  const after = md === "after" || md === "afterFlash" || md.startsWith("silAfter") || md === "afterLo" || md.startsWith("fireLo"), lo = md === "afterLo" || md.startsWith("fireLo");
   const fireOn = md === "fireLo1" ? 1 : md === "fireLo2" ? 2 : 0, fullAfter = md === "after";
-  const SS = lo ? 0.5 : md === "silS" ? 0.75 : nearK ? 1 : Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
+  const SS = lo ? 0.5 : md === "silS" ? 0.75 : nearK ? 1 : flash ? Math.min(1.5, Math.max(1, DPR)) : Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
+  bakeFlash = flash;
   const rd = after ? hashRng(4242) : null, rf = after ? hashRng(9090) : null, fires = [];
   let rq = rd; // the stream the cuts draw from: the ruin's own, but the far blast's new cuts take theirs apart so nothing else re-rolls
   bakeAfter = after;
@@ -3105,12 +3206,18 @@ function bakeBackdrop(mode) {
 
   // ---- sky: cold overcast with no glow at the horizon; the grid went down a long time ago ----
   const sky = x.createLinearGradient(0, 0, 0, farline);
-  sky.addColorStop(0, "#080b11");
-  sky.addColorStop(0.40, "#0e131c");
-  sky.addColorStop(0.78, "#161d28");
-  sky.addColorStop(1, "#1d2532");
+  const skyStops = flash ? ["#1a2130", "#2b3447", "#3e485f", "#4a556d"] : ["#080b11", "#0e131c", "#182030", "#212a3a"]; // in the flash the deck is lit from inside, brightest low down where it is thin (kept well short of a glare: several flashes can come in one second)
+  sky.addColorStop(0, skyStops[0]);
+  sky.addColorStop(0.40, skyStops[1]);
+  sky.addColorStop(0.78, skyStops[2]);
+  sky.addColorStop(1, skyStops[3]);
   x.fillStyle = sky; x.fillRect(0, 0, aw, farline + 2);
   x.fillStyle = "#0a0d13"; x.fillRect(0, farline, aw, ah - farline);
+  { // past the last row the ground is haze, not a line: the foot of the sky goes down into it
+    const gd = x.createLinearGradient(0, farline, 0, farline + ah * 0.14);
+    gd.addColorStop(0, skyStops[3]); gd.addColorStop(0.3, flash ? "#353f54" : "#161c27"); gd.addColorStop(1, "#0a0d13");
+    x.fillStyle = gd; x.fillRect(0, farline, aw, ah * 0.14);
+  }
   if (after) {
     const fg = x.createLinearGradient(0, farline - 16, 0, farline + 18);
     fg.addColorStop(0, "rgba(24,30,40,0)"); fg.addColorStop(0.45, "rgba(21,27,36,0.9)"); fg.addColorStop(1, "rgba(10,13,19,0)");
@@ -3128,7 +3235,76 @@ function bakeBackdrop(mode) {
     const cx2 = r() * aw, cy2 = ah * (0.16 + r() * 0.12);
     softBlob(x, cx2, cy2, aw * (0.07 + r() * 0.09), "8,11,16", 0.45, 0.30);
   }
+  { // the overcast has weight and a grain: long torn bands low down, darker ones between them (own stream: nothing drawn later shifts)
+    const q = hashRng(60606);
+    for (let i = 0; i < 16; i++) {
+      const dark = i % 3 === 0, cx2 = q() * aw, cy2 = farline * (dark ? 0.34 + q() * 0.5 : 0.52 + q() * 0.42);
+      softBlob(x, cx2, cy2, aw * (0.09 + q() * 0.17), dark ? "7,10,15" : flash ? "76,88,114" : "40,51,70", dark ? 0.30 + q() * 0.22 : (0.09 + q() * 0.09) * (flash ? 3 : 1), 0.05 + q() * 0.06);
+    }
+    if (flash) for (let i = 0; i < 9; i++) softBlob(x, q() * aw, ah * (0.05 + q() * 0.3), aw * (0.06 + q() * 0.12), "72,84,112", 0.3 + q() * 0.3, 0.3 + q() * 0.25); // where the cloud is thin, the light inside it shows through
+  }
   if (sil) x.clearRect(0, 0, aw, ah);
+
+  // ---- the city was far bigger than this: a few towers so tall and so far off that the cloud has their tops (own streams) ----
+  if (md !== "silS") { // not in the airship's own plate: it and its lights pass in front of these
+    const q = hashRng(5151), hG = hideFor(0), ps = clamp(ah / 540, 0.5, 1), gb = ah * 0.56, rgbG = flash ? "40,49,68" : "31,40,56", gA = flash ? 1.9 : 1.25;
+    let megaRec = 0;
+    x.globalAlpha = sil ? 0.6 : 1;
+    { // a suspension bridge out past the right-hand towers: one pylon in view, the other out of the window; a stretch of the deck is gone,
+      // its hangers left swinging over nothing. After the bomb (which went off just this side of it) two stumps of the pylon are all there is
+      const qb = hashRng(8128), px = aw * 0.887, dy = ah * 0.506, pt = ah * 0.305, lw = Math.max(1.6, 3.4 * ps), sp = Math.max(6, 13 * ps), ax = aw * 0.772, span = aw * 0.27, mid = px + span / 2, lowY = dy - 3 * ps, g0 = aw * 0.925, g1 = aw * 0.966;
+      const cab = cx => cx >= px ? lowY - (lowY - pt) * Math.pow((cx - mid) / (span / 2), 2) : pt + (dy - pt) * Math.pow((px - cx) / (px - ax), 1.22);
+      x.fillStyle = x.strokeStyle = "rgba(" + rgbG + "," + (flash ? 0.92 : 0.72) + ")"; x.lineCap = "butt";
+      if (after) {
+        for (const s of [-1, 1]) { const hgt = (gb - pt) * (0.22 + 0.3 * qb()); x.beginPath(); x.moveTo(px + s * sp / 2 - lw / 2, gb + 4); x.lineTo(px + s * sp / 2 - lw / 2, gb - hgt + 3 * qb()); x.lineTo(px + s * sp / 2 + lw / 2, gb - hgt - 4 * qb()); x.lineTo(px + s * sp / 2 + lw / 2, gb + 4); x.closePath(); x.fill(); }
+      } else {
+        for (const s of [-1, 1]) x.fillRect(px + s * sp / 2 - lw / 2, pt, lw, gb - pt + 4);
+        for (const by of [pt + 2 * ps, pt + (dy - pt) * 0.42, dy + 4 * ps]) x.fillRect(px - sp / 2, by, sp, Math.max(1.2, 2 * ps));
+        x.fillRect(px - sp / 2 - lw, pt - 2 * ps, sp + lw * 2, Math.max(1.2, 2 * ps)); // the saddle the cables go over
+        x.lineWidth = Math.max(0.8, 1.2 * ps); x.beginPath();
+        for (let cx = ax; cx <= aw + 2; cx += 3) { if (cx === ax) x.moveTo(cx, cab(cx)); else x.lineTo(cx, cab(cx)); }
+        x.stroke();
+        x.lineWidth = Math.max(0.5, 0.7 * ps); x.beginPath();
+        for (let cx = ax + 7 * ps; cx < aw; cx += 7.5 * ps) { // the hangers: over the gap they hang loose, each a different length, a little off the plumb
+          const cy = cab(cx), gone = cx > g0 && cx < g1, u = qb();
+          if (dy - cy < 3) continue;
+          x.moveTo(cx, cy); x.lineTo(cx + (gone ? (u - 0.5) * 3 : 0), gone ? cy + (dy - cy) * (0.3 + 0.55 * u) : dy);
+        }
+        x.stroke();
+        for (const [d0, d1] of [[ax, g0], [g1, aw + 2]]) { x.fillRect(d0, dy, d1 - d0, Math.max(1.4, 2.2 * ps)); x.fillRect(d0, dy + 3.6 * ps, d1 - d0, Math.max(0.7, 1 * ps)); for (let cx = d0 + 3; cx < d1; cx += 6 * ps) x.fillRect(cx, dy, Math.max(0.6, 0.8 * ps), 3.6 * ps); }
+        x.lineWidth = Math.max(1.2, 2 * ps); x.beginPath(); x.moveTo(g0 - 1, dy + 1); x.lineTo(g0 + 9 * ps, dy + 8 * ps); x.stroke(); // the last panel of the deck hanging down into the gap
+      }
+    }
+    for (const [sx, hk] of [[0.035, 0.8], [0.105, 1], [0.205, 0.9], [0.275, 1.15], [0.345, 0.85], [0.505, 0.7], [0.80, 0.8], [0.975, 0.75]]) {
+      const tw = (17 + q() * 20) * ps, th0 = ah * (0.24 + q() * 0.12) * hk, gx0 = aw * sx + (q() - 0.5) * aw * 0.025 - tw / 2, tiers = Math.floor(q() * 3), t1 = 0.5 + q() * 0.22, t2 = 0.1 + q() * 0.08, sideK = q();
+      let th = th0, torn = null, newlyTorn = false;
+      if (after) { // the bomb took the nearer ones down to stumps; the far blast, the ones around it
+        const hb = hashRng(Math.floor(sx * 9973) + 77), c1 = 1 - Math.min(1, Math.abs(sx - NUKE.x) / 0.62), c2 = B2HIT ? 1 - Math.min(1, Math.abs(sx - B2HIT.x) / 0.3) : 0, nz = (hb() - 0.5) * 0.2, hit = Math.max(c1 * 1.15, c2 * 1.3) + nz;
+        if (hit > 0.3) { th = th0 * clamp(1.05 - hit, 0.1, 0.8); torn = hb; newlyTorn = c1 * 1.15 + nz <= 0.3; } // newly: it stood through the first one, and the far blast is what takes it
+      }
+      const top = gb - th, fg = x.createLinearGradient(0, gb - th0, 0, gb);
+      fg.addColorStop(0, "rgba(" + rgbG + ",0)"); fg.addColorStop(0.5, "rgba(" + rgbG + "," + 0.34 * gA + ")"); fg.addColorStop(1, "rgba(" + rgbG + "," + 0.46 * gA + ")");
+      x.fillStyle = fg;
+      if (torn) { // what is left: floors sheared off in steps, each bay broken at its own height (never a slope: a slope reads as a spire)
+        const n = 4, cut = []; for (let i = 0; i < n; i++) { const hh = th * (0.5 + 0.5 * torn()); x.fillRect(gx0 + tw * i / n, gb - hh, tw / n + 0.5, hh + 4); cut.push([gx0 + tw * i / n, gb - hh], [gx0 + tw * (i + 1) / n, gb - hh]); }
+        if (newlyTorn && fullAfter && B2HIT && B2HIT.rec && megaRec < 2) { megaRec++; B2HIT.rec.push({ x: gx0, w: tw, top: gb - th0 * 0.8, base: gb, pts: cut, li: 0, col: "#1b2331", haze: null, tall: false }); } // its top comes down with the others (two of these at most: the nearer towers keep the rest of the falling)
+      } else {
+        const sh = tiers ? th * t2 : 0, sw2 = tw * t1, sx2 = sideK < 0.33 ? gx0 : sideK < 0.66 ? gx0 + (tw - sw2) / 2 : gx0 + tw - sw2;
+        x.fillRect(gx0, top + sh, tw, th - sh + 4);
+        if (tiers) x.fillRect(sx2, top, sw2, sh + 1);
+        if (tiers > 1) x.fillRect(sx2 + sw2 * 0.3, top - sh * 0.7, sw2 * 0.4, sh * 0.7 + 1);
+      }
+      if (!sil) { // too far for windows: only the bands of its floors, a darker return down one side, and the rest is haze
+        x.save(); x.beginPath(); x.rect(gx0, top + (torn ? th * 0.5 : 0), tw, th + 4); x.clip();
+        x.fillStyle = "rgba(6,9,14," + (flash ? 0.16 : 0.1) + ")";
+        for (let by = gb - 5 * ps; by > gb - th0 * 0.5; by -= 7 * ps) x.fillRect(gx0, by, tw, Math.max(0.8, 1.6 * ps));
+        x.fillRect(sx > 0.5 ? gx0 : gx0 + tw * 0.74, gb - th0 * 0.52, tw * 0.26, th0);
+        x.restore();
+      }
+    }
+    x.globalAlpha = 1;
+    if (hG) x.restore();
+  }
 
   // ---- the city continues past seeing: a last row of specks at the far line ----
   const hS = hideFor(0);
@@ -3301,12 +3477,13 @@ function bakeBackdrop(mode) {
       }
       // rooftop clutter, sparse
       if (ly.clut && !o.broken && !o.collapsed && !o.lean && !o.setback && r() < ly.clut) drawClutter(x, r, bx, top, bw, shade(ly.col, -0.35));
+      if (li >= 1 && !o.broken && !o.collapsed && !o.lean && !o.setback && !o.fire && !spansTower) { const qk = hashRng(Math.floor(bx * 37) + li * 911); if (qk() < (li >= 3 ? 0.8 : 0.55)) roofKit(x, qk, bx, top, bw, shade(ly.col, li >= 3 ? -0.35 : -0.15), li >= 3); }
       if (cut) { breakEdge(cut, bx, bw, baseY, ly.col); x.restore(); rubble(bx, bw, baseY, ly.col); if (dmg.b2 > 0.6) skel(li, bx, bw, top, cut, ly.col); }
       // remember the mid-ground rooftop the siren mast stands on
       if (spansTower && !towerFound) { towerBaseY = top; towerFound = true; }
       bx += Math.max(bw + 4 + r() * 10, (ly.wMax * (ly.gapK || 0.9)) * (0.55 + r() * 0.7));
     }
-    if (li === 1) drawFarCrane(x, aw * 0.47, baseY, aw, ah);
+    if (li === 1) { drawFarCrane(x, aw * 0.47, baseY, aw, ah); drawSkeleton(x, aw, ah, ext, after); }
     x.globalAlpha = 1;
     if (rf && li >= 1 && li <= 3) { // the streets in front of this row are burning, thickest toward the blast
       const nF = Math.round((aw / 52) * [0, 0.8, 1, 0.8][li]), s = [0, 0.55, 0.8, 1][li] * clamp(Math.max(aw / 1459, ah / 540), 0.55, 1);
@@ -3341,11 +3518,16 @@ function bakeBackdrop(mode) {
     }
     // depth haze wash over everything behind this point
     if (ly.haze && !sil) {
-      const hz = x.createLinearGradient(0, baseY - ah * 0.3, 0, baseY + ah * 0.05);
-      hz.addColorStop(0, "rgba(" + ly.haze.split(",").slice(0, 3).join(",") + ",0)");
-      hz.addColorStop(1, "rgba(" + ly.haze + ")");
+      const hzP = ly.haze.split(",").map(Number), hzC = hzP.slice(0, 3).map(v => flash ? Math.round(v * 2.1) : v).join(","), hzA = flash ? Math.min(0.72, hzP[3] * 1.55) : hzP[3]; // in the flash the mist between the rows glows, and every row stands dark in front of the one behind
+      const hz = x.createLinearGradient(0, baseY - ah * 0.3, 0, baseY + ah * 0.12); // thickest at this row's feet, and gone a little below them: it never ends on a line
+      hz.addColorStop(0, "rgba(" + hzC + ",0)");
+      hz.addColorStop(0.833, "rgba(" + hzC + "," + hzA + ")");
+      hz.addColorStop(1, "rgba(" + hzC + ",0)");
       x.fillStyle = hz;
-      x.fillRect(0, 0, aw, baseY + ah * 0.05);
+      x.fillRect(0, 0, aw, baseY + ah * 0.12);
+      // the mist lies uneven between the rows: banks of it at the feet of this one, thin in places, so each row stands clear of the next (own stream)
+      const qm = hashRng(808 + li * 131), hc = hzP.slice(0, 3).map(v => Math.round((v * 1.5 + 8) * (flash ? 1.9 : 1))).join(",");
+      for (let i = 0; i < 9; i++) softBlob(x, qm() * aw, baseY - ah * (0.005 + qm() * 0.075), aw * (0.06 + qm() * 0.13), hc, (0.10 + qm() * 0.16) * (li === 4 ? 0.6 : 1), 0.14 + qm() * 0.1);
     }
     if (hR) x.restore();
   });
@@ -3403,7 +3585,7 @@ function bakeBackdrop(mode) {
   if (hM) x.restore();
 
   if (fullAfter) afterFires = fires;
-  if (sil) { x.globalCompositeOperation = "source-in"; x.fillStyle = "#000"; x.fillRect(0, 0, aw, ah); bakeAfter = false; return c; }
+  if (sil) { x.globalCompositeOperation = "source-in"; x.fillStyle = "#000"; x.fillRect(0, 0, aw, ah); bakeAfter = bakeFlash = false; return c; }
   // ---- ground fog bed and grade ----
   const haze2 = x.createLinearGradient(0, ah * 0.74, 0, ah);
   haze2.addColorStop(0, "rgba(140,152,170,0)");
@@ -3427,7 +3609,7 @@ function bakeBackdrop(mode) {
     }
     litWindows.length = CAP;
   }
-  bakeAfter = false;
+  bakeAfter = bakeFlash = false;
   return c;
 }
 function lightDiff(a, b) {
@@ -4005,6 +4187,7 @@ function resize() {
   BLAST.dust = [];
   frameC = buildFrame();
   fogC = buildFogTile();
+  if (!veilC) veilC = [buildVeil("66,80,106"), buildVeil("17,20,26")];
   cloudC = buildCloudStrip(false); cloudLitC = buildCloudStrip(true); cloudWarmC = buildCloudStrip(2); cloudHotC = buildCloudStrip(3);
   rainNear = buildRainLayer(1, 20, 36, 0.09, 0.19, 255);
   rainFar = buildRainLayer(2, 10, 18, 0.05, 0.10, 225);
@@ -4042,42 +4225,91 @@ function ampLevel() {
 let hornAngle = -Math.PI / 2, hornVel = 0;
 function hornYaw() { return hornAngle; }
 
+function buildVeil(rgb) {
+  // one curtain of far rain: a soft slanting shaft, thick in the middle, combed into streaks, hanging from the cloud and gone before the near roofs
+  const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+  const x = c.getContext("2d"), q = hashRng(4711);
+  const hg = x.createLinearGradient(0, 0, 256, 0);
+  for (const [p, a] of [[0, 0], [0.22, 0.35], [0.5, 1], [0.78, 0.35], [1, 0]]) hg.addColorStop(p, "rgba(" + rgb + "," + a + ")");
+  x.fillStyle = hg; x.fillRect(0, 0, 256, 256);
+  x.globalCompositeOperation = "destination-out";
+  for (let i = 0; i < 46; i++) { x.fillStyle = "rgba(0,0,0," + (0.12 + q() * 0.3).toFixed(2) + ")"; x.fillRect(q() * 256, 0, 1 + q() * 5, 256); } // thinner here, thicker there
+  x.globalCompositeOperation = "destination-in";
+  const vg = x.createLinearGradient(0, 0, 0, 256);
+  for (const [p, a] of [[0, 0], [0.16, 0.8], [0.55, 1], [0.82, 0.45], [1, 0]]) vg.addColorStop(p, "rgba(0,0,0," + a + ")");
+  x.fillStyle = vg; x.fillRect(0, 0, 256, 256);
+  return c;
+}
+function drawVeils(t, flashA, bF) {
+  // far rain: three curtains of it crossing the city on the wind, each at its own pace; pale against the night, dark against the grey
+  // of morning; a flash lights them from inside. They hang among the far towers and thin out before the near roofs
+  if (!veilC || !L) return;
+  const { apW, apH } = L, rk = SX.eff(WX.k), lean = RM ? 0.1 : 0.06 + 0.18 * rk + 0.25 * WX.gust * SX.k, dk = DAY.k, base = (0.5 + 0.7 * rk) * (1 - bF);
+  if (base < 0.02) return;
+  for (let i = 0; i < 3; i++) {
+    const vw = apW * [0.3, 0.2, 0.26][i], lap = apW + vw * 2, ph = RM ? [0.2, 0.55, 0.85][i] * lap : (fogPh * [5.5, 8, 3.6][i] + [0.13, 0.52, 0.81][i] * lap) % lap;
+    const vx = ph - vw, y0 = apH * 0.1, vh = apH * [0.56, 0.5, 0.6][i], a = base * [0.19, 0.14, 0.16][i] * (0.75 + 0.25 * Math.sin(t * 0.05 + i * 2.1));
+    g.save(); g.transform(1, 0, -lean, 1, vx + lean * vh * 0.5, y0);
+    if (dk < 0.98) { g.globalAlpha = Math.min(0.5, a * (1 - dk) * (1 + 9 * flashA)); g.drawImage(veilC[0], 0, 0, vw, vh); }
+    if (dk > 0.02) { g.globalAlpha = Math.min(0.5, a * dk * 1.5); g.drawImage(veilC[1], 0, 0, vw, vh); }
+    g.restore();
+  }
+  g.globalAlpha = 1;
+}
+function flashPlate(t) {
+  // the city as a lightning flash shows it: made once a moment after load (and again once the city is broken), never while the
+  // bomb is busy, so no frame of that is held up. Until it is there the old plain lift does the job
+  const st = BLAST.swapped ? (B2HIT ? 2 : 1) : 0;
+  if (flashC && flashC.L === L && flashC.st === st) return flashC;
+  const hold = (BLAST.t0 > -1e8 && t - BLAST.t0 < BL_BUSY) || (BLAST.at >= 0 && BLAST.t0 < -1e8 && BLAST.at - BLAST.on < 6) || BLAST2.rv || (BLAST2.on && BLAST2.ph === 1 && !BLAST2.hit); // the bomb's own fourteen seconds, the six before it, and the far blast from its light to the end of its reveal
+  if (!flashT && !hold) flashT = setTimeout(() => {
+    flashT = 0;
+    if (!L) return;
+    const l0 = L, s0 = BLAST.swapped ? (B2HIT ? 2 : 1) : 0, c = bakeVariant(s0 ? "afterFlash" : "flash");
+    c.L = l0; c.st = s0; flashC = c;
+  }, 350);
+  return null;
+}
 function drawCity(t, amp, dt, flashA) {
   const { apX, apY, apW, apH } = L;
   g.save();
   g.beginPath(); g.rect(apX, apY, apW, apH); g.clip();
   g.translate(apX, apY);
   const bT = BLAST.t0 > -1e8 ? t - BLAST.t0 : 99, bF = BLAST.t0 > -1e8 ? blastF(bT) : 0, bG = blastG(t);
-  drawBackdrop(t);
+  drawBackdrop(t, flashA);
   // everything that drifts takes its pace from the weather
   fogPh += dt * (0.7 + 0.6 * WX.k + 0.6 * WX.gust);
   cloudPh += dt * (0.6 + 1.2 * WX.k + 0.8 * WX.gust) * SX.sp;
   rainPhF += dt * 300 * (0.75 + 0.45 * WX.k + 0.4 * WX.gust) * SX.sp;
   rainPhN += dt * 540 * (0.75 + 0.45 * WX.k + 0.5 * WX.gust) * SX.sp;
 
-  // lightning: a cold lift of the matte, a colder wash, and now and then a bolt far off behind the scud
+  // lightning: the city as the flash shows it, laid over the night one only where it is lighter (the cloud lit from inside, the mist
+  // between the rows glowing, the roof edges white, the fronts still black), strongest on the side the strike is on; a thin
+  // cold wash for the rain in between; and now and then a bolt far off behind the scud
   if (flashA > 0.004) {
-    g.save(); g.globalCompositeOperation = "screen"; g.globalAlpha = Math.min(1, flashA * 0.5);
-    g.drawImage(BLAST.swapped && cityAfterC ? cityAfterC : cityC, 0, 0, apW, apH); g.restore();
-    g.fillStyle = "rgba(170,192,255," + (flashA * 0.55).toFixed(3) + ")";
-    g.fillRect(0, 0, apW, apH);
+    if (flashShown) { // the lit city went in with the backdrop, under the smoke and the fires; here only the rain between takes a little of it
+      g.fillStyle = "rgba(170,192,255," + (flashA * 0.2).toFixed(3) + ")";
+      g.fillRect(0, 0, apW, apH);
+    } else { // the plate is not made yet: a cold lift of the matte and a colder wash
+      g.save(); g.globalCompositeOperation = "screen"; g.globalAlpha = Math.min(1, flashA * 0.5);
+      g.drawImage(BLAST.swapped && cityAfterC ? cityAfterC : cityC, 0, 0, apW, apH); g.restore();
+      g.fillStyle = "rgba(170,192,255," + (flashA * 0.55).toFixed(3) + ")";
+      g.fillRect(0, 0, apW, apH);
+    }
     const bt = strike ? t - strike.t0 - strike.boltT : -1;
-    if (strike && strike.bolt && bt >= 0 && bt < 0.11) {
-      g.save();
-      g.strokeStyle = "rgba(225,235,255,0.45)"; g.lineWidth = 1.2; g.lineJoin = "round";
-      g.shadowColor = "rgba(150,180,255,0.8)"; g.shadowBlur = 16;
-      g.beginPath();
-      g.moveTo(strike.pts[0][0] * apW, strike.pts[0][1] * apH);
-      for (const p of strike.pts) g.lineTo(p[0] * apW, p[1] * apH);
-      g.stroke();
-      g.lineWidth = 0.8; g.globalAlpha = 0.7;
-      g.beginPath();
-      g.moveTo(strike.br[0][0] * apW, strike.br[0][1] * apH);
-      for (const p of strike.br) g.lineTo(p[0] * apW, p[1] * apH);
-      g.stroke();
+    if (strike && strike.bolt && bt >= 0 && bt < 0.11) { // the channel: a soft halo, a pale body, a thin hot core; the cloud glows where it comes out
+      const ba = 1 - bt / 0.11, path = (pp) => { g.beginPath(); g.moveTo(pp[0][0] * apW, pp[0][1] * apH); for (const p of pp) g.lineTo(p[0] * apW, p[1] * apH); g.stroke(); };
+      g.save(); g.lineJoin = "round"; g.lineCap = "round";
+      softBlob(g, strike.pts[0][0] * apW, strike.pts[0][1] * apH + apH * 0.03, apW * 0.11, "150,172,225", 0.22 * ba, 0.55);
+      softBlob(g, strike.pts[4][0] * apW, strike.pts[4][1] * apH, apW * 0.05, "160,182,235", 0.12 * ba, 1.6);
+      for (const [lw, a, col] of [[9, 0.05, "140,170,255"], [4.4, 0.10, "160,186,255"], [2, 0.34, "205,220,255"], [0.9, 0.85, "240,246,255"]]) {
+        g.strokeStyle = "rgba(" + col + "," + (a * (0.55 + 0.45 * ba)).toFixed(3) + ")"; g.lineWidth = lw; path(strike.pts);
+        g.strokeStyle = "rgba(" + col + "," + (a * 0.6 * ba).toFixed(3) + ")"; g.lineWidth = lw * 0.6; path(strike.br);
+      }
       g.restore();
     }
   }
+  drawVeils(t, flashA, bF);
   drawRaid(t, flashA); // under the cloud, in front of the sky, behind the city
   drawBlimp(t, flashA);
   // low scud under the overcast: slow and torn, lit from inside when the sheet lightning goes
@@ -4193,6 +4425,7 @@ function drawCity(t, amp, dt, flashA) {
     const ps = clamp(apH / 540, 0.45, 1); // sized for a desktop window; phones get it in proportion
     const fl = RM ? 0.5 : 0.5 + 0.5 * Math.sin(t * 7.3) * Math.sin(t * 3.1 + 0.4) * Math.sin(t * 0.9);
     const ow = 1 - bF; // in the flash, nothing out there glows by itself
+    softBlob(g, st.x, st.fy - 10 * ps, 78 * ps, "255,104,40", (0.030 + 0.022 * fl) * ow * (1 - 0.5 * DAY.k), 1.25); // the mist and the fronts around it hold a little of its light: taller than wide, never a dusk
     softBlob(g, st.x, st.fy, st.r * (1 + 0.15 * fl), "255,118,46", (0.06 + 0.07 * fl) * ow, 0.9);
     softBlob(g, st.x, st.y + 1, 14 * ps, "255,120,50", (0.08 + 0.06 * fl) * ow, 0.5);
     softBlob(g, st.x, st.y + 1, 4.5 * ps, "255,175,105", (0.2 + 0.15 * fl) * ow, 0.6);
@@ -4209,6 +4442,11 @@ function drawCity(t, amp, dt, flashA) {
     }
     // a second, thinner column far across the city: it is not the only fire
     const s2 = anchors.smoke2;
+    if (s2 && !BLAST.swapped) { // and at its foot a dull red that comes and goes: small, taller than wide, half lost in the haze
+      const f2 = RM ? 0.6 : 0.55 + 0.45 * Math.sin(t * 0.9 + 1.7) * Math.sin(t * 0.37);
+      softBlob(g, s2.x, s2.y + 2 * ps, 13 * ps, "255,96,40", 0.075 * f2 * ow, 1.5);
+      softBlob(g, s2.x, s2.y + 1.5 * ps, 3.2 * ps, "255,150,84", 0.26 * f2 * ow, 1.3);
+    }
     if (s2) for (let i = 0; i < 8; i++) {
       const k = RM ? i / 8 : ((t / 26) + i / 8) % 1;
       const a = 0.07 * (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
@@ -4248,6 +4486,12 @@ function drawCity(t, amp, dt, flashA) {
     const wn = litWindows[wi];
     if (BLAST.swapped) break; // the last lights in the city went out with the blast
     let a = wn.a0 * (1 - bF);
+    { // through the night they go out, one at a time: each has its minute, stutters for a few seconds, and is gone. One in eight comes back for a while
+      if (wn.die === undefined) { const h = hashRng(Math.floor(wn.x * 7 + wn.y * 131) + 5); wn.die = 3 + h() * 49; wn.back = h() < 0.125 ? wn.die + 5 + h() * 18 : 1e9; wn.gone = wn.back + 6 + h() * 16; }
+      const nm = DAY.on ? DAY.m : Math.max(0, STORY.clk) / 60, life = (m0) => { const d = (m0 - nm) * 60; return d <= 0 ? 0 : d > 7 || RM ? 1 : (Math.sin(t * 31 + wn.ph) * Math.sin(t * 7.3 + wn.ph * 2) > -0.25 + 0.09 * d ? 0.15 : 1) * Math.min(1, 0.4 + d / 7); };
+      a *= nm < wn.die ? life(wn.die) : nm >= wn.back && nm < wn.gone ? Math.min(life(wn.gone), clamp((nm - wn.back) * 30, 0, 1)) : 0;
+      if (a < 0.004) continue;
+    }
     if (wn.mode === 1) a *= 0.7 + 0.3 * Math.sin(t * wn.sp + wn.ph);
     else if (wn.mode === 2) a *= Math.sin(t * wn.sp * 2.4 + wn.ph) > 0.35 ? 1 : 0.08;
     const col = wn.cool ? "150,190,255" : "255,186,110";
@@ -4371,13 +4615,50 @@ function drawCity(t, amp, dt, flashA) {
   g.restore();
 }
 
-function drawBackdrop(t) {
+let flashShown = false;
+const FLICK = { next: -1, t0: -1e9, x: 0.5, y: 0.4, k: 0, d: 0.15, n: 1, r: 0.25 }; // far lightning with no thunder: where, how bright, how many flutters
+function drawBackdrop(t, flashA) {
   // the painted city, or after the blast the same city broken; when light goes into the sky it goes only where the sky
   // shows, the buildings standing black in front of it
   const { apW, apH } = L, B = BLAST, ruin = B.swapped && cityAfterC;
   g.drawImage(ruin ? cityAfterC : cityC, 0, 0, apW, apH);
   if (BLAST2.rv) blast2Reveal(t); // the far blast's broken skyline coming in outward from the spot
   drawDaySky(); // dawn: the grey behind the city
+  // lightning: the city as the flash shows it, laid over the night one only where it is lighter (the cloud lit from inside, the mist
+  // between the rows glowing, the roof edges white, the fronts still black), strongest on the side the strike is on. It goes in
+  // here, under the smoke and the fires and whatever stands in the sky, so those show dark against it
+  const fp = flashPlate(t);
+  flashShown = false;
+  const flashLayer = (cx, cy, r0, r1, floor, k) => { // the lit city through a soft round mask: all of it at the middle, `floor` of it far off
+    if (!fp.tmp) { fp.tmp = document.createElement("canvas"); fp.tmp.width = fp.width; fp.tmp.height = fp.height; }
+    const fc = fp.tmp, lx = fc.getContext("2d"), w = fc.width, h = fc.height;
+    lx.globalCompositeOperation = "copy"; lx.fillStyle = "rgba(0,0,0," + floor + ")"; lx.fillRect(0, 0, w, h);
+    lx.globalCompositeOperation = "source-over";
+    const mg = lx.createRadialGradient(cx * w, cy * h, r0 * w, cx * w, cy * h, r1 * w);
+    mg.addColorStop(0, "#000"); mg.addColorStop(1, "rgba(0,0,0,0)");
+    lx.fillStyle = mg; lx.fillRect(0, 0, w, h);
+    lx.globalCompositeOperation = "source-in"; lx.drawImage(fp, 0, 0);
+    g.save(); g.globalCompositeOperation = "lighten"; g.globalAlpha = k; g.drawImage(fc, 0, 0, apW, apH); g.restore();
+  };
+  if (flashA > 0.004 && fp && !BLAST2.rv) { // full on the strike's side of the sky, less than half of it at the far side
+    flashLayer(strike ? strike.pts[0][0] : 0.5, 0.2, 0.12, 0.95, 0.42, Math.min(1, flashA * 4.4));
+    flashShown = true;
+  } else if (fp && !RM && !BLAST2.rv) {
+    // between the strikes the storm is still working far off: now and then the cloud low over one end of the city flickers
+    // from inside, too far away to hear, and for that instant the towers out there stand against it
+    const K = FLICK;
+    if (K.next < 0) K.next = t + 3 + Math.random() * 7;
+    if (t >= K.next && !strike && !blastBusy(t)) {
+      K.t0 = t; K.x = Math.random() < 0.7 ? (Math.random() < 0.5 ? Math.random() * 0.34 : 0.66 + Math.random() * 0.34) : Math.random(); K.y = 0.3 + Math.random() * 0.16;
+      K.k = 0.2 + Math.random() * 0.3; K.d = 0.1 + Math.random() * 0.16; K.n = Math.random() < 0.45 ? 2 + (Math.random() < 0.3 ? 1 : 0) : 1; K.r = 0.2 + Math.random() * 0.14;
+      K.next = t + (4 + Math.random() * 15) * (1.25 - 0.6 * WX.k) * SX.gap;
+    }
+    const e = t - K.t0, step = K.d + 0.09;
+    if (e >= 0 && e < step * K.n && !strike) {
+      const ph = e % step, a = ph < K.d ? K.k * (1 - ph / K.d) * (1 - 0.6 * DAY.k) * (1 - 0.3 * Math.floor(e / step)) : 0;
+      if (a > 0.01) flashLayer(K.x, K.y, 0.02, K.r, 0, a);
+    }
+  }
   const tt = B.t0 > -1e8 ? t - B.t0 : 99, F = B.t0 > -1e8 ? blastF(tt) : 0, G = blastG(t), sil = ruin ? silAfterC : (waveSil(tt) || silC);
   if ((F < 0.003 && G < 0.003) || !sil || !lightC) return;
   const gx = apW * B.gx, gy = apH * B.gy, lx = lightC.getContext("2d"), mg = mushGeom(t);
@@ -6274,7 +6555,7 @@ function frame(now) {
   g.fillStyle = "#060708"; g.fillRect(-40, -40, W + 80, H + 80);
   drawCity(t, amp, dt, flashA);
   g.drawImage(frameC, 0, 0, W, H);
-  if (flashA > 0.01) { g.fillStyle = "rgba(180,200,255," + (flashA * 0.10).toFixed(3) + ")"; g.fillRect(0, 0, W, H); }
+  if (flashA > 0.01) { g.fillStyle = "rgba(180,200,255," + (flashA * 0.05).toFixed(3) + ")"; g.fillRect(0, 0, W, H); } // a breath of it everywhere; the shaped light is drawFlashRoom
   drawBlast2Room(t);
   drawKnobAt(L.vol, S.vol, "vol");
   drawKnobAt(L.dist, (S.dist - 150) / 2650, "dist");
@@ -6286,6 +6567,7 @@ function frame(now) {
   drawLever(t);
   drawLampAndGlow(t, amp, flashA);
   drawLampDust(t);
+  drawFlashRoom(flashA);
   drawDayRoom();
   drawAlarm(t, amp);
   drawCRT(t);
