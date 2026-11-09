@@ -579,7 +579,7 @@ function startRain() {
   const src = new AudioBufferSourceNode(ctx, { buffer: rainBuf, loop: true, loopStart: 0.4, loopEnd: Math.max(1, rainBuf.duration - 0.4) });
   const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 240, Q: 0.5 });
   const lp = new BiquadFilterNode(ctx, { type: "lowpass", frequency: 5200, Q: 0.4 });
-  N.rainG = new GainNode(ctx, { gain: 0.0001 });
+  N.rainG = new GainNode(ctx, { gain: 0.0001 }); N.rainHp = hp; N.rainLp = lp;
   src.connect(hp).connect(lp).connect(N.rainG).connect(N.ambW);
   src.start();
   N.rainG.gain.setTargetAtTime(powered ? 0.09 : 0.165, ctx.currentTime, 2.0);
@@ -1159,6 +1159,7 @@ addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; 
    Tessera Relay's. "b" is the simpler version kept to compare: the same opening and ending, a box every 13 s in each column.
    Local test: ?planes (4 s after the sound comes on) or ?planes=N; it skips the bomb unless ?blast or ?after is given too,
    and then it comes after the bomb. ?score=b for the simpler version, ?sparse for the score's own (slower) clocks */
+const STORM_CYCLE_LIVE = false; // the storm swells and eases over the minutes (Patrick tests it on his phone first, ?wx=5&evtest=1; flip when he says go)
 const NEW_EVENTS_LIVE = true; // the second blast and the blimp happen on their own (Patrick passed them on his phone 2026-11-06)
 const RAID_SCORE = "a", RAID_ODDS_POST = 1 / 3, RAID_ODDS_CITY = 0.4;
 const RAID = { at: -1, u: -1, rows: [], post: false, score: RAID_SCORE, tsc: 0.42, rev: 0, endAt: 0, snd: null, done: false };
@@ -3933,9 +3934,9 @@ function drawCity(t, amp, dt, flashA) {
   drawBackdrop(t);
   // everything that drifts takes its pace from the weather
   fogPh += dt * (0.7 + 0.6 * WX.k + 0.6 * WX.gust);
-  cloudPh += dt * (0.6 + 1.2 * WX.k + 0.8 * WX.gust);
-  rainPhF += dt * 300 * (0.75 + 0.45 * WX.k + 0.4 * WX.gust);
-  rainPhN += dt * 540 * (0.75 + 0.45 * WX.k + 0.5 * WX.gust);
+  cloudPh += dt * (0.6 + 1.2 * WX.k + 0.8 * WX.gust) * SX.sp;
+  rainPhF += dt * 300 * (0.75 + 0.45 * WX.k + 0.4 * WX.gust) * SX.sp;
+  rainPhN += dt * 540 * (0.75 + 0.45 * WX.k + 0.5 * WX.gust) * SX.sp;
 
   // lightning: a cold lift of the matte, a colder wash, and now and then a bolt far off behind the scud
   if (flashA > 0.004) {
@@ -4113,7 +4114,7 @@ function drawCity(t, amp, dt, flashA) {
 
   // far rain sheet
   // sheet lean: calm rain falls near straight, a gust drives it sideways
-  const rk = WX.k, rg = RM ? 0 : WX.gust, rsh = 0.03 + 0.10 * rk + 0.22 * rg;
+  const rk = SX.eff(WX.k), rg = RM ? 0 : WX.gust * SX.k, rsh = 0.03 + 0.10 * rk + 0.22 * rg;
   if (rainFar) {
     const chF = rainFar.height, oyF = RM ? 0 : rainPhF % chF, rwF = rainFar.width;
     g.save(); g.transform(1, 0, -rsh * 0.7, 1, rsh * 0.7 * apH * 0.5, 0);
@@ -4203,7 +4204,7 @@ function drawCity(t, amp, dt, flashA) {
   // rain on the glass: only where the shutter is not covering it
   const shEdge = shutterPos * apH;
   const glassOpen = shutterPos < 0.3;
-  if (glassOpen && droplets.length < 90 && Math.random() < 0.02 + 0.07 * WX.k)
+  if (glassOpen && droplets.length < 90 && Math.random() < 0.02 + 0.07 * rk)
     droplets.push({ x: Math.random() * apW, y: Math.random() * apH, r: 0.5 + Math.random() * 0.7, a: 0.04 + Math.random() * 0.06 });
   // a gust at squall strength throws a spatter across the glass all at once
   if (!RM && glassOpen && !WX.spatDone && WX.gust > 0.55 * WX.gustA && WX.k > 0.45) {
@@ -4212,7 +4213,7 @@ function drawCity(t, amp, dt, flashA) {
     for (let i = 0; i < n3 && droplets.length < 110; i++)
       droplets.push({ x: x0 + Math.random() * apW * 0.3, y: Math.random() * apH, r: 0.6 + Math.random() * 0.9, a: 0.06 + Math.random() * 0.07 });
   }
-  if (!RM && glassOpen && runnels.length < 14 && Math.random() < 0.03 + 0.12 * WX.k)
+  if (!RM && glassOpen && runnels.length < 14 && Math.random() < 0.03 + 0.12 * rk)
     runnels.push({ x: Math.random() * apW, y: Math.random() * apH * 0.2, sp: 15 + Math.random() * 30, ph: Math.random() * 6.28, ln: 16 + Math.random() * 42 });
   const wk = (t - wipeT) / 1.1;
   const bandX = wk >= 0 && wk <= 1.15 ? wk * (apW + 90) - 45 : null;
@@ -4237,7 +4238,7 @@ function drawCity(t, amp, dt, flashA) {
     if (!RM) {
       rn.y += rn.sp * dt * (0.7 + 0.5 * Math.sin(t * 2.4 + rn.ph));
       rn.x += Math.sin(t * 1.7 + rn.ph) * 0.12;
-      if (rn.y - rn.ln > apH) { if (Math.random() < 0.7 - 0.55 * WX.k) rn.dead = true; else { rn.y = -4; rn.x = Math.random() * apW; rn.sp = 15 + Math.random() * 30; } }
+      if (rn.y - rn.ln > apH) { if (Math.random() < 0.7 - 0.55 * rk) rn.dead = true; else { rn.y = -4; rn.x = Math.random() * apW; rn.sp = 15 + Math.random() * 30; } }
     }
     const tg2 = g.createLinearGradient(0, rn.y - rn.ln, 0, rn.y);
     tg2.addColorStop(0, "rgba(190,210,235,0)");
@@ -5796,6 +5797,47 @@ function noteFold() { // the paper folds away and the wall is as it was
   NT.box.classList.add("fold"); NT.tm = setTimeout(() => noteClose(true), 650);
 }
 
+/* ---------- THE CHANGING STORM (own block): one slow intensity value over the minutes the sound has been on ----------
+   1.0 is today's storm and the first five minutes stay there. Then it swells (heavier rain, closer and more frequent thunder and
+   lightning, more wind), eases (light rain, far rumbles, long quiet stretches), builds again; each phase a few minutes, a little
+   random, the turns slow. SX.k runs about 0.4 to 1.3 and the rest of the page reads the numbers derived from it below, all 1 when
+   it is off (the events keep their own timing: they set nextStrikeT and WX themselves and this never overrides them).
+   Dawn (another block) can lighten it: globalThis.sfDayK, 0 night to 1 grey morning.
+   Local test: ?wx=M starts the weather clock at minute M, ?wxx=K runs it K times faster; on the live site with &evtest=1.
+   Either one turns it on while STORM_CYCLE_LIVE is false. */
+const SX = { on: false, clk: 0, speed: 1, pts: [[0, 1], [300, 1]], i: 0, up: true, raw: 1, k: 1, rain: 1, lp: 1, hp: 1, wind: 1, gap: 1, near: 1, mag: 1, bolt: 1, sp: 1,
+  eff: w => w };
+{
+  const q = location.search, lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(q);
+  const a = lh ? q.match(/[?&]wx(?:=(\d+(?:\.\d+)?))?\b/) : null, b = lh ? q.match(/[?&]wxx(?:=(\d+(?:\.\d+)?))?\b/) : null;
+  SX.on = STORM_CYCLE_LIVE || !!(a || b);
+  if (a) SX.clk = (a[1] ? +a[1] : 5) * 60;
+  if (b) SX.speed = b[1] ? +b[1] : 30;
+}
+function sxExtend(upTo) { // the swells and the eases to come: a slow rise or fall, then a long stay
+  for (let e = SX.pts[SX.pts.length - 1]; e[0] < upTo; e = SX.pts[SX.pts.length - 1]) {
+    const lvl = SX.up ? 1.12 + Math.random() * 0.18 : 0.4 + Math.random() * 0.15, ramp = 40 + Math.random() * 30, hold = 110 + Math.random() * 80;
+    SX.pts.push([e[0] + ramp, lvl], [e[0] + ramp + hold, lvl]);
+    SX.up = !SX.up;
+  }
+}
+function stepStormCycle(t, dt) {
+  if (!SX.on) return;
+  if (STORY.clk >= 0) SX.clk += dt * SX.speed; // counted only while the sound is on and the page is in front
+  sxExtend(SX.clk + 120);
+  const p = SX.pts;
+  while (SX.i > 0 && p[SX.i][0] > SX.clk) SX.i--; // (only a test jump goes back)
+  while (p[SX.i + 1][0] < SX.clk) SX.i++;
+  const a = p[SX.i], b = p[SX.i + 1], u = clamp((SX.clk - a[0]) / (b[0] - a[0]), 0, 1);
+  SX.raw = a[1] + (b[1] - a[1]) * u * u * (3 - 2 * u);
+  const k = SX.k = clamp(SX.raw * (1 - 0.45 * (globalThis.sfDayK || 0)), 0.2, 1.4);
+  SX.rain = Math.pow(k, 0.8); SX.lp = Math.pow(k, 0.6); SX.hp = Math.pow(k, -0.5); SX.wind = Math.pow(k, 0.8); // the rain bed's volume, how bright it is, and the wind
+  SX.gap = clamp(Math.pow(k, -1.8), 0.5, 3.5); SX.near = clamp(Math.pow(k, -0.9), 0.75, 2.4); // the quiet between strikes, how late the thunder comes
+  SX.mag = 1 + 0.5 * (k - 1); SX.bolt = Math.pow(k, -0.7); SX.sp = Math.pow(k, 0.5); // how hard they hit, how often it is a bolt, the pace of rain and scud
+  SX.eff = w => clamp(w + 0.7 * (k - 1), 0.02, 1.25); // the squall engine's rain level, moved by it
+  // a long wait set in a lull is cut short when it builds (never one an event set: those are under 75 s)
+  if (!strike && nextStrikeT - t > Math.max(75, 75 * SX.gap)) nextStrikeT = t + Math.max(75, 75 * SX.gap) * (0.5 + 0.5 * Math.random());
+}
 /* ---------- weather engine: nothing changes fast enough to catch it changing ---------- */
 function stepWeather(t, dt) {
   if (WX.tState < 0) WX.tState = t;
@@ -5816,7 +5858,7 @@ function stepWeather(t, dt) {
 }
 function newStrike(t, force) {
   // mostly soft sheet flashes inside the cloud; now and then a bolt; rarely a double strike
-  const mag = 0.35 + Math.random() * 0.65, kind = force === undefined ? Math.random() : force;
+  const mag = Math.min(1, (0.35 + Math.random() * 0.65) * SX.mag), kind = force === undefined ? Math.pow(Math.random(), SX.bolt) : force; // SX: the changing storm, all 1 when it is off
   const pts = []; let bx0 = 0.1 + Math.random() * 0.8, by0 = 0.02;
   for (let i = 0; i < 12; i++) { pts.push([bx0, by0]); bx0 += (Math.random() - 0.5) * 0.045; by0 += 0.03 + Math.random() * 0.025; }
   // one short branch off the trunk
@@ -5828,7 +5870,7 @@ function newStrike(t, force) {
   if (kind < 0.70) fl = Math.random() < 0.5 ? [[0, 0.18, 0.17]] : [[0, 0.16, 0.15], [0.24, 0.14, 0.12]];
   else if (kind < 0.88) { fl = [[0, 0.10, 0.22], [0.16, 0.10, 0.20], [0.34, 0.10, 0.16]]; bolt = true; }
   else { const g2 = 0.7 + Math.random() * 0.4; fl = [[0, 0.12, 0.18], [0.16, 0.10, 0.14], [g2, 0.12, 0.20], [g2 + 0.15, 0.10, 0.15]]; bolt = Math.random() < 0.5; boltT = g2; }
-  strike = { t0: t, mag, delay: 0.8 + (1 - mag) * 3.4, bolt, boltT, fl, pts, br, played: false, sheet: kind < 0.70 };
+  strike = { t0: t, mag, delay: (0.8 + (1 - mag) * 3.4) * SX.near, bolt, boltT, fl, pts, br, played: false, sheet: kind < 0.70 };
 }
 
 /* ---------- main loop, capped near 30 fps ---------- */
@@ -5877,10 +5919,12 @@ function frame(now) {
 
   // weather: the squall engine paces the rain, the fog, the smoke, and the rain bed (gain only, the recording is untouched)
   const wk = stepWeather(t, dt);
+  stepStormCycle(t, dt);
   if (built && N.rainG && t - wxAudioT > 0.5) {
     wxAudioT = t;
-    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk) * (1 - 0.45 * BLIMP.hush), ctx.currentTime, 1.5);
-    if (N.windVol) N.windVol.gain.setTargetAtTime(S.wind * 0.16 * (0.75 + 0.5 * wk), ctx.currentTime, 2.0);
+    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk) * (1 - 0.45 * BLIMP.hush) * SX.rain, ctx.currentTime, 1.5);
+    if (N.windVol) N.windVol.gain.setTargetAtTime(S.wind * 0.16 * (0.75 + 0.5 * wk) * SX.wind, ctx.currentTime, 2.0);
+    if (SX.on && N.rainLp) { N.rainLp.frequency.setTargetAtTime(5200 * SX.lp, ctx.currentTime, 1.5); N.rainHp.frequency.setTargetAtTime(240 * SX.hp, ctx.currentTime, 1.5); }
   }
   // storm scheduler: flash first, thunder arrives late by distance, siren stays hero; squalls bring strikes closer together
   let flashA = 0;
@@ -5891,7 +5935,7 @@ function frame(now) {
     for (const f of strike.fl) { const d2 = st - f[0]; if (d2 >= 0 && d2 < f[1]) flashA = Math.max(flashA, f[2] * (1 - d2 / f[1])); }
     flashA *= strike.mag * (RM ? 0.4 : 1);
     if (!strike.played && st >= strike.delay) { playThunder(strike.mag); strike.played = true; }
-    if (st > strike.delay + 1.2) { strike = null; nextStrikeT = t + (20 + Math.random() * 50) * (1.15 - 0.5 * wk); }
+    if (st > strike.delay + 1.2) { strike = null; nextStrikeT = t + (20 + Math.random() * 50) * (1.15 - 0.5 * wk) * SX.gap; }
   }
 
   stepBlast(t, dt, gap);
@@ -5969,7 +6013,7 @@ window.__sirens = {
   get layout() { return L; }, get anchors() { return anchors; }, leverHandlePos, simRpsNow,
   get shutterPos() { return shutterPos; }, get radioOn() { return radioOn; },
   get lampDim() { return lampDim; }, get dropletCount() { return droplets.length; },
-  get wx() { return WX; }, get strike() { return strike; }, get story() { return STORY; },
+  get wx() { return WX; }, get sx() { return SX; }, get strike() { return strike; }, get story() { return STORY; },
   storyNow(what) {
     if (STORY.clk < 0) STORY.clk = 0;
     if (what === "card") { STORY.card = true; STORY.cardT = -1; STORY.cardAt = STORY.clk; }
