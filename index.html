@@ -1182,6 +1182,120 @@ let planeC = null;
     }
   }
 }
+/* ---------- DAWN AND NIGHTFALL (event block: day clock, sky plate, scud, room; hooks are one line each elsewhere) ----------
+   A slow day clock that runs only while the sound is on. Night until 27 min; the first grey of a storm morning comes up 27 to 33;
+   the grey holds until 57; night comes back 57 to 63; night until 87; dawn again; and so on, an hour each time round. Only the
+   sky behind the city lightens: a cold, heavy overcast, long before sunrise, never warm, no sun, no blue. The city and the
+   shelter stay black against it. The scud catches a little grey, the far rows go into a mist, the smoke shows dark, the room gets a faint cold light
+   from the window, the lightning reads weaker. Everything is baked once (the sky plate, cut by the city's black shape) and
+   faded in; nothing is rebuilt per frame. globalThis.sfDayK each frame: 0 night, 1 full grey morning.
+   Local test: ?day=M starts the clock at minute M, ?dayx=K runs it K times faster; on the live site only with &evtest=1.
+   DAWN_LIVE false: ordinary visits stay at night all visit long (the test flags still work). */
+const DAWN_LIVE = false; // Patrick tests it on his phone first
+const DAY = { on: DAWN_LIVE, m: 0, x: 1, k: 0, c: null, cK: null, own: {}, ownT: 0, bkT: -1e9, sc: null, scS: null, rg: null, rgK: "" };
+{
+  const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(location.search), q = location.search;
+  const m = lh ? q.match(/[?&]day=(\d+(?:\.\d+)?)\b/) : null, x = lh ? q.match(/[?&]dayx=(\d+(?:\.\d+)?)\b/) : null;
+  if (m || x) { DAY.on = true; DAY.m = m ? +m[1] : 0; DAY.x = x ? Math.max(0.1, +x[1]) : 1; }
+}
+globalThis.sfDayK = 0;
+function dayAt(m) { // 0 night, 1 grey morning, at minute m of the day clock
+  if (m < 27) return 0;
+  const p = (m - 27) % 60;
+  return p < 6 ? smooth01(p / 6) : p < 30 ? 1 : p < 36 ? 1 - smooth01((p - 30) / 6) : 0;
+}
+function stepDay(dt) {
+  const D = DAY;
+  if (!D.on) { globalThis.sfDayK = 0; return 1; }
+  if (STORY.clk >= 0) D.m += dt * D.x / 60; // the clock stands still until the sound comes on
+  D.k = dayAt(D.m); globalThis.sfDayK = D.k;
+  if (D.k > 0 || dayAt(D.m + 1) > 0) dayPlates(true); // the plates are made a minute ahead, one at a time, so the first grey never holds a frame up
+  return 1 - 0.45 * D.k; // what is left of a lightning flash against the grey
+}
+function dayOwn(mode, key, bake) { // a black plate of our own when the page has none: made once, one at a time (after a resize, a moment after the dragging stops)
+  const D = DAY, o = D.own[mode];
+  if (o && o.L === L && o.key === key) return o.c;
+  if (bake && !D.ownT && performance.now() - D.bkT > 150) {
+    const go = () => { D.ownT = 0; D.bkT = performance.now(); if (L) D.own[mode] = { c: bakeVariant(mode), L, key }; };
+    if (!o) go(); else D.ownT = setTimeout(go, 400);
+  }
+  return o ? o.c : null;
+}
+function dayPlates(bake) { // the city's black shape, and the rows from the third one forward: the far two rows stand in the morning haze
+  const Z = BLAST2;
+  if (BLAST.swapped) return [Z.rv ? Z.rv.oldS : silAfterC, Z.hit ? dayOwn("silAfter2", silAfterC, bake && !Z.rv) : silPallC]; // after the far blast, its own broken front rows
+  return [silC || dayOwn("sil", 0, bake), (nearM && nearM[2]) || dayOwn("near2", 0, bake && !!(silC || DAY.own.sil))];
+}
+function dayBake(sil, front) { // the morning sky, once per city shape: heavy overcast, darker overhead, lighter low down where the cloud thins far off
+  const { apW: aw, apH: ah } = L, SS = Math.min(2, Math.max(1, DPR)), c = document.createElement("canvas");
+  c.width = Math.ceil(aw * SS); c.height = Math.ceil(ah * SS);
+  const x = c.getContext("2d"), r = rngf(2727), far = ah * 0.52, hz = "66,73,84";
+  x.scale(SS, SS);
+  const sk = x.createLinearGradient(0, 0, 0, far);
+  sk.addColorStop(0, "rgb(23,26,32)"); sk.addColorStop(0.35, "rgb(33,37,44)"); sk.addColorStop(0.7, "rgb(48,54,62)"); sk.addColorStop(0.92, "rgb(62,69,79)"); sk.addColorStop(1, "rgb(" + hz + ")");
+  x.fillStyle = sk; x.fillRect(0, 0, aw, far); x.fillStyle = "rgb(" + hz + ")"; x.fillRect(0, far, aw, ah - far);
+  for (let i = 0; i < 7; i++) softBlob(x, r() * aw, far * (0.62 + r() * 0.3), aw * (0.12 + r() * 0.16), "84,91,102", 0.10 + r() * 0.1, 0.16); // thinner cloud low down: long pale bands
+  for (let i = 0; i < 14; i++) softBlob(x, r() * aw, ah * (0.02 + r() * 0.26), aw * (0.08 + r() * 0.14), "14,16,21", 0.35 + r() * 0.3, 0.3); // the heavy bellies of the overcast
+  for (let i = 0; i < 10; i++) softBlob(x, r() * aw, ah * (0.2 + r() * 0.2), aw * (0.05 + r() * 0.1), "20,23,29", 0.3 + r() * 0.25, 0.26);
+  for (let i = 0; i < 6; i++) softBlob(x, r() * aw, ah * (0.06 + r() * 0.2), aw * (0.06 + r() * 0.1), "56,62,71", 0.12 + r() * 0.1, 0.22); // where the overcast is thinner, a little more of the grey comes through
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  x.globalCompositeOperation = "destination-in"; // only the sky: the grey never reaches the ground between the rows
+  const vm = x.createLinearGradient(0, far * SS, 0, ah * 0.6 * SS); vm.addColorStop(0, "#000"); vm.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = vm; x.fillRect(0, 0, c.width, c.height);
+  x.globalCompositeOperation = "destination-out"; x.drawImage(sil, 0, 0, c.width, c.height); x.drawImage(sil, 0, 0, c.width, c.height); // the city stands in front, black (twice: the far rows are baked part clear)
+  if (front) { // the haze: the far rows go pale toward their feet, the rows in front stay black and sharp
+    const h = document.createElement("canvas"); h.width = c.width; h.height = c.height;
+    const hx = h.getContext("2d"), hg = hx.createLinearGradient(0, ah * 0.36 * SS, 0, ah * 0.74 * SS);
+    for (const [p, a] of [[0, 0], [0.3, 0.12], [0.5, 0.42], [0.66, 0.6], [0.82, 0.3], [1, 0]]) hg.addColorStop(p, "rgba(" + hz + "," + a + ")");
+    hx.fillStyle = hg; hx.fillRect(0, 0, h.width, h.height);
+    hx.globalCompositeOperation = "destination-out"; hx.drawImage(front, 0, 0, h.width, h.height); hx.drawImage(front, 0, 0, h.width, h.height);
+    x.globalCompositeOperation = "source-over"; x.drawImage(h, 0, 0);
+  }
+  return c;
+}
+function drawDaySky() { // in the backdrop, over the painted sky, under the cloud and everything that moves
+  const D = DAY;
+  if (D.k < 0.003) return;
+  const [sil, front] = dayPlates(false);
+  if (sil && (!D.c || (front && !BLAST2.rv && (D.cK[0] !== sil || D.cK[1] !== front || D.cK[2] !== L)))) { D.c = dayBake(sil, front); D.cK = [sil, front, L]; } // made again only once both plates are in, so the haze never drops out for a moment
+  if (!D.c) return;
+  g.globalAlpha = D.k; g.drawImage(D.c, 0, 0, L.apW, L.apH); g.globalAlpha = 1;
+}
+function drawDayScud(t) { // the low scud catches a little of the grey along its bellies; mist along the skyline; the smoke shows dark against the grey
+  const D = DAY;
+  if (D.k < 0.003 || !cloudLitC || !L) return;
+  if (D.scS !== cloudLitC) { // the lit scud's own shape, in cold grey; made once per resize
+    const c = document.createElement("canvas"); c.width = cloudLitC.width; c.height = cloudLitC.height;
+    const x = c.getContext("2d"); x.drawImage(cloudLitC, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "rgb(80,87,98)"; x.fillRect(0, 0, c.width, c.height);
+    D.sc = c; D.scS = cloudLitC;
+  }
+  const { apW, apH } = L, cw = apW * 1.5, chh = apH * 0.36, cy0 = apH * 0.08, oc = RM ? 200 : (cloudPh * 4) % cw;
+  g.globalAlpha = 0.5 * D.k; g.drawImage(D.sc, -oc, cy0, cw, chh); g.drawImage(D.sc, cw - oc, cy0, cw, chh);
+  const fw = apW * 1.6, o1 = RM ? 0 : (fogPh * 7) % fw; // a little more mist along the skyline, on the band that is there at night
+  g.globalAlpha = 0.1 * D.k; g.drawImage(fogC, -o1, apH * 0.44, fw, apH * 0.34); g.drawImage(fogC, fw - o1, apH * 0.44, fw, apH * 0.34); g.globalAlpha = 1;
+  const st = anchors.smoke; // the column from the burning building, under its pale one: at night it shows pale on the dark, by day dark on the grey
+  if (!st) return;
+  const ps = clamp(apH / 540, 0.45, 1), lean = RM ? 0.6 : Math.min(1.3, 0.3 + 0.6 * WX.k + 0.6 * WX.gust);
+  for (let i = 0; i < 18; i++) {
+    const k = RM ? i / 18 : ((t / 22) + i / 18) % 1, rise = 1 - Math.pow(1 - k, 1.6);
+    const a = 0.85 * D.k * (1 - 0.3 * WX.k) * (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88);
+    if (a > 0.003) softBlob(g, st.x + Math.sin(k * 4 + i * 2.1) * 3 * ps + k * k * apW * 0.08 * (0.5 + lean) * (0.7 + (i % 3) * 0.25), st.y - rise * apH * 0.32, (9 + k * 38) * ps, "12,13,16", a, 0.8 + 0.2 * k);
+  }
+}
+function drawDayRoom() { // a faint cold light from the window on the walls; daylight needs no power, so it stays when the lamp is gone
+  const D = DAY;
+  if (D.k < 0.003 || !L) return;
+  const a = D.k * (1 - 0.85 * shutterPos) * (1 - 0.6 * BLIMP.dk);
+  if (a < 0.003) return;
+  const key = W + "x" + H;
+  if (D.rgK !== key) {
+    const cx = L.apX + L.apW / 2, cy = L.apY + L.apH * 0.6, rr = Math.max(W, H) * 0.62, gr = g.createRadialGradient(cx, cy, Math.min(L.apW, L.apH) * 0.3, cx, cy, rr);
+    for (const [p, q] of [[0, 1], [0.3, 0.5], [0.7, 0.14], [1, 0]]) gr.addColorStop(p, "rgba(24,28,34," + q + ")");
+    D.rg = gr; D.rgK = key;
+  }
+  g.save(); g.beginPath(); g.rect(0, 0, W, H); g.rect(L.apX, L.apY, L.apW, L.apH); g.clip("evenodd"); // never over the glass
+  g.globalCompositeOperation = "lighter"; g.globalAlpha = a; g.fillStyle = D.rg; g.fillRect(0, 0, W, H); g.restore();
+}
 /* ---- the second blast: a minute or so after the first, another one, far off, below the horizon (only when NEW_EVENTS_LIVE) ----
    First the light: the cloud above the horizon flares white from below, goes yellow, then a dull orange, and the monitor breaks up
    and the lamp stutters. The far towers stand black against it. A couple of seconds later the air reaches them: crowns shear off
@@ -3992,6 +4106,7 @@ function drawCity(t, amp, dt, flashA) {
     }
   }
 
+  drawDayScud(t);
   drawBlast2(t); // the second blast, if there is one: light under the cloud, then the glow
   // siren head on the mast: horn bell + rotor housing on a trunnion yoke
   const tw2 = anchors.tower, tx = tw2.x, tt = tw2.topY;
@@ -4086,7 +4201,7 @@ function drawCity(t, amp, dt, flashA) {
       const a = 0.20 * (1 - 0.3 * WX.k) * (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88);
       const warm = Math.max(0, 1 - k * 3);
       const col = Math.round(150 + 30 * warm) + "," + Math.round(148 - 8 * warm) + "," + Math.round(158 - 34 * warm);
-      if (a > 0.003) softBlob(g, px2, py2, (8 + k * 34) * ps, col, a, 0.8 + 0.2 * k);
+      if (a > 0.003) softBlob(g, px2, py2, (8 + k * 34) * ps, col, a * (1 - 0.75 * DAY.k), 0.8 + 0.2 * k); // by day it shows dark (drawDayScud), only its edge catching the grey
     }
     // a second, thinner column far across the city: it is not the only fire
     const s2 = anchors.smoke2;
@@ -4258,6 +4373,7 @@ function drawBackdrop(t) {
   const { apW, apH } = L, B = BLAST, ruin = B.swapped && cityAfterC;
   g.drawImage(ruin ? cityAfterC : cityC, 0, 0, apW, apH);
   if (BLAST2.rv) blast2Reveal(t); // the far blast's broken skyline coming in outward from the spot
+  drawDaySky(); // dawn: the grey behind the city
   const tt = B.t0 > -1e8 ? t - B.t0 : 99, F = B.t0 > -1e8 ? blastF(tt) : 0, G = blastG(t), sil = ruin ? silAfterC : (waveSil(tt) || silC);
   if ((F < 0.003 && G < 0.003) || !sil || !lightC) return;
   const gx = apW * B.gx, gy = apH * B.gy, lx = lightC.getContext("2d"), mg = mushGeom(t);
@@ -5901,6 +6017,7 @@ function frame(now) {
   stepBlimp(t, dt);
 
   let shX = 0, shY = 0;
+  flashA *= stepDay(dt); // the day clock; a flash reads weaker against the grey
   if (t - shakeT < shakeDur) {
     const e = t - shakeT, kk = (1 - e / shakeDur) * shakeAmp;
     shX = (Math.random() * 2 - 1) * kk; shY = (Math.random() * 2 - 1) * kk;
@@ -5935,6 +6052,7 @@ function frame(now) {
   drawLever(t);
   drawLampAndGlow(t, amp, flashA);
   drawLampDust(t);
+  drawDayRoom();
   drawAlarm(t, amp);
   drawCRT(t);
   drawBlastRoom(t, dt);
