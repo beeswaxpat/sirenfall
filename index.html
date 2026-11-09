@@ -1161,6 +1161,7 @@ addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; 
    and then it comes after the bomb. ?score=b for the simpler version, ?sparse for the score's own (slower) clocks */
 const STORM_CYCLE_LIVE = false; // the storm swells and eases over the minutes (Patrick tests it on his phone first, ?wx=5&evtest=1; flip when he says go)
 const NEW_EVENTS_LIVE = true; // the second blast and the blimp happen on their own (Patrick passed them on his phone 2026-11-06)
+const HALL_LIVE = false; // something in the hall (about ten minutes in) stays off for ordinary visitors until Patrick has tried ?hall on his phone; the test flag works either way
 const RAID_SCORE = "a", RAID_ODDS_POST = 1 / 3, RAID_ODDS_CITY = 0.4;
 const RAID = { at: -1, u: -1, rows: [], post: false, score: RAID_SCORE, tsc: 0.42, rev: 0, endAt: 0, snd: null, done: false };
 let planeC = null;
@@ -5646,6 +5647,193 @@ function stepStory(t, dt) {
   }
 }
 
+/* ---------- SOMETHING IN THE HALL (event block: roll, score, steps, handle; hooks: HALL_LIVE by NEW_EVENTS_LIVE, one line in frame) ----------
+   About ten minutes into a stay, something walks up the corridor outside the shelter door: slow heavy steps, far off on wet concrete,
+   coming closer, stopping right outside. A few seconds of nothing but the storm. The handle is tried once: a lever pressed down, the
+   latch takes the strain with a dull clunk, the steel door shifts in its frame. A long wait. Then the steps go away, slower. The door
+   holds and nothing comes in; the only thing to see is the lamp's small swing and a little dust. It sounds from behind the door (the
+   knock's place, left of centre) through the room's own gate, so the STORM knob and the volume treat it as they treat the knock.
+   Natural odds: a visitor's first stay that reaches about ten minutes, then about 1 in 3 long stays (sf.hall), only once HALL_LIVE is true.
+   Never on top of another event: it waits for the bomb and what follows, the second blast, the raid, the blimp, a knock, the broadcast;
+   if no quiet moment comes by 14 minutes it skips that stay. A power failure skips it. It pauses while the sound is down or the page is away.
+   Local test: ?hall (5 s after the sound comes on) or ?hall=N; on the live site only with &evtest=1. Times below are story seconds. */
+const HALL_AT0 = 570, HALL_AT1 = 660, HALL_LIMIT = 840, HALL_AHEAD = 0.3, HALL_GAIN = 0.45, HALL_CLUNK = 1.0; // when it may start (9:30 to 11:00), the latest it may start (14:00), how far ahead sounds are queued, loudness, the clunk's place in the handle
+const HALL = { at: -1, test: false, limit: HALL_LIMIT, u: -1, done: false, sc: null, i: 0, rig: null, react: -1 };
+{
+  const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
+  const m = (lh || /[?&]evtest=1\b/.test(q)) ? q.match(/[?&]hall(?:=(\d+))?\b/) : null;
+  if (m) {
+    HALL.at = m[1] ? +m[1] : 5; HALL.test = true; HALL.limit = HALL.at + 600;
+    if (!/[?&](blast|after|planes)\b/.test(q)) { BLAST.at = BLAST.at0 = -1; BLAST.jump = -1; RAID.at = -1; } // the hall alone, unless the test asks for another event too
+    if (!/[?&]blimp\b/.test(q)) BLIMP.at = -1;
+    STORY.blackout = STORY.fastDark; if (!STORY.fast) { STORY.knock = false; STORY.card = false; }
+  } else if (HALL_LIVE) {
+    let seen = "0";
+    try { seen = localStorage.getItem("sf.hall") || "0"; } catch (e) {}
+    if (seen !== "1" || Math.random() < 1 / 3) HALL.at = HALL_AT0 + Math.random() * (HALL_AT1 - HALL_AT0);
+  }
+}
+function hallBusy(t) { // another event is on, or about to be
+  const st = STORY, B = BLAST;
+  return blastBusy(t) || (B.at >= 0 && B.t0 < -1e8) || (B.t0 > -1e8 && (!B.lifted || B.lock)) || (B.radT > -1e8 && t - B.radT < RAD_RING + GEIGER_LEN + 2) ||
+    (BLAST2.on && BLAST2.ph < 3) || (RAID.at >= 0 && !RAID.done) || (BLIMP.at >= 0 && !BLIMP.done) ||
+    (st.knock && st.knocked < 0) || (st.knocked >= 0 && t - st.knocked < 12) || (st.card && st.cardT < 0) || (st.cardT >= 0 && t - st.cardT < CARD_LEN + 2) ||
+    (st.blackout && st.boT < 0) || (DOOR.after && DOOR.step !== 9) || (DOOR.step >= 1 && DOOR.step <= 3) || (DOOR.id && !DOOR.done) ||
+    !!strike || shutterMoving || (grab && grab.kind === "shutter") || rotShown;
+}
+function hallScore() { // the whole thing as a list of sounds, each at a time in seconds; made fresh every time so no two walks are alike
+  const R = Math.random, rg = (a, b) => a + R() * (b - a), ev = [];
+  const n = 19 + Math.floor(R() * 4), hes = Math.floor(n * rg(0.55, 0.72)); // steps on the way in; the one where it hesitates
+  let t = 0.6;
+  for (let i = 0; i < n; i++) { // an even slow pace, one foot heavier than the other, 30 m away down to 1.2 m
+    const foot = i & 1;
+    ev.push({ t, k: "step", d: 30 - 28.8 * i / (n - 1), pit: rg(0.9, 1.1) * (foot ? 0.93 : 1), soft: foot ? 0.85 : 1, wet: R() < 0.55, scuff: i > 2 && R() < 0.22 });
+    t += (foot ? 1.28 : 1.12) * rg(0.94, 1.07) + (i === hes ? 0.55 : 0);
+  }
+  const tStop = ev[n - 1].t;
+  ev.push({ t: tStop + 0.62, k: "step", d: 1.2, pit: 0.95, soft: 0.4, wet: false, scuff: true }); // the other foot comes up beside it
+  const tH = tStop + 0.62 + rg(3.3, 4.8); // a few seconds of nothing, then the handle
+  ev.push({ t: tH, k: "handle" });
+  const tL = tH + 3.0 + rg(8, 12); // the long wait, then it turns
+  ev.push({ t: tL, k: "step", d: 1.2, pit: 0.9, soft: 0.8, wet: false, scuff: true, turn: true });
+  const m = 7 + Math.floor(R() * 2); let g = 1.4; t = tL + 0.75;
+  for (let j = 0; j < m; j++) { // slower than it came, and fading
+    const p = (j + 1) / m;
+    ev.push({ t, k: "step", d: 1.8 + 34 * Math.pow(p, 1.15), pit: rg(0.88, 1.06) * (j & 1 ? 0.93 : 1), soft: 0.95, fade: 1 - 0.55 * p, wet: R() < 0.55, scuff: R() < 0.3 });
+    t += g * rg(0.95, 1.08); g *= 1.05;
+  }
+  return { ev, tStop, tH, tL, len: t + 1.5 };
+}
+function hallIR(c) { // a long concrete corridor: dark, a second and a half of noise falling away, a little late
+  const sr = c.sampleRate, n = Math.floor(sr * 1.7), pre = Math.floor(sr * 0.03), b = c.createBuffer(2, n, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch); let lp = 0, e = 0;
+    for (let i = pre; i < n; i++) { const k = (i - pre) / sr; lp += (Math.random() * 2 - 1 - lp) * (0.08 + 0.7 * Math.exp(-k / 0.3)); d[i] = lp * Math.exp(-k / 0.24); e += d[i] * d[i]; }
+    const nm = 0.5 / Math.sqrt(e + 1e-9); for (let i = 0; i < n; i++) d[i] *= nm;
+  }
+  return b;
+}
+function hallRig(c, dest) { // the corridor and the door between it and the room: everything goes through here to the room's gate
+  const nb = c.createBuffer(1, Math.floor(c.sampleRate * 2), c.sampleRate), d = nb.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const bus = new GainNode(c, { gain: HALL_GAIN }), lp = new BiquadFilterNode(c, { type: "lowpass", frequency: 2800, Q: 0.6 }), pan = new StereoPannerNode(c, { pan: -0.35 });
+  bus.connect(lp).connect(pan).connect(dest);
+  const conv = new ConvolverNode(c, { buffer: hallIR(c) }), wlp = new BiquadFilterNode(c, { type: "lowpass", frequency: 1500, Q: 0.5 });
+  conv.connect(wlp).connect(bus);
+  return { c, nb, bus, lp, pan, conv, wlp };
+}
+function hNoise(rig, out, at, type, f, q, pk, dec, att, f2) { // a burst of noise through a filter; f2 slides the filter's centre
+  const c = rig.c, s = new AudioBufferSourceNode(c, { buffer: rig.nb }), fl = new BiquadFilterNode(c, { type, frequency: f, Q: q }), gn = new GainNode(c, { gain: 0.0001 });
+  att = att || 0.003;
+  if (f2) { fl.frequency.setValueAtTime(f, at); fl.frequency.exponentialRampToValueAtTime(f2, at + att + dec); }
+  gn.gain.setValueAtTime(0.0001, at); gn.gain.exponentialRampToValueAtTime(Math.max(0.0002, pk), at + att); gn.gain.exponentialRampToValueAtTime(0.0003, at + att + dec);
+  s.connect(fl).connect(gn).connect(out); s.start(at, Math.random() * 1.5); s.stop(at + att + dec + 0.03);
+}
+function hTone(rig, out, at, f0, f1, pk, dec, att, type) { // a falling tone: weight
+  const c = rig.c, o = new OscillatorNode(c, { type: type || "sine", frequency: f0 }), gn = new GainNode(c, { gain: 0.0001 });
+  att = att || 0.004;
+  o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f1, at + att + dec * 0.6);
+  gn.gain.setValueAtTime(0.0001, at); gn.gain.exponentialRampToValueAtTime(Math.max(0.0002, pk), at + att); gn.gain.exponentialRampToValueAtTime(0.0003, at + att + dec);
+  o.connect(gn).connect(out); o.start(at); o.stop(at + att + dec + 0.03);
+}
+function hGrit(rig, out, at, span, n, pk) { // grains of grit under a sole: little bursts of high noise with gaps between
+  const c = rig.c, s = new AudioBufferSourceNode(c, { buffer: rig.nb }), hp = new BiquadFilterNode(c, { type: "highpass", frequency: 2200, Q: 0.7 }), gn = new GainNode(c, { gain: 0 });
+  let tg = at;
+  for (let k = 0; k < n; k++) { gn.gain.setValueAtTime(pk * (0.25 + Math.random() * 0.75), tg); gn.gain.setValueAtTime(0, tg + 0.004 + Math.random() * 0.012); tg += Math.random() * span * 2 / n; }
+  s.connect(hp).connect(gn).connect(out); s.start(at, Math.random() * 1.5); s.stop(tg + 0.03);
+}
+function hScuff(rig, out, at, len, f, pk) { // a sole dragged on grit: a rough hiss that rises and dies
+  const c = rig.c, s = new AudioBufferSourceNode(c, { buffer: rig.nb }), fl = new BiquadFilterNode(c, { type: "bandpass", frequency: f, Q: 0.6 }), gn = new GainNode(c, { gain: 0 });
+  gn.gain.setValueAtTime(0, at);
+  for (let tt = 0.02; tt < len; tt += 0.018 + Math.random() * 0.02) gn.gain.linearRampToValueAtTime(pk * Math.sin(Math.PI * Math.min(1, tt / len)) * (0.35 + Math.random() * 0.65), at + tt);
+  gn.gain.linearRampToValueAtTime(0, at + len);
+  s.connect(fl).connect(gn).connect(out); s.start(at, Math.random() * 1.5); s.stop(at + len + 0.03);
+}
+function hallLvl(d) { return Math.pow(1.2 / d, 0.55); } // how loud a step is at d meters
+function hallStep(rig, e, at) { // one step: the heel lands, the forefoot comes down a beat later, grit and wet under it; each one a little different
+  const c = rig.c, R = Math.random, rg = (a, b) => a + R() * (b - a), P = e.pit, lvl = hallLvl(e.d) * (e.soft || 1) * (e.fade || 1), sl = Math.sqrt(lvl);
+  const mix = new GainNode(c, { gain: 1 }), lp = new BiquadFilterNode(c, { type: "lowpass", frequency: 400 + 3400 * Math.pow(lvl, 0.9), Q: 0.5 });
+  const dry = new GainNode(c, { gain: lvl }), snd = new GainNode(c, { gain: lvl * (0.9 - 0.55 * sl) });
+  mix.connect(lp); lp.connect(dry).connect(rig.bus); lp.connect(snd).connect(rig.conv);
+  let t = at;
+  if (e.turn) { // the first thing it does is turn on the spot: a heavy heel grinding round on grit, then the step
+    hScuff(rig, mix, t, 0.32, 1600, 0.55); hGrit(rig, mix, t, 0.3, 9, 0.16); hNoise(rig, mix, t + 0.28, "bandpass", 140 * P, 1, 1.2, 0.1);
+    t += 0.34;
+  }
+  const h = 0.9 + 0.2 * R(); // some heels come down harder
+  hTone(rig, mix, t, 80 * P, 50 * P, 0.3 * h, 0.17);
+  hNoise(rig, mix, t, "bandpass", 150 * P, 1.0, 3.0 * h, 0.12);
+  hNoise(rig, mix, t, "bandpass", rg(600, 950) * P, 1.3, 1.1 * h, 0.035); // leather on concrete
+  hNoise(rig, mix, t, "highpass", 2300, 0.7, 0.07, 0.014);
+  const t2 = t + rg(0.1, 0.17); // the forefoot
+  hTone(rig, mix, t2, 62 * P, 44 * P, 0.14 * h, 0.11);
+  hNoise(rig, mix, t2, "bandpass", 230 * P, 1.0, 1.5 * h, 0.09);
+  hNoise(rig, mix, t2, "bandpass", rg(450, 650) * P, 1.4, 0.5, 0.03);
+  hGrit(rig, mix, t + 0.01, 0.2, 3 + Math.floor(R() * 5), 0.09 * h); // grit grinding under it
+  if (e.wet) { // the floor is wet: a slap of water and a drop or two
+    hNoise(rig, mix, t + 0.02, "bandpass", rg(1500, 2600), 1.1, 0.5, 0.09, 0.008, rg(900, 1500));
+    for (let k = 0, nd = 1 + Math.floor(R() * 3); k < nd; k++) hTone(rig, mix, t + 0.05 + R() * 0.25, rg(2400, 4200), rg(4200, 6000), 0.05, 0.03, 0.003);
+  }
+  if (e.scuff) hScuff(rig, mix, t2 + 0.03, rg(0.14, 0.26), rg(1300, 2200), 0.28 * h); // the sole drags
+}
+function hallHandle(rig, at) { // the handle tried once: a hand on the lever, the lever pressed down and held, the latch takes the strain, the door shifts, the lever lets go
+  const c = rig.c, R = Math.random, rg = (a, b) => a + R() * (b - a);
+  const mix = new GainNode(c, { gain: 1 }), lp = new BiquadFilterNode(c, { type: "lowpass", frequency: 4200, Q: 0.5 });
+  const dry = new GainNode(c, { gain: 0.72 }), snd = new GainNode(c, { gain: 0.15 });
+  mix.connect(lp); lp.connect(dry).connect(rig.bus); lp.connect(snd).connect(rig.conv);
+  hNoise(rig, mix, at, "bandpass", 2300, 4, 0.5, 0.02); // a hand finds the lever
+  hNoise(rig, mix, at + 0.05, "bandpass", 700, 1, 0.4, 0.08);
+  const a = at + 0.32; // the lever goes down: steel grinding on steel, a weight behind it, the ratchet ticking
+  hNoise(rig, mix, a, "bandpass", 1100, 5, 1.6, 0.6, 0.22, 620);
+  hNoise(rig, mix, a, "bandpass", 130, 0.8, 1.6, 0.6, 0.3);
+  for (let k = 0, tk = a + 0.08; k < 5; k++) { hNoise(rig, mix, tk, "bandpass", rg(1500, 1900), 6, 1.2, 0.016); tk += 0.09 + k * 0.025 + R() * 0.02; }
+  const lt = at + HALL_CLUNK; // the latch takes the strain: dull, heavy
+  hTone(rig, mix, lt, 92, 48, 0.5, 0.3);
+  hNoise(rig, mix, lt, "bandpass", 170, 1.0, 5.5, 0.16);
+  hNoise(rig, mix, lt, "bandpass", 410, 9, 4.5, 0.36); // the door rings, low
+  hNoise(rig, mix, lt, "bandpass", 880, 12, 2.2, 0.22);
+  hNoise(rig, mix, lt, "bandpass", 2000, 1, 0.12, 0.012);
+  for (const [f, v, dd] of [[142, 0.1, 0.7], [237, 0.06, 0.5], [391, 0.035, 0.4]]) hTone(rig, mix, lt + 0.005, f, f * 0.995, v, dd, 0.01); // the panel's own notes
+  hNoise(rig, mix, lt + 0.1, "bandpass", 95, 2, 2.4, 0.6, 0.25); // the door leans on its frame
+  hTone(rig, mix, lt + 0.15, 200, 235, 0.05, 0.55, 0.12, "sawtooth"); // a hinge complains
+  for (const [d, v] of [[0.12, 0.9], [0.22, 0.6], [0.36, 0.65], [0.55, 0.3], [0.83, 0.2]]) hNoise(rig, mix, lt + d + R() * 0.03, "bandpass", rg(1100, 1400), 8, 3 * v, 0.04); // it rattles in the frame
+  const r = lt + 1.8; // the lever lets go and comes back up against its stop
+  hNoise(rig, mix, r, "bandpass", 1500, 3, 1.5, 0.03);
+  hNoise(rig, mix, r, "bandpass", 480, 5, 2.4, 0.12);
+  hTone(rig, mix, r, 72, 52, 0.22, 0.12);
+  hNoise(rig, mix, r + 0.14, "bandpass", 900, 8, 0.7, 0.05);
+}
+function hallPlay(rig, e, at) { if (e.k === "handle") hallHandle(rig, at); else hallStep(rig, e, at); }
+function hallEnd(quick) { // the walk is over (or cut short): close the corridor, let the tail die, drop it all
+  const H = HALL, r = H.rig; H.done = true; H.rig = null; H.sc = null;
+  if (!r) return;
+  try { r.bus.gain.setTargetAtTime(0.0001, r.c.currentTime, quick ? 0.12 : 0.6); } catch (e) {}
+  setTimeout(() => { try { r.bus.disconnect(); r.lp.disconnect(); r.pan.disconnect(); r.conv.disconnect(); r.wlp.disconnect(); } catch (e) {} }, quick ? 800 : 3000);
+}
+function stepHall(t, dt) {
+  const H = HALL, st = STORY;
+  if (H.at < 0 || H.done) return;
+  if (H.u < 0) {
+    if (!built || st.clk < H.at) return;
+    if (st.deadT >= 0 || st.boT >= 0 || st.clk > H.limit) { H.done = true; return; } // no power, or no quiet moment came: not this stay
+    if (hallBusy(t) || !heardNow()) return;
+    H.u = 0; H.sc = hallScore(); H.i = 0; H.react = -1; H.rig = hallRig(ctx, N.ambR);
+    if (!H.test) try { localStorage.setItem("sf.hall", "1"); } catch (e) {}
+  }
+  if (st.deadT >= 0 || st.boT >= 0) { hallEnd(true); return; }
+  if (!heardNow()) return; // the sound is down: it waits
+  H.u += dt;
+  const sc = H.sc, ev = sc.ev;
+  while (H.i < ev.length && ev[H.i].t <= H.u + HALL_AHEAD) { // queue what is about to happen, a moment before it does
+    const e = ev[H.i++];
+    hallPlay(H.rig, e, ctx.currentTime + Math.max(0.01, e.t - H.u));
+    if (e.k === "handle") H.react = e.t + HALL_CLUNK;
+  }
+  if (H.react >= 0 && H.u >= H.react) { H.react = -1; if (!RM) { BLAST.swingV += 0.012; spawnDust(3); } } // the door takes the strain: the lamp stirs, a little dust comes down
+  if (H.u > sc.tStop - 5 && H.u < sc.tL && nextStrikeT < t + 3) nextStrikeT = t + 3; // no lightning over the quiet part
+  if (H.u > sc.len) hallEnd(false);
+}
+
 /* ---------- lever + knob interaction ---------- */
 function leverHandlePos() {
   const a = leverTh * Math.PI / 180;
@@ -6059,6 +6247,7 @@ function frame(now) {
   stepRaid(t, dt);
   stepBlast2(t, dt, gap);
   stepBlimp(t, dt);
+  stepHall(t, dt);
 
   let shX = 0, shY = 0;
   flashA *= stepDay(dt); // the day clock; a flash reads weaker against the grey
