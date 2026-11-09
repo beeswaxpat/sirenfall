@@ -5650,7 +5650,7 @@ function stepStory(t, dt) {
 /* ---------- SOMETHING IN THE HALL (event block: roll, score, steps, handle; hooks: HALL_LIVE by NEW_EVENTS_LIVE, one line in frame) ----------
    About six minutes into a stay, something walks up the corridor outside the shelter door: slow heavy steps, far off on wet concrete,
    coming closer, stopping right outside. A few seconds of nothing but the storm. The handle is tried two or three times, a person
-   testing a locked door: the latch plays in the strike plate, the steel door barely shifts in its frame. A long wait. Then the steps go away, slower. The door
+   testing a locked door: heard through the steel: a soft scrape, a dull thud, the door barely shifts in its frame. A long wait. Then the steps go away, slower. The door
    holds and nothing comes in; the only thing to see is the lamp's small swing and a little dust. It sounds from behind the door (the
    knock's place, left of centre) through the room's own gate, so the STORM knob and the volume treat it as they treat the knock.
    Natural odds: a visitor's first stay that reaches about six minutes, then about 1 in 3 long stays (sf.hall), only once HALL_LIVE is true.
@@ -5783,35 +5783,20 @@ function hallTries() { // the handle tried two or three times, a person testing 
   for (let i = 0; i < n; i++) { tries.push({ t, v: i === hard ? 1 : rg(0.45, 0.7) }); t += rg(0.8, 1.5) + (i === 0 ? 0.2 : 0); }
   return { tries, hit: tries[hard].t + 0.2, end: tries[n - 1].t + 1.0 };
 }
-function hallTry(rig, mix, at, v) { // one try at the handle: it goes down a little way, the latch meets the strike plate and plays in it, the door barely leans, the handle comes back
+function hallTry(rig, mix, at, v) { // one try at the handle, heard from inside through the steel: a soft low scrape, a dull thud you mostly feel, the door leaning a little. Nothing bright, nothing with a pitch
   const R = Math.random, rg = (a, b) => a + R() * (b - a);
-  hNoise(rig, mix, at, "bandpass", rg(650, 800), 3, 0.9 * v, 0.2, 0.07, rg(420, 520)); // a heavy handle moving: metal play
-  hNoise(rig, mix, at, "bandpass", 120, 0.8, 1.4 * v, 0.25, 0.08);
-  const l = at + rg(0.15, 0.24); // the tongue of the latch meets the plate: dull, short
-  hTone(rig, mix, l, 85, 55, 0.3 * v, 0.18);
-  hNoise(rig, mix, l, "bandpass", 180, 1.0, 3.5 * v, 0.12);
-  hNoise(rig, mix, l, "bandpass", rg(390, 440), 9, 2.2 * v, 0.28); // the door rings, low
-  for (let k = 0, nr = 2 + Math.floor(R() * 3), tk = l + rg(0.05, 0.1); k < nr; k++) { // the latch rattles in the plate, uneven and dying
-    hNoise(rig, mix, tk, "bandpass", rg(1000, 1500), 8, 2.4 * v * Math.pow(0.7, k) * rg(0.6, 1), rg(0.025, 0.05));
-    if (R() < 0.5) hNoise(rig, mix, tk, "bandpass", rg(260, 340), 3, 1.6 * v * rg(0.5, 1), 0.06);
-    tk += rg(0.05, 0.16);
-  }
-  hNoise(rig, mix, l + 0.05, "bandpass", 95, 2, 1.6 * v, 0.4, 0.1); // the door leans on its frame, barely
-  if (v > 0.9) { hTone(rig, mix, l + 0.04, 142, 141, 0.06, 0.5, 0.01); hTone(rig, mix, l + 0.2, 200, 225, 0.03, 0.4, 0.1, "sawtooth"); } // the hardest: the panel's own note, a hinge
-  hNoise(rig, mix, at + rg(0.5, 0.65), "bandpass", rg(800, 1000), 5, 0.7 * v, 0.05); // the handle comes back up
+  hNoise(rig, mix, at, "bandpass", rg(420, 520), 0.5, 1.1 * v, 0.22, 0.08, rg(260, 330)); // a heavy handle moving: metal on metal, muffled
+  const l = at + rg(0.15, 0.24); // the latch meets the strike plate
+  hTone(rig, mix, l, 82, 55, 0.3 * v, 0.16);
+  hNoise(rig, mix, l, "bandpass", 170, 0.7, 3.6 * v, 0.13);
+  hNoise(rig, mix, l + 0.05, "bandpass", 95, 0.8, 1.7 * v, 0.4, 0.1); // the door leans on its frame, barely
 }
-function hallHandle(rig, e, at) { // someone tries the door: a hand on the handle, two or three tries, unsuccessful, the handle let go
-  const c = rig.c, R = Math.random;
-  const mix = new GainNode(c, { gain: 1 }), lp = new BiquadFilterNode(c, { type: "lowpass", frequency: 4200, Q: 0.5 });
-  const dry = new GainNode(c, { gain: 0.72 }), snd = new GainNode(c, { gain: 0.15 });
+function hallHandle(rig, e, at) { // someone tries the door: two or three tries, unsuccessful, then it lets go and nothing more
+  const c = rig.c;
+  const mix = new GainNode(c, { gain: 1 }), lp = new BiquadFilterNode(c, { type: "lowpass", frequency: 750, Q: 0.4 });
+  const dry = new GainNode(c, { gain: 0.8 }), snd = new GainNode(c, { gain: 0.15 });
   mix.connect(lp); lp.connect(dry).connect(rig.bus); lp.connect(snd).connect(rig.conv);
-  hNoise(rig, mix, at, "bandpass", 2300, 4, 0.4, 0.02); // a hand finds the handle
-  hNoise(rig, mix, at + 0.05, "bandpass", 700, 1, 0.35, 0.08);
   for (const T of e.tries) hallTry(rig, mix, at + T.t, T.v);
-  const r = at + e.end - 0.1; // let go: it settles back against its stop
-  hNoise(rig, mix, r, "bandpass", 1500, 3, 1.0, 0.03);
-  hNoise(rig, mix, r, "bandpass", 480, 5, 1.8, 0.12);
-  hTone(rig, mix, r, 72, 52, 0.18, 0.12);
 }
 function hallPlay(rig, e, at) { if (e.k === "handle") hallHandle(rig, e, at); else hallStep(rig, e, at); }
 function hallEnd(quick) { // the walk is over (or cut short): close the corridor, let the tail die, drop it all
