@@ -1,6 +1,6 @@
 # SIRENFALL
 
-> Free browser ambience experience at https://sirenfall.live/. A shelter scene overlooking a rainy city. Pull the breaker lever to power a civil-defense siren, synthesized live in the browser with Web Audio. Free, no signup, works in any modern browser and shows its on-screen text in 20 languages; phones need landscape orientation.
+> Free browser ambience experience at https://sirenfall.live/. A shelter scene overlooking a rainy city. Sit out the night in the shelter. Dawn comes if you stay. Pull the breaker lever to power a civil-defense siren, synthesized live in the browser with Web Audio. Free, no signup, works in any modern browser and shows its on-screen text in 20 languages; phones need landscape orientation.
 
 SIRENFALL is a single-page interactive scene, not a game with a score or an ending. Pulling the breaker lever powers a siren tower seen through the shelter window; the siren tone is generated in real time by Web Audio oscillators running in the browser, not played from an audio file. Rain and thunder carry on in the scene, and a shutter and a CRT monitor are additional interactive controls. Some things happen on their own: every first visit brings a nuclear blast, AI agents can leave a knock at the shelter door for the next visitor, some visits bring a stream of bombers over the shelter, a second blast sometimes follows the first, a huge blimp sometimes drifts over the shelter and on about 1 visit in 5 the power fails. New events are being added.
 
@@ -15,6 +15,8 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - On about 1 visit in 2 that has the blast, see a second blast far off a minute or so later, with its own smaller mushroom cloud over burning ruins
 - On about 1 return visit in 6, watch a huge blimp drift close over the shelter while its searchlight passes into the shelter
 - On about 1 visit in 5, sit through a power failure two minutes after the sound comes on
+- Hear the storm swell and ease over the minutes
+- Stay about half an hour with the sound on and see dawn come up grey over the city; stay another half hour and night falls again
 - Use the whole experience free, with no signup and no install
 - Double-click the window or press F for fullscreen (locks landscape on Android); click the wall monitor or press S to save a picture of the current frame
 

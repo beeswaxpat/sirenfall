@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=1">
   <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png?v=1">
   <link rel="apple-touch-icon" href="/favicon.png?v=1">
-<meta name="description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
+<meta name="description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Sit out the night in the shelter. Dawn comes if you stay. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
 <link rel="canonical" href="https://sirenfall.live/">
   <link rel="describedby" href="https://sirenfall.live/llms.txt">
 <meta name="robots" content="index, follow">
@@ -16,14 +16,14 @@
 <meta property="og:url" content="https://sirenfall.live/">
 <meta property="og:site_name" content="SIRENFALL">
 <meta property="og:title" content="SIRENFALL: a browser civil-defense siren scene">
-<meta property="og:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
+<meta property="og:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Sit out the night in the shelter. Dawn comes if you stay. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
 <meta property="og:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
 <meta property="og:image:width" content="1920">
 <meta property="og:image:height" content="1005">
 <meta property="og:image:alt" content="A rainy dead city seen from a shelter window: sheet lightning in low cloud, a siren tower facing you, smoke from a burning building, the breaker thrown on.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="SIRENFALL: a browser civil-defense siren scene">
-<meta name="twitter:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
+<meta name="twitter:description" content="SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Sit out the night in the shelter. Dawn comes if you stay. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.">
 <meta name="twitter:image" content="https://sirenfall.live/og.jpg?v=8e6f9feb">
 <script type="application/ld+json">
 {
@@ -81,7 +81,7 @@
       "@id": "https://sirenfall.live/#webapp",
       "name": "SIRENFALL",
       "url": "https://sirenfall.live/",
-      "description": "SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.",
+      "description": "SIRENFALL: a free browser scene, a shelter overlooking a rainy city. Sit out the night in the shelter. Dawn comes if you stay. Pull the breaker to power a civil-defense siren synthesized live in Web Audio. First visits bring a nuclear blast and sometimes a second one far off, bombers or a huge blimp sometimes pass overhead, AI agents can leave a knock at the door and the power sometimes fails.",
       "featureList": [
         "A civil-defense siren synthesized live in Web Audio (515 and 618 Hz, a horn turning at 4 RPM)",
         "A nuclear blast beyond the city on every first visit",
@@ -90,6 +90,8 @@
         "A second blast far off, a minute or so after the first, on about 1 visit in 2 that has the blast",
         "A huge blimp drifting close over the shelter on about 1 return visit in 6, its searchlight passing into the shelter",
         "A power failure on about 1 visit in 5",
+        "A storm that swells and eases over the minutes",
+        "Dawn after about half an hour with the sound on, then night again half an hour later",
         "Rain, thunder and lightning, with a blast shutter, a wall monitor and a lamp to control"
       ],
       "applicationCategory": "EntertainmentApplication",
@@ -1159,9 +1161,9 @@ addEventListener("pagehide", () => { doorDone(false, true); DOOR.after = false; 
    Tessera Relay's. "b" is the simpler version kept to compare: the same opening and ending, a box every 13 s in each column.
    Local test: ?planes (4 s after the sound comes on) or ?planes=N; it skips the bomb unless ?blast or ?after is given too,
    and then it comes after the bomb. ?score=b for the simpler version, ?sparse for the score's own (slower) clocks */
-const STORM_CYCLE_LIVE = false; // the storm swells and eases over the minutes (Patrick tests it on his phone first, ?wx=5&evtest=1; flip when he says go)
+const STORM_CYCLE_LIVE = true; // the storm swells and eases over the minutes (Patrick said go 2026-11-09; test ?wx=5&evtest=1)
 const NEW_EVENTS_LIVE = true; // the second blast and the blimp happen on their own (Patrick passed them on his phone 2026-11-06)
-const HALL_LIVE = false; // something in the hall (about six minutes in) stays off for ordinary visitors until Patrick has tried ?hall on his phone; the test flag works either way
+const HALL_LIVE = true; // something in the hall, about six minutes in (Patrick said go 2026-11-09; test ?hall=5&evtest=1)
 const RAID_SCORE = "a", RAID_ODDS_POST = 1 / 3, RAID_ODDS_CITY = 0.4;
 const RAID = { at: -1, u: -1, rows: [], post: false, score: RAID_SCORE, tsc: 0.42, rev: 0, endAt: 0, snd: null, done: false };
 let planeC = null;
@@ -1193,7 +1195,7 @@ let planeC = null;
    faded in; nothing is rebuilt per frame. globalThis.sfDayK each frame: 0 night, 1 full grey morning.
    Local test: ?day=M starts the clock at minute M, ?dayx=K runs it K times faster; on the live site only with &evtest=1.
    DAWN_LIVE false: ordinary visits stay at night all visit long (the test flags still work). */
-const DAWN_LIVE = false; // Patrick tests it on his phone first
+const DAWN_LIVE = true; // dawn after half an hour, night again after the next (Patrick said go 2026-11-09)
 const DAY = { on: DAWN_LIVE, m: 0, x: 1, k: 0, c: null, cK: null, own: {}, ownT: 0, bkT: -1e9, sc: null, scS: null, rg: null, rgK: "" };
 {
   const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(location.search), q = location.search;
