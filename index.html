@@ -5533,7 +5533,8 @@ function stepStory(t, dt) {
 /* ---------- SOMETHING IN THE HALL (event block: roll, score, steps, handle; hooks: HALL_LIVE by NEW_EVENTS_LIVE, one line in frame) ----------
    About six minutes into a stay, something walks up the corridor outside the shelter door: slow heavy steps, far off on wet concrete,
    coming closer, stopping right outside. A few seconds of nothing but the storm. The handle is tried two or three times, a person
-   testing a locked door: heard through the steel: a soft scrape, a dull thud, the door barely shifts in its frame. A long wait. Then the steps go away, slower. The door
+   testing a locked door: heard through the steel: a soft scrape, a dull thud, the door barely shifts in its frame. A wait, and
+   if no knock story has played this visit, a knock (the story's own knock) from whoever is out there; a wait; then the steps go away, slower. The door
    holds and nothing comes in; the only thing to see is the lamp's small swing and a little dust. It sounds from behind the door (the
    knock's place, left of centre) through the room's own gate, so the STORM knob and the volume treat it as they treat the knock.
    Natural odds: a visitor's first stay that reaches about six minutes, then about 1 in 3 long stays (sf.hall), only once HALL_LIVE is true.
@@ -5541,7 +5542,7 @@ function stepStory(t, dt) {
    if no quiet moment comes by 10 minutes it skips that stay. A power failure skips it. It pauses while the sound is down or the page is away.
    Local test: ?hall (5 s after the sound comes on) or ?hall=N; on the live site only with &evtest=1. Times below are story seconds. */
 const HALL_AT0 = 330, HALL_AT1 = 450, HALL_LIMIT = 600, HALL_AHEAD = 0.3, HALL_GAIN = 0.45; // when it may start (5:30 to 7:30), the latest it may start (10:00), how far ahead sounds are queued, loudness
-const HALL = { at: -1, test: false, limit: HALL_LIMIT, u: -1, done: false, sc: null, i: 0, rig: null, react: -1 };
+const HALL = { at: -1, test: false, limit: HALL_LIMIT, u: -1, done: false, sc: null, i: 0, rig: null, react: -1, kq: -1 };
 {
   const lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = location.search;
   const m = (lh || /[?&]evtest=1\b/.test(q)) ? q.match(/[?&]hall(?:=(\d+))?\b/) : null;
@@ -5564,7 +5565,7 @@ function hallBusy(t) { // another event is on, or about to be
     (st.blackout && st.boT < 0) || (DOOR.after && DOOR.step !== 9) || (DOOR.step >= 1 && DOOR.step <= 3) || (DOOR.id && !DOOR.done) ||
     !!strike || shutterMoving || (grab && grab.kind === "shutter") || rotShown;
 }
-function hallScore() { // the whole thing as a list of sounds, each at a time in seconds; made fresh every time so no two walks are alike
+function hallScore(withKnock) { // the whole thing as a list of sounds, each at a time in seconds; made fresh every time so no two walks are alike
   const R = Math.random, rg = (a, b) => a + R() * (b - a), ev = [];
   const n = 19 + Math.floor(R() * 4), hes = Math.floor(n * rg(0.55, 0.72)); // steps on the way in; the one where it hesitates
   let t = 0.6;
@@ -5578,7 +5579,8 @@ function hallScore() { // the whole thing as a list of sounds, each at a time in
   const tH = tStop + 0.62 + rg(3.3, 4.8); // a few seconds of nothing, then the handle
   const hd = hallTries();
   ev.push({ t: tH, k: "handle", tries: hd.tries, hit: hd.hit, end: hd.end });
-  const tL = tH + hd.end + rg(6.5, 10); // the long wait, then it turns
+  let tL = tH + hd.end + rg(6.5, 10); // the long wait, then it turns
+  if (withKnock) { const tK = Math.max(tH + hd.end + 2.5, rg(38, 39.2)); ev.push({ t: tK, k: "knock" }); tL = tK + 1.4 + rg(2, 3.5); } // or a knock first, the story's own, then a shorter wait
   ev.push({ t: tL, k: "step", d: 1.2, pit: 0.9, soft: 0.8, wet: false, scuff: true, turn: true });
   const m = 7 + Math.floor(R() * 2); let g = 1.4; t = tL + 0.75;
   for (let j = 0; j < m; j++) { // slower than it came, and fading
@@ -5681,7 +5683,7 @@ function hallHandle(rig, e, at) { // someone tries the door: two or three tries,
   mix.connect(lp); lp.connect(dry).connect(rig.bus); lp.connect(snd).connect(rig.conv);
   for (const T of e.tries) hallTry(rig, mix, at + T.t, T.v);
 }
-function hallPlay(rig, e, at) { if (e.k === "handle") hallHandle(rig, e, at); else hallStep(rig, e, at); }
+function hallPlay(rig, e, at) { if (e.k === "knock") return; if (e.k === "handle") hallHandle(rig, e, at); else hallStep(rig, e, at); }
 function hallEnd(quick) { // the walk is over (or cut short): close the corridor, let the tail die, drop it all
   const H = HALL, r = H.rig; H.done = true; H.rig = null; H.sc = null;
   if (!r) return;
@@ -5695,7 +5697,7 @@ function stepHall(t, dt) {
     if (!built || st.clk < H.at) return;
     if (st.deadT >= 0 || st.boT >= 0 || st.clk > H.limit) { H.done = true; return; } // no power, or no quiet moment came: not this stay
     if (hallBusy(t) || !heardNow()) return;
-    H.u = 0; H.sc = hallScore(); H.i = 0; H.react = -1; H.rig = hallRig(ctx, N.ambR);
+    H.u = 0; H.sc = hallScore(st.knocked < 0); H.kq = -1; H.i = 0; H.react = -1; H.rig = hallRig(ctx, N.ambR);
     if (!H.test) try { localStorage.setItem("sf.hall", "1"); } catch (e) {}
   }
   if (st.deadT >= 0 || st.boT >= 0) { hallEnd(true); return; }
@@ -5704,9 +5706,11 @@ function stepHall(t, dt) {
   const sc = H.sc, ev = sc.ev;
   while (H.i < ev.length && ev[H.i].t <= H.u + HALL_AHEAD) { // queue what is about to happen, a moment before it does
     const e = ev[H.i++];
+    if (e.k === "knock") { H.kq = e.t; continue; } // the knock is played when its moment comes, not queued ahead
     hallPlay(H.rig, e, ctx.currentTime + Math.max(0.01, e.t - H.u));
     if (e.k === "handle") H.react = e.t + e.hit;
   }
+  if (H.kq >= 0 && H.u >= H.kq) { H.kq = -1; playKnock(); if (!H.test) try { localStorage.setItem("sf.knock", "1"); } catch (e) {} } // the story knock, once a visit: this is its play, so it is marked as the story marks it
   if (H.react >= 0 && H.u >= H.react) { H.react = -1; if (!RM) { BLAST.swingV += 0.012; spawnDust(3); } } // the door takes the strain: the lamp stirs, a little dust comes down
   if (H.u > sc.tStop - 5 && H.u < sc.tL && nextStrikeT < t + 3) nextStrikeT = t + 3; // no lightning over the quiet part
   if (H.u > sc.len) hallEnd(false);
