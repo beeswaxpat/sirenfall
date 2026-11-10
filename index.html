@@ -5733,7 +5733,7 @@ function glassStep(t) { // this frame's lean: null on the wall side of the room,
   G.e = G.k * G.k * (3 - 2 * G.k);
   if (G.cls !== G.on) { G.cls = G.on; document.body.classList.toggle("glass", G.on); cv.classList.toggle("zout", G.on); if (G.on) cv.classList.remove("zin", "hand", "paper"); }
   if (G.e < 0.001) { G.pan = 0; return null; }
-  const { apX, apY, apW, apH } = L, Zt = clamp(Math.min(W / (apW * 0.96) * 1.2, H / (apH * 1.04)), 1, 2.4), Z = 1 + (Zt - 1) * G.e, wx = apX + apW / 2, wy = apY + apH / 2;
+  const { apX, apY, apW, apH } = L, Zt = clamp(Math.min(W / (apW * 0.96) * (G.fine ? 1.04 : 1.2), H / (apH * (G.fine ? 1.14 : 1.04))), 1, 2.4) /* a desk screen leans in a little less than a phone: it is already big */, Z = 1 + (Zt - 1) * G.e, wx = apX + apW / 2, wy = apY + apH / 2;
   const over = Math.max(0, (apW * 0.985 * Zt - W) / 2), want = RM ? 0 : (G.fine && ptrX >= 0 ? clamp((0.5 - ptrX / W) * 2.2, -1, 1) : Math.sin(t * 0.045)) * over * 0.94; // look along the city: the mouse, or a slow drift
   G.pan += (want - G.pan) * 0.045;
   const px = wx + (W / 2 - wx) * G.e + G.pan * G.e, py = wy + (Math.min(H / 2, wy * Zt) - wy) * G.e;
@@ -5755,10 +5755,17 @@ function crtRect() { // where the monitor is now: on the wall, or part of the wa
   const th = Math.min(L.h * 0.68, L.w * 0.8 * 0.8), tw = th / 0.8, tx = (L.w - tw) / 2, ty = Math.max(20, L.h * 0.47 - th / 2), m = (p, q) => p + (q - p) * e;
   return { x: m(a.x, tx), y: m(a.y, ty), w: m(a.w, tw), h: m(a.h, th), wall: a.wall, s: m(a.w, tw) / a.w, lean: e };
 }
-function camHold(t) { // the story needs the door: the knock and the open door, an agent's knock, the minute after either
-  if (BLAST.radT > -1e8) return DOOR.cam; // after the bomb only an agent's knock takes the monitor to the door
-  const st = STORY;
-  return DOOR.cam || t - DOOR.camT < 45 || t - st.glitchT < 45 || (st.knocked >= 0 && t - st.knocked < 75) || (st.knocked >= 0 && st.cardT >= 0 && t - st.cardT < CARD_LEN + 30);
+function camHold(t) {
+  // the story needs the door: the knock and the open door, an agent's knock, the minute after either. It gives the moment that need
+  // began, or -Infinity when there is none: the monitor cuts to the door then, and a camera you turn to after that is yours to keep
+  if (BLAST.radT > -1e8) return DOOR.cam ? DOOR.camT : -Infinity; // after the bomb only an agent's knock takes the monitor to the door
+  const st = STORY; let hs = -Infinity;
+  if (CAM.left) return hs; // you have seen the door open and turned to another camera: the knock and the broadcast still come, but the monitor stays where you put it
+  if (DOOR.cam || t - DOOR.camT < 45) hs = Math.max(hs, DOOR.camT);
+  if (t - st.glitchT < 45) hs = Math.max(hs, st.glitchT);
+  if (st.knocked >= 0 && t - st.knocked < 75) hs = Math.max(hs, st.knocked);
+  if (st.knocked >= 0 && st.cardT >= 0 && t - st.cardT < CARD_LEN + 30) hs = Math.max(hs, st.cardT + CARD_LEN - 0.3); // when the broadcast ends, the door again
+  return hs;
 }
 function camStep(t) {
   const K = CAM;
@@ -5766,7 +5773,8 @@ function camStep(t) {
   K.last = t;
   const rad = BLAST.radT > -1e8;
   if (rad) { if (K.dc && !DOOR.cam) { K.ch = 6; K.t0 = t; } K.dc = DOOR.cam; } // after the bomb, when an agent's knock is done with the door, the warning comes back
-  if (camHold(t)) { if (K.ch !== 0) { K.ch = 0; K.sw = t; } K.t0 = t; return; }
+  const hs = camHold(t);
+  if (hs > -Infinity && K.man <= hs) { if (K.ch !== 0) { K.ch = 0; K.sw = t; } K.t0 = t; return; } // the door, unless you have turned to another camera since the story cut to it
   if (K.ch === 6) return; // the warning: camRad keeps its time
   if (K.man > 0 && t - K.man < CAM_STAY) return; // you chose this one: it stays for two minutes before the monitor goes round by itself again
   if (t - K.t0 > CAM_DWELL[K.ch]) { K.ch = (K.ch + 1) % (rad ? 7 : 6); K.t0 = t; K.sw = t; } // after the bomb the warning is the seventh stop
@@ -5791,6 +5799,7 @@ function camNext(dir) {
   const now = performance.now() / 1000, K = CAM, n = BLAST.radT > -1e8 ? 7 : 6;
   if (now - K.sw < 0.2) return; // one change at a time
   K.ch = (K.ch + dir + n) % n; K.t0 = K.sw = K.man = now; K.radFree = true;
+  if (STORY.doorOpen || STORY.knocked >= 0) K.left = true;
   if (built) playTick();
 }
 function camCanvas() { const c = document.createElement("canvas"); c.width = 300; c.height = 220; const x = c.getContext("2d"); x.scale(2, 2); return [c, x]; }
