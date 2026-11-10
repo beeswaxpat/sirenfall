@@ -17,7 +17,7 @@ The siren is synthesized live in your browser. It is not a recording.
 
 ## The room
 
-Every control is drawn on one canvas: siren volume, distance, storm volume (all the way down for the siren alone), lamp, a camera monitor, glass wipe, blast shutter, breaker. Double-click the window or press F for fullscreen. Tap the wall monitor to lean in to it. Press S to save a picture. Weather moves through calm, building, squall, and passing on a slow random walk. Lightning is mostly sheet flashes inside the cloud deck.
+Every control is drawn on one canvas: siren volume, distance, storm volume (all the way down for the siren alone), lamp, a camera monitor, glass wipe, blast shutter, breaker. Double-click the window or press F for fullscreen. Tap the wall monitor to lean in to it. The dial on the camera switch picks the next camera. Press S to save a picture. Weather moves through calm, building, squall, and passing on a slow random walk. Lightning is mostly sheet flashes inside the cloud deck.
 
 ## Run it locally
 
