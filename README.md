@@ -6,7 +6,7 @@ The siren is synthesized live in your browser. It is not a recording.
 
 **Play it: [sirenfall.live](https://sirenfall.live)** (sound on, landscape on phones). [How it works](https://sirenfall.live/how-it-works).
 
-<img src="og.jpg" width="640" alt="A rainy dead city seen from a shelter window: sheet lightning in low cloud, a siren tower facing the viewer, smoke from a burning building, the breaker thrown on.">
+<img src="og.jpg" width="640" alt="A rainy dead city at night seen from a shelter window: a siren tower over the rooftops, smoke from a burning building, a camera monitor on the wall and the breaker waiting to be thrown.">
 
 ## The siren
 
