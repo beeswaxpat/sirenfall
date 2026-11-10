@@ -149,6 +149,9 @@
   @keyframes breathe { from { opacity: 0.45; } to { opacity: 0.85; } }
   @media (prefers-reduced-motion: reduce) { #hint, #hint.back, #hint.call { animation: none; } }
   body.lean #hint, body.lean #hp { visibility: hidden; } /* leaned in to the monitor: the tips stay off its glass */
+  body.glass #hint, body.glass #hp { visibility: hidden; } /* leaned in to the window: the same */
+  #scene.zin { cursor: zoom-in; }
+  #scene.zout { cursor: zoom-out; }
   #disc { bottom: 9px; width: 100%; text-align: center; font-size: 11px; color: rgba(160,150,135,0.38); letter-spacing: 0.4px; }
   #hp {
     left: 50%; transform: translateX(-50%); white-space: nowrap;
@@ -5321,7 +5324,7 @@ function stepBlast(t, dt, gap) {
   if (B.radAt > -1e8 && B.radT < -1e8 && t >= B.radAt) {
     if (!crtShown() || st.deadT >= 0 || st.boT >= 0) B.radAt = -1e9; // no monitor on this screen, or no power for it
     else if (st.cardT >= 0 && t - st.cardT < CARD_LEN) B.radAt = t + 2;
-    else { B.radT = t; radioOn = true; if (built) { playClack(true); playStaticBurst(0, 0.25, 0.03); } } // no alarm tone: the storm stays the loudest thing
+    else { B.radT = t; radioOn = true; CAM.ch = 6; CAM.radFree = false; CAM.sw = -1e9; if (built) { playClack(true); playStaticBurst(0, 0.25, 0.03); } } // no alarm tone: the storm stays the loudest thing
   }
   stepGeiger(t);
   // the lamp on its conduit: a pendulum, nudged by the slam and the air
@@ -5470,11 +5473,12 @@ function drawRadio(t) {
   g.fillStyle = "#0a0a0c"; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.fill();
   g.strokeStyle = "#33363e"; g.lineWidth = 1; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.stroke();
   const live = radioOn && pwrLvl > 0.5, dialHot = hot && ptrX > x + 1;
-  const ca = i => -Math.PI / 2 + (i - 2.5) * 0.62, na = ca(CAM.ch); // the camera selector: six marks round the top, the needle on the one that is showing
+  const ca = i => i > 5 ? Math.PI * 0.42 : -Math.PI / 2 + (i - 2.5) * 0.62, na = ca(CAM.ch); // the camera selector: six marks round the top, the needle on the one that is showing
   g.strokeStyle = dialHot ? "#8a8f9c" : "#4a4e58"; g.lineWidth = 1; g.beginPath();
   for (let i = 0; i < 6; i++) { g.moveTo(x + 10 + Math.cos(ca(i)) * 7.6, y - 5 + Math.sin(ca(i)) * 7.6); g.lineTo(x + 10 + Math.cos(ca(i)) * 9.4, y - 5 + Math.sin(ca(i)) * 9.4); }
   g.stroke();
   if (dialHot) { g.strokeStyle = "#5d616b"; g.beginPath(); g.arc(x + 10, y - 5, 6.5, 0, 7); g.stroke(); }
+  if (BLAST.radT > -1e8) { g.strokeStyle = "#b8862e"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x + 10 + Math.cos(ca(6)) * 7.6, y - 5 + Math.sin(ca(6)) * 7.6); g.lineTo(x + 10 + Math.cos(ca(6)) * 9.6, y - 5 + Math.sin(ca(6)) * 9.6); g.stroke(); } // after the bomb a seventh mark, amber: the warning
   g.strokeStyle = radioOn ? "#e8b97a" : "#5a5248"; g.lineWidth = 1.3;
   g.beginPath(); g.moveTo(x + 10, y - 5); g.lineTo(x + 10 + Math.cos(na) * 5.4, y - 5 + Math.sin(na) * 5.4); g.stroke();
   const up = radioOn;
@@ -5698,6 +5702,7 @@ function buildFeed(open) {
     const rx3 = Math.random() * 150, ry3 = Math.random() * 100;
     x.beginPath(); x.moveTo(rx3, ry3); x.lineTo(rx3 - 2, ry3 + 9); x.stroke();
   }
+  camFinish(c, x, open ? 12 : 11, 0.01, 0.04); // the same cheap lens as the other cameras
   const vg = x.createRadialGradient(75, 55, 18, 75, 55, 100);
   vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.72)");
   x.fillStyle = vg; x.fillRect(0, 0, 150, 110);
@@ -5714,6 +5719,26 @@ function buildFeed(open) {
 const CAM_DWELL = [20, 20, 22, 20, 26, 22], CAM_STAY = 120, CAM = { ch: 0, t0: -1e9, sw: -1e9, last: -1e9, man: -1e9, pl: {} };
 const LEAN = { on: false, k: 0, e: 0 };
 let curFlash = 0, ptrX = -1; // this frame's lightning, for the cameras that look outside; where the pointer is, for the CAMERA dial
+/* ---- leaning in to the glass: a tap on the window brings you up to it. The window grows until it is wider than the screen, the
+   room and the console fall away dark above and below, and you look along the city: with a mouse, by moving it left and right; on
+   a touch screen the view drifts slowly by itself. A tap anywhere, or Esc, leans you back. A double tap is still fullscreen (the
+   lean waits a quarter of a second to see whether a second tap is coming). Nothing on the console answers while you are at the glass */
+const GLASS = { on: false, k: 0, e: 0, tm: 0, pan: 0, cls: null, fine: typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches };
+function glassTap(on) { clearTimeout(GLASS.tm); GLASS.tm = setTimeout(() => { if (on && (LEAN.on || NT.open || rotShown)) return; GLASS.on = on; }, 250); }
+function inGlass(px, py) { return !!L && px >= L.apX && px <= L.apX + L.apW && py >= L.apY && py <= L.apY + L.apH; }
+function glassStep(t) { // this frame's lean: null on the wall side of the room, or [how much bigger, where it sits]
+  const G = GLASS;
+  if (G.on && (LEAN.on || rotShown)) G.on = false;
+  G.k += ((G.on ? 1 : 0) - G.k) * (RM ? 1 : 0.1); if (Math.abs((G.on ? 1 : 0) - G.k) < 0.002) G.k = G.on ? 1 : 0;
+  G.e = G.k * G.k * (3 - 2 * G.k);
+  if (G.cls !== G.on) { G.cls = G.on; document.body.classList.toggle("glass", G.on); cv.classList.toggle("zout", G.on); if (G.on) cv.classList.remove("zin", "hand", "paper"); }
+  if (G.e < 0.001) { G.pan = 0; return null; }
+  const { apX, apY, apW, apH } = L, Zt = clamp(Math.min(W / (apW * 0.96) * 1.2, H / (apH * 1.04)), 1, 2.4), Z = 1 + (Zt - 1) * G.e, wx = apX + apW / 2, wy = apY + apH / 2;
+  const over = Math.max(0, (apW * 0.985 * Zt - W) / 2), want = RM ? 0 : (G.fine && ptrX >= 0 ? clamp((0.5 - ptrX / W) * 2.2, -1, 1) : Math.sin(t * 0.045)) * over * 0.94; // look along the city: the mouse, or a slow drift
+  G.pan += (want - G.pan) * 0.045;
+  const px = wx + (W / 2 - wx) * G.e + G.pan * G.e, py = wy + (Math.min(H / 2, wy * Zt) - wy) * G.e;
+  return [Z, px - wx * Z, py - wy * Z];
+}
 function crtWallRect() {
   if (L.portrait) { // upright tablet: no side wall, so it hangs on the wall between the window and the console
     const band = (L.lever.y - L.lever.arm * 1.5) - (L.sillY + 17);
@@ -5731,6 +5756,7 @@ function crtRect() { // where the monitor is now: on the wall, or part of the wa
   return { x: m(a.x, tx), y: m(a.y, ty), w: m(a.w, tw), h: m(a.h, th), wall: a.wall, s: m(a.w, tw) / a.w, lean: e };
 }
 function camHold(t) { // the story needs the door: the knock and the open door, an agent's knock, the minute after either
+  if (BLAST.radT > -1e8) return DOOR.cam; // after the bomb only an agent's knock takes the monitor to the door
   const st = STORY;
   return DOOR.cam || t - DOOR.camT < 45 || t - st.glitchT < 45 || (st.knocked >= 0 && t - st.knocked < 75) || (st.knocked >= 0 && st.cardT >= 0 && t - st.cardT < CARD_LEN + 30);
 }
@@ -5738,18 +5764,33 @@ function camStep(t) {
   const K = CAM;
   if (t - K.last > 1.5) K.t0 = t; // the picture was away (switched off, a card, static): the camera it comes back to starts its time again
   K.last = t;
+  const rad = BLAST.radT > -1e8;
+  if (rad) { if (K.dc && !DOOR.cam) { K.ch = 6; K.t0 = t; } K.dc = DOOR.cam; } // after the bomb, when an agent's knock is done with the door, the warning comes back
   if (camHold(t)) { if (K.ch !== 0) { K.ch = 0; K.sw = t; } K.t0 = t; return; }
+  if (K.ch === 6) return; // the warning: camRad keeps its time
   if (K.man > 0 && t - K.man < CAM_STAY) return; // you chose this one: it stays for two minutes before the monitor goes round by itself again
-  if (t - K.t0 > CAM_DWELL[K.ch]) { K.ch = (K.ch + 1) % CAM_DWELL.length; K.t0 = t; K.sw = t; }
+  if (t - K.t0 > CAM_DWELL[K.ch]) { K.ch = (K.ch + 1) % (rad ? 7 : 6); K.t0 = t; K.sw = t; } // after the bomb the warning is the seventh stop
+}
+function camRad(t) {
+  // after the bomb: is the monitor on the warning? It comes up by itself and holds until you turn to a camera; after that it is
+  // one stop in the round, twelve seconds of it, like the cameras
+  const K = CAM;
+  if (K.ch !== 6) return false;
+  if (!K.radFree) return true;
+  if (t - K.last > 1.5) K.t0 = t;
+  K.last = t;
+  if (K.man > 0 && t - K.man < CAM_STAY) return true;
+  if (t - K.t0 > 12) { K.ch = 0; K.t0 = t; K.sw = t; return false; }
+  return true;
 }
 function camNext(dir) {
   // the next camera, or the one before, by hand: the dial on the CAMERA switch, a tap on the left or right half of the monitor when you
   // have leaned in to it, the arrow keys, or the wheel over the monitor. If the monitor was off it only comes on
   if (STORY.deadT >= 0) return;
   if (!radioOn) { setRadio(true); return; }
-  const now = performance.now() / 1000, K = CAM, n = CAM_DWELL.length;
+  const now = performance.now() / 1000, K = CAM, n = BLAST.radT > -1e8 ? 7 : 6;
   if (now - K.sw < 0.2) return; // one change at a time
-  K.ch = (K.ch + dir + n) % n; K.t0 = K.sw = K.man = now;
+  K.ch = (K.ch + dir + n) % n; K.t0 = K.sw = K.man = now; K.radFree = true;
   if (built) playTick();
 }
 function camCanvas() { const c = document.createElement("canvas"); c.width = 300; c.height = 220; const x = c.getContext("2d"); x.scale(2, 2); return [c, x]; }
@@ -5776,7 +5817,7 @@ function camFinish(c, x, seed, vig, grain) {
   noiseOver(x, 150, 110, grain || 0.05, true, q);
   camVig(x, vig);
 }
-function camHall(prints) {
+function camHall(prints, after) {
   // the corridor outside the shelter door, from a bracket high in its near corner: bare concrete, dead fittings along the ceiling,
   // shut doors down one side, and at the far end the one lamp still working, over the steel door. Everything is lit from there
   const [c, x] = camCanvas(), q = hashRng(6161), P = camProj({ vx: 63, vy: 44, f: 84, roll: -0.04 });
@@ -5831,11 +5872,21 @@ function camHall(prints) {
     for (let i = 0; i < 7; i++) pr(0.0 + (i % 2 ? -0.17 : 0.17), 5.6 - i * 0.7, 0.42);
     const w = P(-0.3, YF, ZE - 0.38); x.fillStyle = "rgba(238,238,238,0.2)"; x.beginPath(); x.ellipse(w[0], w[1], 0.5 * 84 / w[2], 0.22 * 84 * 2.2 / (w[2] * w[2]), 0, 0, 7); x.fill();
   }
+  if (after) { // after the bomb: the pour has cracked from the ceiling down, a fitting hangs by its wire, plaster lies on the floor, and the air is full of dust in the lamp
+    const ck = (pts, w) => { x.strokeStyle = "rgba(0,0,0,0.78)"; x.lineWidth = w; x.lineJoin = "round"; x.beginPath(); pts.forEach((p, i) => { const s = P(p[0], p[1], p[2]); if (i) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); }); x.stroke(); };
+    ck([[XL + 0.01, YC, 3.1], [XL + 0.01, YC - 0.5, 3.25], [XL + 0.01, YC - 0.9, 3.05], [XL + 0.01, YC - 1.5, 3.3], [XL + 0.01, YC - 2.0, 3.2], [XL + 0.01, YF + 0.2, 3.45]], 0.9);
+    ck([[XL, YC - 0.01, 3.1], [-0.9, YC - 0.01, 3.0], [-0.3, YC - 0.01, 3.3], [0.4, YC - 0.01, 3.15], [XR, YC - 0.01, 3.4]], 0.8);
+    ck([[XR - 0.01, YC, 5.0], [XR - 0.01, YC - 0.7, 5.15], [XR - 0.01, YC - 1.2, 4.95], [XR - 0.01, YC - 1.7, 5.1]], 0.7);
+    { const a = P(-0.3, YC, 4.2), b = P(-0.44, YC - 0.78, 4.2); x.strokeStyle = "#020202"; x.lineWidth = 0.6; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); x.save(); x.translate(b[0], b[1]); x.rotate(0.5); x.fillStyle = "#050505"; x.fillRect(-4, 0, 8, 2.6); x.restore(); } // the far fitting, down on its wire
+    const qa = hashRng(8808);
+    for (let i = 0; i < 28; i++) { const z = 0.9 + qa() * 5.2, X = XL + 0.15 + qa() * (XR - XL - 0.3), s = 0.04 + qa() * 0.13; camQ(x, P, [[X, YF, z], [X + s, YF, z], [X + s, YF, z + s * 1.4], [X, YF, z + s * 1.4]], qa() < 0.45 ? camG(lit(z, 1.15)) : "rgba(0,0,0,0.6)"); } // what came off the ceiling
+    softBlob(x, lp[0], lp[1] + 6, 46, "230,230,230", 0.17, 0.9); softBlob(x, 62, 58, 60, "200,200,200", 0.07, 0.8); // dust standing in the light
+  }
   c.under = [P(-0.85, YF, ZE - 0.02), P(0.25, YF, ZE - 0.02)]; // the foot of the door: your lamp shows under it
   camFinish(c, x, 77, 0.5);
   return c;
 }
-function camStairs() {
+function camStairs(after) {
   // the stairwell, straight down its open middle from the top of the building: flights and landings going round and round, a rail on
   // the inside of every one. A lamp out of sight lights the top turn; three floors down one more is still on, and the turns above
   // it stand dark against it; below that there is less and less, and then nothing at all
@@ -5843,7 +5894,7 @@ function camStairs() {
   const HX = 1.0, HY = 1.5, WX2 = 2.1, WY2 = 2.6, TH = 3.2, Z0 = 2.0, LA = [0, 2.55, 1.2], LB = [0, 2.55, Z0 + TH * 2], zC = Z0 + TH * 5;
   const S = (X, Y, Z) => { const a = X + OX, b = Y + OY; return [VX + F * (a * cr - b * sr) / Z, VY + F * (a * sr + b * cr) / Z]; };
   const d2 = (L, X, Y, Z) => (X - L[0]) * (X - L[0]) + (Y - L[1]) * (Y - L[1]) + (Z - L[2]) * (Z - L[2]);
-  const litA = (X, Y, Z) => 4 + 120 / (1 + d2(LA, X, Y, Z) / 5) * Math.exp(-Math.max(0, Z - 4.4) / 3), litB = (X, Y, Z) => 150 / (1 + d2(LB, X, Y, Z) / 3.4);
+  const litA = (X, Y, Z) => 4 + 120 / (1 + d2(LA, X, Y, Z) / 5) * Math.exp(-Math.max(0, Z - 4.4) / 3), litB = (X, Y, Z) => after ? 0 : 150 / (1 + d2(LB, X, Y, Z) / 3.4); // after the bomb the lamp three floors down is out
   const all = (X, Y, Z, k) => (k || 1) * (litA(X, Y, Z) + litB(X, Y, Z)), top = (X, Y, Z, k) => (k || 1) * (litA(X, Y, Z) + (Z > LB[2] - 0.2 ? litB(X, Y, Z) : 0)); // a tread over the lamp gets nothing from it; its edge and its rail do
   const Q = (pts, v) => camPoly(x, pts.map(p => S(p[0], p[1], p[2])), typeof v === "string" ? v : camG(v));
   const rail = pts => { // along the edge of the drop: balusters up from the slab, and the handrail on top of them (nearer the lens, so it shows outside the edge)
@@ -5883,19 +5934,29 @@ function camStairs() {
   }
   for (let k = K - 1; k >= 0; k--) { // from the bottom up, so each turn hides what is under it
     const z0 = Z0 + TH * k; landing(-1, z0 + TH); flight(-1, z0 + TH / 2); landing(1, z0 + TH / 2); flight(1, z0);
-    if (k === 2) { const p = S(LB[0], LB[1], LB[2]); softBlob(x, p[0], p[1], 10, "245,245,245", 0.7, 1); x.fillStyle = "#f0f0f0"; x.fillRect(p[0] - 1.6, p[1] - 0.8, 3.2, 1.6); } // the lamp on the wall there
+    if (k === 2 && !after) { const p = S(LB[0], LB[1], LB[2]); softBlob(x, p[0], p[1], 10, "245,245,245", 0.7, 1); x.fillStyle = "#f0f0f0"; x.fillRect(p[0] - 1.6, p[1] - 0.8, 3.2, 1.6); } // the lamp on the wall there
   }
   landing(-1, Z0); // the top landing, the one the camera hangs over
+  if (after) { // after the bomb: lumps of the ceiling on the top landing and down the first flight, and a crack down the shaft wall
+    const qr = hashRng(7707);
+    for (let i = 0; i < 24; i++) { const onL = i < 11, X = onL ? -WX2 + qr() * 2 * WX2 : HX + qr() * (WX2 - HX), Y = onL ? -HY - qr() * (WY2 - HY) : -HY + qr() * 2 * HY, Z = onL ? Z0 : Z0 + (TH / 2) * ((Y + HY) / (2 * HY)), s = 0.08 + qr() * 0.22; Q([[X, Y, Z - 0.02], [X + s, Y, Z - 0.02], [X + s * 0.8, Y + s, Z - 0.02], [X - s * 0.2, Y + s * 0.7, Z - 0.02]], qr() < 0.5 ? all(X, Y, Z, 1.3) + 6 : "rgba(0,0,0,0.7)"); }
+    x.strokeStyle = "rgba(0,0,0,0.72)"; x.lineWidth = 0.9; x.lineJoin = "round"; x.beginPath(); [[WX2, -0.4, 1.4], [WX2, -0.1, 2.6], [WX2, -0.6, 3.9], [WX2, -0.2, 5.5], [WX2, -0.7, 7.5]].forEach((p, i) => { const s = S(p[0], p[1], p[2]); if (i) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); }); x.stroke();
+  }
   const v0 = S(0, 0, 400); softBlob(x, v0[0], v0[1], 5, "0,0,0", 0.96, 1); // and the bottom of it
-  const lc = S(0, -2.55, zC); c.lampB = [lc[0], lc[1], F / zC]; // six floors down there is one more (drawn live: it does not last the night)
+  const lc = S(0, -2.55, zC); c.lampB = after ? null : [lc[0], lc[1], F / zC]; // six floors down there is one more (drawn live: it does not last the night)
   camFinish(c, x, 31, 0.44);
   return c;
 }
-function camRoof() {
+function camRoof(after) {
   // the roof: bolted at the foot of the siren tower, tilted up. Two plates: the sky, and the tower in front of it (the horn is drawn live on top)
   const [c, x] = camCanvas(), q = hashRng(3303);
   x.fillStyle = camGrey(x, 0, 0, 0, 110, "#1c1c1c", "#2b2b2b"); x.fillRect(0, 0, 150, 110);
   for (let i = 0; i < 12; i++) softBlob(x, q() * 150, q() * 110, 18 + q() * 30, i % 2 ? "8,8,8" : "62,62,62", i % 2 ? 0.4 : 0.14, 0.5 + q() * 0.4); // low cloud going over
+  if (after) { // after the bomb: the cloud is lit from underneath by everything that is burning, and smoke stands up into it all round
+    const qa = hashRng(3355);
+    softBlob(x, 75, 122, 96, "220,220,220", 0.5, 0.5);
+    for (let i = 0; i < 7; i++) { const sx = qa() * 150; for (let k = 0; k < 6; k++) softBlob(x, sx + (qa() - 0.5) * 14 + k * 3, 112 - k * 13 - qa() * 8, 9 + k * 3 + qa() * 6, "6,6,6", 0.42, 1.1); }
+  }
   const [tc, tx] = camCanvas(), leg = [[6, 73], [50, 74.4], [100, 75.6], [144, 77]], vy = 19; // four legs running up to a point: where each stands, where it ends
   tx.strokeStyle = "#030303"; tx.lineCap = "round";
   const at = (i, f) => [leg[i][0] + (leg[i][1] - leg[i][0]) * f, 112 - (112 - vy) * f];
@@ -5910,17 +5971,19 @@ function camRoof() {
   tx.fillStyle = "#030303"; tx.fillRect(68.5, vy - 4.5, 13, 5); // the head frame the horn sits on
   tx.strokeStyle = "rgba(255,255,255,0.07)"; tx.lineWidth = 0.6; { const a = at(0, 0), b = at(0, 1); tx.beginPath(); tx.moveTo(a[0] + 2, a[1]); tx.lineTo(b[0] + 0.6, b[1]); tx.stroke(); } // wet steel on the near leg
   for (let i = 0; i < 7; i++) softBlob(x, q() * 150, q() * 110, 3 + q() * 6, "200,200,200", 0.05 + q() * 0.05, 1); // water on the lens
+  camFinish(c, x, 33, 0.45);
+  { const a2 = document.createElement("canvas"); a2.width = 150; a2.height = 110; a2.getContext("2d").drawImage(tc, 0, 0, 150, 110); tx.save(); tx.setTransform(1, 0, 0, 1, 0, 0); tx.globalAlpha = 0.45; tx.drawImage(a2, 0, 0, 300, 220); tx.restore(); } // and the tower a little soft, like everything else through it
   c.tower = tc;
   return c;
 }
-function camStreet() {
+function camStreet(after) {
   // the street, from a bracket on a wall three floors up, turned to look across it and along it: the fronts of the far side from
   // close on the left to lost in the murk on the right, shops shut or stove in, cars where they stopped, dead lamp posts in a row
-  const [c, x] = camCanvas(), q = hashRng(4404), F = 74, P = camProj({ vx: 75, vy: 46, f: F, yaw: -0.75, pitch: -0.13, roll: 0.03 }), G = -7, FOG = 74, FK = 92, XF = -18;
+  const [c, x] = camCanvas(), q = hashRng(4404), F = 74, P = camProj({ vx: 75, vy: after ? 44 : 46, f: F, yaw: -0.75, pitch: after ? -0.16 : -0.13, roll: after ? 0.085 : 0.03 }), G = -7, FOG = after ? 104 : 74, FK = after ? 88 : 92, XF = -18; // after the bomb its bracket has dropped: it hangs crooked and looks down into smoke
   const T = (v, X, Y, Z) => camTone(v, P(X, Y, Z)[2], FOG, FK), Qd = (pts, fill) => camQ(x, P, pts, fill);
   const fq = (X, y0, y1, za, zb, v, zt) => Qd([[X, y0, za], [X, y1, za], [X, y1, zb], [X, y0, zb]], typeof v === "string" ? v : T(v, X, (y0 + y1) / 2, zt === undefined ? (za + zb) / 2 : zt)); // a patch of a wall that faces the street
   const vp = P(-9, G + 7, 600);
-  x.fillStyle = camGrey(x, 0, 0, 0, vp[1] + 4, "#0b0b0b", "#484848"); x.fillRect(0, 0, 150, 110);
+  x.fillStyle = camGrey(x, 0, 0, 0, vp[1] + 4, after ? "#262626" : "#0b0b0b", after ? "#8c8c8c" : "#484848"); x.fillRect(0, 0, 150, 110); // after the bomb the smoke over the street is lit from underneath: the broken tops stand dark against it
   for (let i = 0; i < 8; i++) softBlob(x, q() * 150, q() * 18, 16 + q() * 28, "5,5,5", 0.22 + q() * 0.25, 0.4);
   softBlob(x, vp[0], vp[1], 30, "190,190,190", 0.3, 0.75); // where the street ends: only murk, a little paler than the night
   { // the ground: darkest under the lens, paler and paler toward the far end
@@ -5944,29 +6007,37 @@ function camStreet() {
     const B = blocks[bi], z = B.z, len = B.len, H = B.H;
     if (B.alley) { fq(XF, G, G + 45, z, z + len, 3); continue; }
     const r = hashRng(B.seed), nb = Math.max(2, Math.round(len / B.bay)), bw = len / nb, near = P(XF, G + 3, z + len / 2)[2] < 46;
-    if (B.hp > 0 && B.hp < H) Qd([[XF, G + B.hp, z], [XF - 9, G + B.hp, z], [XF - 9, G + H, z], [XF, G + H, z]], T(B.base - 10, XF - 4, G + H, z)); // its blank end wall, over the lower roof next to it
+    if (!after && B.hp > 0 && B.hp < H) Qd([[XF, G + B.hp, z], [XF - 9, G + B.hp, z], [XF - 9, G + H, z], [XF, G + H, z]], T(B.base - 10, XF - 4, G + H, z)); // its blank end wall, over the lower roof next to it
     for (let i = 0; i < nb; i++) {
       const za = z + i * bw, zb = za + bw + 0.03, tone = B.base + (r() - 0.5) * 5, u0 = r();
-      fq(XF, G, G + H, za, zb, tone);
+      const hv = after ? hashRng(B.seed + i * 131)() : 1, Hb = !after ? H : hv < 0.2 ? 0.5 + hv * 6 : Math.max(3.75, H * (0.16 + 0.84 * hv)); // after the bomb each bay stands to its own height: a few to the roof, most not, some to a heap
+      fq(XF, G, G + Hb, za, zb, after ? tone * 0.5 : tone);
+      if (after && hv < 0.2) { // where the front came down: a stub of wall, and the heap of the rest out across the pavement
+        const hq = hashRng(B.seed + i * 977), hs = [0, 0.5 + hq() * 1.1, 1.0 + hq() * 1.3, 0.6 + hq() * 1.2, 0.3 + hq() * 0.6, 0];
+        for (const [dx, tn] of [[0.5, 7], [1.5, 13], [2.6, 20]]) Qd(hs.map((h, j) => [XF + dx, G + h * (1 - dx * 0.22), za + (zb - za) * j / 5]), T(tn, XF + dx, G + 1, (za + zb) / 2));
+        for (let j = 0; j < 7; j++) { const X = XF + 0.4 + hq() * 3.2, Z = za + hq() * (zb - za), s = 0.2 + hq() * 0.5; Qd([[X, G + 0.02, Z], [X + s, G + 0.02, Z], [X + s * 0.8, G + 0.02, Z + s], [X, G + 0.02, Z + s * 0.7]], T(hq() < 0.5 ? 34 : 5, X, G, Z)); }
+        continue;
+      }
       fq(XF, G, G + 0.45, za, zb, tone - 12); // the plinth, black with the street
       if (u0 < 0.3) { fq(XF, G + 0.45, G + 2.75, za + 0.3, zb - 0.3, tone - 6); for (let s = G + 0.6; s < G + 2.7; s += 0.2) fq(XF, s, s + 0.05, za + 0.3, zb - 0.3, tone - 20); } // a shop with its shutter down
       else if (u0 < 0.42) { fq(XF, G + 0.1, G + 2.75, za + bw * 0.3, zb - bw * 0.3, 1); fq(XF, G, G + 0.14, za + bw * 0.25, zb - bw * 0.25, tone + 10); } // a doorway, standing open on nothing
       else { fq(XF, G + 0.95, G + 2.75, za + 0.3, zb - 0.3, u0 < 0.6 ? 2 : 6); if (u0 >= 0.6) fq(XF, G + 0.95, G + 2.75, (za + zb) / 2 - 0.05, (za + zb) / 2 + 0.05, tone - 4); else if (near) for (let k2 = 0; k2 < 3; k2++) fq(XF, G + 0.95 + r() * 0.5, G + 1.3 + r() * 1.3, za + 0.4 + r() * (bw - 1), za + 0.5 + r() * (bw - 1) + 0.3, tone - 2); } // a shop window: black glass, or stove in with a few shards still in the frame
       fq(XF, G + 2.95, G + 3.62, za, zb, tone + 9); fq(XF, G + 3.08, G + 3.5, za + 0.35, zb - 0.35, tone - 9); // the board over it: whatever it said has gone
-      for (let y0 = G + 3.95; y0 + B.fh * 0.85 < G + H - 0.5; y0 += B.fh) { // the floors above: dead glass, most of it; some gone, some bricked up, one or two still holding the sky
+      for (let y0 = G + 3.95; y0 + B.fh * 0.85 < G + Hb - 0.3; y0 += B.fh) { // the floors above: dead glass, most of it; some gone, some bricked up, one or two still holding the sky
         const u = r(), wa = za + bw * 0.22, wb = zb - bw * 0.22, ya = y0 + 0.8, yb = ya + B.fh * 0.52;
         if (u < 0.06) continue;
         fq(XF, ya - 0.08, yb + 0.08, wa - 0.08, wb + 0.08, tone + 7); // the surround
-        fq(XF, ya, yb, wa, wb, u < 0.3 ? 1 : u < 0.36 ? tone - 7 : 7);
-        if (u >= 0.36 && near) { fq(XF, (ya + yb) / 2 - 0.04, (ya + yb) / 2 + 0.04, wa, wb, tone - 2); fq(XF, ya, yb, (wa + wb) / 2 - 0.04, (wa + wb) / 2 + 0.04, tone - 2); } // the bars of the sash
-        if (u > 0.86) Qd([[XF, ya + (yb - ya) * 0.45, wa], [XF, yb, wa], [XF, yb, wb], [XF, ya + (yb - ya) * 0.7, wb]], "rgba(255,255,255,0.1)");
+        fq(XF, ya, yb, wa, wb, after ? 0 : u < 0.3 ? 1 : u < 0.36 ? tone - 7 : 7);
+        if (after) Qd([[XF, yb, wa], [XF, yb + 0.7 + r() * 1.1, wa + 0.15], [XF, yb + 0.6 + r(), wb - 0.15], [XF, yb, wb]], "rgba(0,0,0,0.45)"); // soot standing up the wall over it
+        if (u >= 0.36 && near && !after) { fq(XF, (ya + yb) / 2 - 0.04, (ya + yb) / 2 + 0.04, wa, wb, tone - 2); fq(XF, ya, yb, (wa + wb) / 2 - 0.04, (wa + wb) / 2 + 0.04, tone - 2); } // the bars of the sash
+        if (u > 0.86 && !after) Qd([[XF, ya + (yb - ya) * 0.45, wa], [XF, yb, wa], [XF, yb, wb], [XF, ya + (yb - ya) * 0.7, wb]], "rgba(255,255,255,0.1)");
         fq(XF, ya - 0.2, ya - 0.06, wa - 0.14, wb + 0.14, tone + 18); // the sill, wet
         if (r() < 0.4) Qd([[XF, ya - 0.2 - 0.5 - r() * 1.8, wa + bw * 0.08], [XF, ya - 0.2, wa + bw * 0.08], [XF, ya - 0.2, wa + bw * 0.08 + 0.22], [XF, ya - 0.7 - r(), wa + bw * 0.08 + 0.22]], "rgba(0,0,0,0.32)"); // what has run down from it
       }
     }
-    fq(XF, G + H - 0.8, G + H - 0.45, z, z + len, B.base - 13); fq(XF, G + H - 0.45, G + H, z, z + len, B.base + 14); // the cornice and its shadow
-    fq(XF, G, G + H, z - 0.09, z + 0.09, 4); // a downpipe at the party wall
-    if (B.esc && nb > 2) { // a fire escape down one bay: landings and the stairs between them
+    if (!after) { fq(XF, G + H - 0.8, G + H - 0.45, z, z + len, B.base - 13); fq(XF, G + H - 0.45, G + H, z, z + len, B.base + 14); } // the cornice and its shadow
+    fq(XF, G, G + (after ? 3.6 : H), z - 0.09, z + 0.09, 4); // a downpipe at the party wall
+    if (B.esc && nb > 2 && !after) { // a fire escape down one bay: landings and the stairs between them
       x.strokeStyle = "rgba(0,0,0,0.72)"; x.lineCap = "butt";
       for (let y0 = G + 3.95; y0 + B.fh < G + H - 1; y0 += B.fh) { const a = P(XF, y0 + 0.5, z + bw), b = P(XF, y0 + 0.5, z + 2 * bw), d = P(XF, y0 + 0.5 + B.fh, z + bw), e = P(XF, y0 + 1.5, z + bw), f2 = P(XF, y0 + 1.5, z + 2 * bw); x.lineWidth = clamp(F / a[2] * 0.14, 0.3, 1.5); x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.lineTo(d[0], d[1]); x.stroke(); x.lineWidth *= 0.5; x.beginPath(); x.moveTo(e[0], e[1]); x.lineTo(f2[0], f2[1]); x.stroke(); }
     }
@@ -5977,9 +6048,9 @@ function camStreet() {
     if (!fall) { x.lineWidth *= 1.9; x.beginPath(); x.moveTo(d[0], d[1]); x.lineTo(d[0] + F / a[2] * 0.5, d[1] + 0.2); x.stroke(); }
     return d;
   };
-  for (const [Z, lean, fall] of [[118, 0, 0], [98, 0, 0], [78, 0, 0], [58, 0, 0], [22, 1.4, 0], [6, 0, 0]]) post(-15.9, Z, lean, 1.9, fall);
+  for (const [Z, lean, fall] of [[118, 0, 0], [98, 0, 0], [78, 0, 0], [58, 0, 0], [22, 1.4, 0], [6, 0, 0]]) post(-15.9, Z, after ? lean + ((Z * 7) % 5) * 0.6 - 0.7 : lean, 1.9, after && Z === 58 ? 1 : fall); // after the bomb none of them stands straight
   post(-15.9, 14, 0, 0, 1); // one down across the pavement
-  const lh = post(-15.9, 40, 0, 1.9, 0), lg = P(-13.6, G, 40); c.lamp = [lh[0], lh[1] + 0.4, lg[0], lg[1], F / P(-14, G, 40)[2]]; // and one that still tries (its light is drawn live)
+  const lh = post(-15.9, 40, after ? 2.3 : 0, 1.9, 0), lg = P(-13.6, G, 40); if (!after) c.lamp = [lh[0], lh[1] + 0.4, lg[0], lg[1], F / P(-14, G, 40)[2]]; // and one that still tries (its light is drawn live)
   const box = (xa, xb, za, zb, ya, yb, tp, sd, en) => { // a box seen from above: its top, and the side and the end that face the lens
     const xm = (xa + xb) / 2, zm = (za + zb) / 2, ym = (ya + yb) / 2;
     Qd([[xa, yb, za], [xb, yb, za], [xb, yb, zb], [xa, yb, zb]], T(tp, xm, yb, zm));
@@ -5988,19 +6059,19 @@ function camStreet() {
   };
   const car = (X, Z, across, door) => { // a car where it was left: body, cabin, glass that still holds a little sky, the wet under it
     const L = 4.4, Wd = 1.8, lx = across ? L : Wd, lz = across ? Wd : L, xa = X - lx / 2, xb = X + lx / 2, za = Z - lz / 2, zb = Z + lz / 2, ix = across ? 1.0 : 0.15, iz = across ? 0.15 : 1.0;
-    ell(X, Z, Math.max(lx, lz) * 0.6, "rgba(0,0,0,0.6)", across ? 0.5 : 1);
-    box(xa, xb, za, zb, G + 0.22, G + 0.95, 66, 9, 5);
+    ell(X, Z, Math.max(lx, lz) * 0.6, after ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.6)", across ? 0.5 : 1);
+    box(xa, xb, za, zb, G + 0.22, G + 0.95, after ? 30 : 66, 9, 5); // after the bomb they are burnt out: no shine, no glass
     for (const [wx, wz] of across ? [[xa + 0.75, zb], [xb - 0.75, zb], [xa + 0.75, za], [xb - 0.75, za]] : [[xb, za + 0.8], [xb, zb - 0.8]]) { const p = P(wx, G + 0.32, wz); x.fillStyle = "#020202"; x.beginPath(); x.ellipse(p[0], p[1], 0.36 * F / p[2], 0.3 * F / p[2], 0, 0, 7); x.fill(); } // wheels, flat on their rims
     const ca = xa + ix * (across ? 1 : 1), cb = xb - ix * (across ? 0.75 : 1), cza = za + iz * (across ? 1 : 0.85), czb = zb - iz;
-    box(ca, cb, cza, czb, G + 0.95, G + 1.5, 54, 3, 3);
-    if (cb < 0) Qd([[cb + 0.01, G + 1.02, cza + 0.12], [cb + 0.01, G + 1.44, cza + 0.12], [cb + 0.01, G + 1.44, czb - 0.12], [cb + 0.01, G + 1.02, czb - 0.12]], T(34, cb, G + 1.2, Z)); // the side glass
-    if (cza > 0) Qd([[ca + 0.1, G + 1.02, cza - 0.01], [cb - 0.1, G + 1.02, cza - 0.01], [cb - 0.1, G + 1.44, cza - 0.01], [ca + 0.1, G + 1.44, cza - 0.01]], T(38, X, G + 1.2, cza)); // the back glass
+    box(ca, cb, cza, czb, G + 0.95, G + 1.5, after ? 20 : 54, 3, 3);
+    if (cb < 0) Qd([[cb + 0.01, G + 1.02, cza + 0.12], [cb + 0.01, G + 1.44, cza + 0.12], [cb + 0.01, G + 1.44, czb - 0.12], [cb + 0.01, G + 1.02, czb - 0.12]], T(after ? 1 : 34, cb, G + 1.2, Z)); // the side glass
+    if (cza > 0) Qd([[ca + 0.1, G + 1.02, cza - 0.01], [cb - 0.1, G + 1.02, cza - 0.01], [cb - 0.1, G + 1.44, cza - 0.01], [ca + 0.1, G + 1.44, cza - 0.01]], T(after ? 1 : 38, X, G + 1.2, cza)); // the back glass
     if (door) Qd([[xb, G + 0.35, za + 1.5], [xb + 0.95, G + 0.35, za + 2.0], [xb + 0.95, G + 1.42, za + 2.0], [xb, G + 1.42, za + 1.5]], T(15, xb, G + 1, za + 1.7)); // a door left open
   };
   for (const [X, Z, ac, dr] of [[-14.2, 92, 0, 0], [-9, 70, 1, 0], [-14.3, 55, 0, 0], [-14.2, 45, 0, 0], [-6, 34, 0, 0], [-14.3, 26.5, 0, 0], [-14.2, 17, 0, 0], [-9.6, 13.5, 1, 0], [-14.3, 5.5, 0, 0], [-4.4, 8.6, 0, 1]]) car(X, Z, ac, dr);
   { const p = P(-16.8, G, 30); for (let i = 0; i < 9; i++) softBlob(x, p[0] + (q() - 0.5) * 9, p[1] - q() * 3, 2 + q() * 3, "4,4,4", 0.6, 0.6); } // where a front came down across the pavement
   Qd([[0.6, G, 3], [0.6, G + 12, 3], [0.6, G + 12, 90], [0.6, G, 90]], "#050505"); // the wall this camera is on
-  { // a wire across the street with the signal that used to work (drawn live: it swings); a bracket on this wall with a shop sign hanging from it
+  if (!after) { // a wire across the street with the signal that used to work (drawn live: it swings); a post at the kerb with a shop sign hanging from it
     const a = P(-15.9, G + 8.2, 10), b = P(0.6, G + 8.7, 10), m = P(-8, G + 7.4, 10), s = P(-9, G + 7.85, 10);
     x.strokeStyle = "rgba(0,0,0,0.75)"; x.lineWidth = 0.55; x.beginPath(); x.moveTo(a[0], a[1]); x.quadraticCurveTo(m[0], m[1], b[0], b[1]); x.stroke();
     c.sig = [s[0], s[1], F / s[2]];
@@ -6008,12 +6079,25 @@ function camStreet() {
     x.lineWidth = 1.5; x.lineCap = "round"; x.beginPath(); x.moveTo(w0[0], w0[1]); x.lineTo(w1[0], w1[1]); x.lineTo(w2[0], w2[1]); x.stroke();
     c.sign = [h[0], h[1], F / h[2]];
   }
+  if (after) { // after the bomb: brick and ash over everything, fires in the shops and in the road, each a low glow the smoke holds (their slow breathing is drawn live)
+    const qa = hashRng(9909); c.fires = [];
+    for (let i = 0; i < 110; i++) { const Z = -2 + qa() * qa() * 80, X = -17.6 + qa() * 16, s = 0.15 + qa() * 0.55; Qd([[X, G, Z], [X + s, G, Z], [X + s * 0.7, G, Z + s * 1.4], [X - s * 0.2, G, Z + s]], qa() < 0.35 ? "rgba(170,170,170,0.3)" : "rgba(0,0,0,0.62)"); }
+    for (const [X, Y, Z, r] of [[-17.6, G + 1.4, 9, 2.2], [-17.6, G + 1.2, 24, 2.6], [-9.6, G + 0.9, 13.5, 1.8], [-17.6, G + 4.5, 37, 3], [-6, G + 0.8, 34, 1.6], [-17.6, G + 1.5, 62, 4], [-12, G + 1, 95, 6]]) {
+      const p = P(X, Y, Z), k = F / p[2];
+      softBlob(x, p[0], p[1] - r * k * 0.5, r * k * 2.0, "235,235,235", 0.13, 1.5); // its light in the smoke: taller than wide
+      for (let j = 0; j < 5; j++) { const dx = (qa() - 0.5) * r * k * 1.3, hgt = r * k * (0.5 + qa() * 1.1); softBlob(x, p[0] + dx, p[1] - hgt * 0.45, r * k * (0.2 + qa() * 0.16), "252,252,252", 0.5 + qa() * 0.25, 1.9 + qa()); } // tongues of it, each its own height
+      softBlob(x, p[0], p[1] + r * k * 0.25, r * k * 0.9, "245,245,245", 0.2, 0.3); // and on the wet ground under it
+      c.fires.push([p[0], p[1], r * k]);
+    }
+    softBlob(x, vp[0], vp[1], 44, "230,230,230", 0.26, 0.8); // the far end of the street is all of it burning
+    for (let i = 0; i < 5; i++) softBlob(x, qa() * 150, qa() * 30, 16 + qa() * 22, "8,8,8", 0.22, 0.8); // smoke going over, high up
+  }
   c.vp = [vp[0], vp[1]];
   softBlob(x, 0, 0, 40, "0,0,0", 0.8, 1); // the lens hood's own shadow in the corner
   camFinish(c, x, 44, 0.48);
   return c;
 }
-function camOwn() {
+function camOwn(after) {
   // this building, from a camera on the one across the street, looking up along its face: floor on floor of the same slit of a window
   // in stained concrete, steel down over some, the rest black. One of them is lit (drawn live), and it is yours
   const [c, x] = camCanvas(), q = hashRng(5505), P = camProj({ vx: 72, vy: 58, f: 150, yaw: 0.42, pitch: 0.17, roll: -0.03 }), ZF = 26, FOG = 62, FK = 120;
@@ -6023,7 +6107,7 @@ function camOwn() {
   for (let i = -9; i < 13; i++) { const y0 = -1.9 + 3.7 * i, p = P(-14, y0 + 1.8, 45); Qd([[-14, y0, ZF], [-14, y0 + 3.75, ZF], [-14, y0 + 3.75, 62], [-14, y0, 62]], T(13 + (i & 1), p)); Qd([[-14, y0 + 1.5, 36], [-14, y0 + 2.7, 36], [-14, y0 + 2.7, 41], [-14, y0 + 1.5, 41]], T(4, p)); } // its end wall, going away
   const hk = Y => clamp(0.6 + Y / 40, 0.36, 1.2); // darker toward the street, paler toward the cloud
   for (let i = -3; i < 8; i++) for (let j = 1; j < 10; j++) { // the face of it: a slab to each bay of each floor, a rib between bays
-    const X0 = -14 + 6 * j, Y0 = -1.9 + 3.7 * i, pc = P(X0 + 3, Y0 + 1.85, ZF), tone = (40 + (q() - 0.5) * 9) * hk(Y0);
+    const X0 = -14 + 6 * j, Y0 = -1.9 + 3.7 * i, pc = P(X0 + 3, Y0 + 1.85, ZF), tone = (40 + (q() - 0.5) * 9) * hk(Y0) * (after ? 0.64 : 1);
     Qd([[X0, Y0, ZF], [X0 + 6.02, Y0, ZF], [X0 + 6.02, Y0 + 3.72, ZF], [X0, Y0 + 3.72, ZF]], T(tone, pc));
     Qd([[X0, Y0, ZF], [X0 + 6.02, Y0, ZF], [X0 + 6.02, Y0 + 0.1, ZF], [X0, Y0 + 0.1, ZF]], T(tone - 12, pc));
     Qd([[X0, Y0, ZF - 0.3], [X0 + 0.55, Y0, ZF - 0.3], [X0 + 0.55, Y0 + 3.72, ZF - 0.3], [X0, Y0 + 3.72, ZF - 0.3]], T(tone + 8, pc));
@@ -6032,13 +6116,16 @@ function camOwn() {
   for (let i = 0; i < 26; i++) { const X = -14 + q() * 70, Y = -30 + q() * 70, w = 0.2 + q() * 0.7, len = 3 + q() * 12; Qd([[X, Y, ZF - 0.02], [X + w, Y, ZF - 0.02], [X + w * 0.6, Y - len, ZF - 0.02], [X + w * 0.2, Y - len, ZF - 0.02]], i % 3 ? "rgba(0,0,0," + (0.12 + q() * 0.16).toFixed(2) + ")" : "rgba(255,255,255,0.035)"); } // where the rain runs: dark for years, pale where it is running now
   const MI = 1, MJ = 4; // which one is yours
   for (let i = -3; i < 8; i++) for (let j = 1; j < 10; j++) {
-    const X0 = -14 + 6 * j + 1.25, X1 = X0 + 4.4, Y0 = -1.9 + 3.7 * i + 1.45, Y1 = Y0 + 1.3, pc = P(X0 + 2.2, Y0, ZF), tone = 40 * hk(Y0), u = q(), mine = i === MI && j === MJ, Zg = ZF + 0.4;
+    const X0 = -14 + 6 * j + 1.25, X1 = X0 + 4.4, Y0 = -1.9 + 3.7 * i + 1.45, Y1 = Y0 + 1.3, pc = P(X0 + 2.2, Y0, ZF), tone = 40 * hk(Y0) * (after ? 0.64 : 1), u = q(), mine = i === MI && j === MJ, Zg = ZF + 0.4;
     Qd([[X0 - 0.16, Y0 - 0.16, ZF], [X1 + 0.16, Y0 - 0.16, ZF], [X1 + 0.16, Y1 + 0.14, ZF], [X0 - 0.16, Y1 + 0.14, ZF]], T(tone + 9, pc)); // the frame cast into the slab
     Qd([[X0, Y0, ZF], [X1, Y0, ZF], [X1, Y1, ZF], [X0, Y1, ZF]], T(0, pc)); // the depth of the opening
     const gl = Qd([[X0, Y0, Zg], [X1, Y0, Zg], [X1, Y1, Zg], [X0, Y1, Zg]], T(mine ? 1 : 2, pc)); // the glass, set back in it
     Qd([[X0, Y0 - 0.1, ZF - 0.12], [X1, Y0 - 0.1, ZF - 0.12], [X1, Y0 + 0.07, ZF - 0.12], [X0, Y0 + 0.07, ZF - 0.12]], T(tone + 34, pc)); // the sill, wet, holding the sky
     if (mine) { c.win = [gl[3], gl[2], gl[1], gl[0]].map(p => [p[0], p[1]]); continue; } // top left, top right, bottom right, bottom left
-    if (u < 0.24 || (u < 0.33)) { // steel down over it, all the way or part of the way
+    if (after) { // after the bomb: the glass is gone from every one of them; soot stands up the wall over each, and here and there a shutter hangs by one end
+      Qd([[X0 + 0.2, Y1 + 0.1, ZF - 0.02], [X1 - 0.2, Y1 + 0.1, ZF - 0.02], [X1 - 0.9 - q(), Y1 + 1.4 + q() * 1.3, ZF - 0.02], [X0 + 0.9 + q(), Y1 + 1.2 + q() * 1.2, ZF - 0.02]], "rgba(0,0,0,0.45)");
+      if (u < 0.22) Qd([[X0 + 0.3, Y1 - 0.1, ZF + 0.08], [X0 + 2.7, Y1 - 0.5, ZF + 0.08], [X0 + 2.6, Y1 - 0.85, ZF + 0.08], [X0 + 0.3, Y1 - 0.42, ZF + 0.08]], T(tone + 6, pc));
+    } else if (u < 0.24 || (u < 0.33)) { // steel down over it, all the way or part of the way
       const k = u < 0.24 ? 1 : 0.35 + q() * 0.4, yb = Y1 - (Y1 - Y0) * k;
       Qd([[X0, yb, ZF + 0.1], [X1, yb, ZF + 0.1], [X1, Y1, ZF + 0.1], [X0, Y1, ZF + 0.1]], T(tone - 5, pc));
       for (let s = Y1 - 0.14; s > yb; s -= 0.17) Qd([[X0, s, ZF + 0.09], [X1, s, ZF + 0.09], [X1, s + 0.045, ZF + 0.09], [X0, s + 0.045, ZF + 0.09]], T(3, pc));
@@ -6046,25 +6133,32 @@ function camOwn() {
     else { Qd([[X0 + 2.13, Y0, Zg - 0.02], [X0 + 2.27, Y0, Zg - 0.02], [X0 + 2.27, Y1, Zg - 0.02], [X0 + 2.13, Y1, Zg - 0.02]], T(10, pc)); if (u > 0.8) Qd([[X0, Y0 + 0.5, Zg - 0.03], [X0 + 1.7, Y1, Zg - 0.03], [X0 + 3.2, Y1, Zg - 0.03], [X0, Y0 + 0.9, Zg - 0.03]], "rgba(255,255,255,0.06)"); } // glass: the post down its middle, and now and then the sky in it
     for (const xs of [X0 + 0.1 + q() * 0.4, X1 - 0.5 + q() * 0.4]) if (q() < 0.7) { const len = 1 + q() * 4.5; Qd([[xs, Y0 - 0.1, ZF - 0.03], [xs + 0.22, Y0 - 0.1, ZF - 0.03], [xs + 0.16, Y0 - 0.1 - len, ZF - 0.03], [xs + 0.04, Y0 - 0.1 - len, ZF - 0.03]], "rgba(0,0,0," + (0.2 + q() * 0.25).toFixed(2) + ")"); } // what has run down from the ends of the sill
   }
+  if (after) { // cracks up across the slabs, bites out of the face where something hit it, and the street burning below lights it from underneath
+    const qc = hashRng(6606);
+    for (let i = 0; i < 6; i++) { let X = 1 + qc() * 30, Y = -6 + qc() * 22; x.strokeStyle = "rgba(0,0,0,0.62)"; x.lineWidth = 0.7; x.lineJoin = "round"; x.beginPath(); for (let k = 0; k < 7; k++) { const p = P(X, Y, ZF - 0.03); if (k) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); X += (qc() - 0.4) * 2.2; Y -= 0.6 + qc() * 1.6; } x.stroke(); }
+    for (const [X, Y, w, h] of [[7.5, 7.6, 3.2, 2.6], [24, -2.5, 2.6, 2], [19, 11.5, 2.2, 1.8]]) Qd([[X, Y, ZF - 0.04], [X + w, Y + 0.3, ZF - 0.04], [X + w * 0.8, Y + h, ZF - 0.04], [X + w * 0.2, Y + h * 0.8, ZF - 0.04], [X - 0.3, Y + h * 0.4, ZF - 0.04]], "rgba(0,0,0,0.74)");
+    softBlob(x, 75, 124, 84, "225,225,225", 0.22, 0.6);
+  }
   { const a = P(-14, -40, ZF), b = P(-14, 60, ZF); x.strokeStyle = "rgba(0,0,0,0.55)"; x.lineWidth = 1.2; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); } // the corner
   { const a = P(10.3, -40, ZF - 0.5), b = P(10.3, 60, ZF - 0.5); x.strokeStyle = "rgba(0,0,0,0.7)"; x.lineWidth = 1; x.beginPath(); x.moveTo(a[0], a[1]); x.lineTo(b[0], b[1]); x.stroke(); } // a downpipe
   x.strokeStyle = "rgba(0,0,0,0.6)"; x.lineWidth = 2.6; x.beginPath(); x.moveTo(-4, 21); x.quadraticCurveTo(70, 30, 154, 6); x.stroke(); // a cable on this side of the street, close to the lens and out of focus
   camFinish(c, x, 55, 0.48, 0.055);
   return c;
 }
-function camPlate(ch) {
-  const P = CAM.pl;
-  if (ch === 1) { const k = HALL.done && HALL.u >= 0 ? "hallP" : "hall"; return P[k] || (P[k] = camHall(k === "hallP")); }
-  const k = ["", "", "stairs", "roof", "street", "own"][ch];
-  return P[k] || (P[k] = [null, null, camStairs, camRoof, camStreet, camOwn][ch]());
+function camPlate(ch) { // each camera's picture, painted the first time it is wanted: one from before the bomb, another from after it
+  const P = CAM.pl, af = BLAST.swapped, sx = af ? "A" : "";
+  if (ch === 1) { const pr = HALL.done && HALL.u >= 0, k = (pr ? "hallP" : "hall") + sx; return P[k] || (P[k] = camHall(pr, af)); }
+  const k = ["", "", "stairs", "roof", "street", "own"][ch] + sx;
+  return P[k] || (P[k] = [null, null, camStairs, camRoof, camStreet, camOwn][ch](af));
 }
 function drawFeed(c, t, flick) {
   // what the camera the monitor is on sees right now: its painted plate, and on top of it whatever is moving out there
   camStep(t);
+  if (CAM.ch === 6) { drawSnow(c); return; } // on its way back to the warning
   flick = RM ? 0.94 : 0.93 + 0.03 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1) + 0.012 * Math.random(); // a camera's picture holds steady: a slow breath in it, never a flutter
-  const ch = CAM.ch, fa = curFlash, nm = DAY.on ? DAY.m : Math.max(0, STORY.clk) / 60, out = ch === 0 || ch >= 3;
+  const ch = CAM.ch, fa = curFlash, nm = DAY.on ? DAY.m : Math.max(0, STORY.clk) / 60, out = ch === 0 || ch >= 3, af = BLAST.swapped; // af: the bomb has been
   const label = () => { const px = Math.max(7, c.h * 0.07); g.save(); g.font = "700 " + px.toFixed(1) + "px ui-monospace, Menlo, Consolas, monospace"; g.textAlign = "left"; g.textBaseline = "top"; g.fillStyle = "rgba(0,0,0,0.5)"; g.fillRect(c.x + c.w * 0.04, c.y + c.h * 0.05, px * 1.7, px * 1.25); g.fillStyle = "rgba(228,228,228,0.62)"; g.fillText("0" + (ch + 1), c.x + c.w * 0.04 + px * 0.24, c.y + c.h * 0.05 + px * 0.16); g.restore(); };
-  if (t - CAM.sw < 0.24 || (ch === 1 && HALL.u >= 0 && !HALL.done)) { drawSnow(c); label(); return; } // changing over; or the hall camera while someone is out there: nothing but snow
+  if (t - CAM.sw < 0.24 || (ch === 1 && HALL.u >= 0 && !HALL.done) || (ch === 4 && af && BLAST.t0 > -1e8 && t - BLAST.t0 < 46)) { drawSnow(c); label(); return; } // changing over; the hall camera while someone is out there; the street camera for most of a minute after the bomb: nothing but snow
   g.globalAlpha = flick;
   g.drawImage(ch === 0 ? (STORY.doorOpen || STORY.knocked >= 0 || DOOR.cam ? feedOpenC : feedC) : camPlate(ch), c.x, c.y, c.w, c.h); // after a knock the door is never shut again
   g.globalAlpha = 1;
@@ -6078,27 +6172,37 @@ function drawFeed(c, t, flick) {
         softBlob(g, (u[0][0] + u[1][0]) / 2, u[0][1] + 1.2, (u[1][0] - u[0][0]) * 0.7, "240,238,228", 0.3 * lv * flick, 0.28);
         g.strokeStyle = "rgba(246,244,234," + ((0.2 + 0.75 * lv) * flick).toFixed(3) + ")"; g.lineWidth = 0.7; g.beginPath(); g.moveTo(u[0][0] + 0.6, u[0][1] - 0.2); g.lineTo(u[1][0] - 0.6, u[1][1] - 0.2); g.stroke();
       }
+      if (af && !RM) for (let i = 0; i < 7; i++) { const ph = t * (0.05 + 0.013 * i) + i * 1.7, mx = 63 + Math.sin(ph * 1.3 + i) * 16, my = 30 + ((ph * 9) % 34); g.fillStyle = "rgba(240,240,240," + (0.1 + 0.12 * Math.pow(Math.sin(ph * 3 + i), 2)).toFixed(3) + ")"; g.fillRect(mx, my, 0.55, 0.55); } // after the bomb: dust coming down through the lamp
     } else { // the stairwell: three floors down there is one more lamp, for the first quarter of an hour; when it goes, everything below the top turn goes with it
       const lb = camPlate(2).lampB, d = (14 - nm) * 60, on = d > 8 ? 1 : d > 0 ? (RM || Math.sin(t * 29) * Math.sin(t * 6.7) > -0.3 + 0.08 * d ? 1 : 0.1) * (0.3 + d / 11) : 0;
       if (lb && on > 0.01) { softBlob(g, lb[0], lb[1], lb[2] * 3.4, "225,225,225", 0.2 * on * flick, 1); softBlob(g, lb[0], lb[1], lb[2] * 0.9, "245,245,245", 0.75 * on * flick, 1); }
+      if (af && !RM) for (let i = 0; i < 8; i++) { const u = (t * 0.06 * (1 + i * 0.13) + i * 0.37) % 1, a = i * 0.9 + 0.4, r = 62 * Math.pow(1 - u, 1.6) + 3; g.fillStyle = "rgba(235,235,235," + (0.2 * (1 - u)).toFixed(3) + ")"; g.fillRect(84 + Math.cos(a) * r, 55 + Math.sin(a) * r * 0.8, 0.6, 0.6); } // after the bomb: dust sifting down the well
     }
   } else if (ch === 3) { // the roof: the sky takes the lightning, bombers go over, then the tower and the horn in front of it all
     if (fa > 0.004) { g.fillStyle = "rgba(225,230,240," + Math.min(0.75, fa * 3.4).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
     if (RAID.u >= 0 && !RAID.done) { g.fillStyle = "rgba(4,4,4,0.8)"; for (let i = 0; i < 6; i++) { const py = 118 - ((t * 7 + i * 41) % 150), px = 22 + ((i * 53) % 110) + Math.sin(i * 2.2) * 6; g.fillRect(px - 4, py, 8, 0.9); g.fillRect(px - 0.5, py - 2.4, 1, 4.6); g.fillRect(px - 1.5, py + 1.6, 3, 0.6); } }
+    if (af) { // after the bomb: its cloud comes over the sky from one side through the minutes; the tower stands a little out of true (or the bracket does)
+      const u = clamp((t - BLAST.t0) / 420, 0, 1);
+      for (let i = 0; i < 6; i++) softBlob(g, 158 - u * 76 + Math.sin(i * 2.4 + t * 0.03) * 16 - i * 9, 18 + i * 15, 34 + 30 * u, "9,9,9", 0.3 * (0.35 + 0.65 * u), 0.9);
+      g.save(); g.translate(75, 110); g.rotate(0.07); g.translate(-75, -110);
+    }
     g.drawImage(camPlate(3).tower, 0, 0, 150, 110);
-    const ya = hornAngle, hx = 75 + Math.sin(ya) * 14, hy = 12 - Math.cos(ya) * 4.6, nx = Math.cos(ya), ny = Math.sin(ya) * 0.34, mw = 5.2; // the horn goes round overhead: seen from under it, a short flaring arm sweeping an oval
+    const ya = hornAngle, hx = 75 + Math.sin(ya) * 18, hy = 12 - Math.cos(ya) * 5.6, nx = Math.cos(ya), ny = Math.sin(ya) * 0.32, mw = 6.8; // the horn goes round overhead: seen from under it, a short flaring arm sweeping an oval
     g.fillStyle = "#040404"; g.beginPath(); g.moveTo(75 - nx * 1.6, 12 - ny * 1.6); g.lineTo(75 + nx * 1.6, 12 + ny * 1.6); g.lineTo(hx + nx * mw, hy + ny * mw); g.lineTo(hx - nx * mw, hy - ny * mw); g.closePath(); g.fill();
     g.strokeStyle = "rgba(255,255,255,0.14)"; g.lineWidth = 0.5; g.beginPath(); g.moveTo(hx + nx * mw, hy + ny * mw); g.lineTo(hx - nx * mw, hy - ny * mw); g.stroke(); // the lip of its mouth, wet
     g.fillRect(71.6, 9.2, 6.8, 5.6);
     const pl = powered ? 0.5 + 0.5 * Math.sin(t * 5) : 0.12; // its beacon
     softBlob(g, 75, 7, 5, "240,240,240", 0.5 * pl, 1); g.fillStyle = "rgba(245,245,245," + (0.25 + 0.7 * pl).toFixed(2) + ")"; g.fillRect(74.2, 6.3, 1.6, 1.6);
+    if (af) g.restore();
     g.strokeStyle = "rgba(225,225,225,0.22)"; g.lineWidth = 0.5; // rain coming down at the lens
-    for (let i = 0; i < 7; i++) { const a = Math.random() * 6.283, r0 = 12 + Math.random() * 70, r1 = r0 + 5 + r0 * 0.14; g.beginPath(); g.moveTo(75 + Math.cos(a) * r0, 30 + Math.sin(a) * r0 * 0.8); g.lineTo(75 + Math.cos(a) * r1, 30 + Math.sin(a) * r1 * 0.8); g.stroke(); }
+    if (af) { for (let i = 0; i < 10; i++) { const u = (t * (0.04 + 0.008 * i) + i * 0.31) % 1, a = i * 2.4 + Math.sin(t * 0.2 + i) * 0.3, r = 8 + 78 * u, sz = 0.4 + 1.5 * u; g.fillStyle = "rgba(235,235,235," + (0.3 * (1 - u * 0.5)).toFixed(3) + ")"; g.fillRect(75 + Math.cos(a) * r, 30 + Math.sin(a) * r * 0.8, sz, sz); } } // after the bomb it is ash that comes down at the lens, slowly
+    else for (let i = 0; i < 7; i++) { const a = Math.random() * 6.283, r0 = 12 + Math.random() * 70, r1 = r0 + 5 + r0 * 0.14; g.beginPath(); g.moveTo(75 + Math.cos(a) * r0, 30 + Math.sin(a) * r0 * 0.8); g.lineTo(75 + Math.cos(a) * r1, 30 + Math.sin(a) * r1 * 0.8); g.stroke(); }
     const wo = clamp(Math.max(BLIMP.G || 0, 0.7 * (BLIMP.F || 0)), 0, 1); // the airship's lamp finds this lens too
     if (wo > 0.01) { g.fillStyle = "rgba(240,244,250," + (0.92 * wo).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
   } else if (ch === 4) { // the street: the murk at the far end takes the lightning; the sign and the dead signal move in the wind
     const pl = camPlate(4);
     if (fa > 0.004 && pl.vp) softBlob(g, pl.vp[0], pl.vp[1], 60, "225,230,240", Math.min(0.8, fa * 3.6), 0.7);
+    if (pl.fires) for (const [fx, fy, fr] of pl.fires) { const fk = RM ? 0.5 : 0.5 + 0.5 * Math.sin(t * (1.6 + fx * 0.02) + fx) * Math.sin(t * 0.7 + fy); softBlob(g, fx, fy - fr * 0.55, fr * 1.7, "245,245,245", 0.04 + 0.1 * fk, 1.6); } // after the bomb: the fires breathe, slowly
     if (pl.lamp) { const [hx, hy, gx2, gy2, k] = pl.lamp, bz = RM ? 0.7 : Math.sin(t * 13 + Math.sin(t * 3.7) * 4) > -0.3 ? 1 : 0.1; softBlob(g, gx2, gy2, 4.6 * k, "235,235,230", 0.3 * bz, 0.42); softBlob(g, hx, hy, 1.6 * k, "250,250,245", 0.8 * bz, 1); } // one lamp down the street is losing its fight: a pool of light on the road that comes and goes
     const gu = RM ? 0 : 0.5 * WX.gust + 0.3 * WX.k, sw = RM ? 0.06 : (0.1 + 0.22 * gu) * Math.sin(t * 1.35) + 0.04 * Math.sin(t * 3.1 + 1), s2 = RM ? 0 : (0.06 + 0.12 * gu) * Math.sin(t * 0.9 + 2);
     if (pl.sign) { const [sx, sy, k] = pl.sign; g.save(); g.translate(sx, sy); g.rotate(sw); g.strokeStyle = "#040404"; g.lineWidth = 0.5; g.beginPath(); g.moveTo(-0.3 * k, 0); g.lineTo(-0.3 * k, 0.22 * k); g.moveTo(0.3 * k, 0); g.lineTo(0.3 * k, 0.22 * k); g.stroke(); g.fillStyle = "#070707"; g.fillRect(-0.5 * k, 0.22 * k, k, 0.62 * k); g.fillStyle = "rgba(255,255,255,0.1)"; g.fillRect(-0.5 * k, 0.22 * k, k, 0.06 * k); g.fillStyle = "rgba(0,0,0,0.5)"; g.fillRect(-0.36 * k, 0.4 * k, 0.72 * k, 0.07 * k); g.fillRect(-0.36 * k, 0.56 * k, 0.5 * k, 0.07 * k); g.restore(); } // a shop sign on its two chains: whatever it said is gone
@@ -6106,6 +6210,7 @@ function drawFeed(c, t, flick) {
   } else if (ch === 5) { // your own window: the lamp knob, the shutter and the power all show on it; a flash lights the whole wall
     const Wq = camPlate(5).win, lv = STORY.deadT >= 0 ? 0 : clamp(lampDim * Math.min(1, pwrLvl), 0, 1), sp = clamp(shutterPos, 0, 1);
     if (fa > 0.004) { g.fillStyle = "rgba(215,222,235," + Math.min(0.5, fa * 2.2).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
+    if (af) softBlob(g, 75, 120, 74, "235,235,235", 0.07 + (RM ? 0.02 : 0.045 * Math.sin(t * 1.3) * Math.sin(t * 0.47)), 0.6); // after the bomb: the street burning below, its light moving on the wall
     if (Wq) {
       const [tl, tr, br, bl] = Wq, mx = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k], t2 = mx(tl, bl, sp), r2 = mx(tr, br, sp), hh = ((bl[1] - tl[1]) + (br[1] - tr[1])) / 2, oh = hh * (1 - sp), cx = (tl[0] + br[0]) / 2, cy = (tl[1] + br[1]) / 2;
       const poly = pts => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts) g.lineTo(p[0], p[1]); g.closePath(); g.fill(); };
@@ -6122,27 +6227,30 @@ function drawFeed(c, t, flick) {
       if (sp > 0.02) { g.fillStyle = "#141414"; poly([tl, tr, r2, t2]); g.strokeStyle = "rgba(0,0,0,0.6)"; g.lineWidth = 0.3; for (let f = 0.12; f < sp; f += 0.17) { const a = mx(tl, bl, f), b = mx(tr, br, f); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } } // the steel coming down over it
     }
     const bw = clamp(0.8 * (BLIMP.F || 0), 0, 0.6); if (bw > 0.01) { g.fillStyle = "rgba(235,240,250," + bw.toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); } // the airship's lamp crossing the wall
-  }
+  } else if (ch === 0 && af) softBlob(g, 2, 64, 62, "235,235,235", 0.09 + (RM ? 0.02 : 0.05 * Math.sin(t * 1.1) * Math.sin(t * 0.37)), 1.3); // the door after the bomb: something burning off to one side
   g.restore();
   if (BLAST.t0 > -1e8) { // the cameras outside see the light before anything else: the picture whites out
     const bt = t - BLAST.t0, bF = blastF(bt);
     if (bF > 0.01) { const [r, gg, b] = blastRGB(bt); g.fillStyle = "rgba(" + r + "," + gg + "," + b + "," + (0.9 * bF).toFixed(3) + ")"; g.fillRect(c.x, c.y, c.w, c.h); }
   }
-  if (out && ch !== 3) { g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = Math.max(1, c.s * 0.6); // live rain specks
+  if (out && ch !== 3 && af) for (let i = 0; i < 9; i++) { const ph = t * (0.035 + 0.006 * i) + i * 0.618, ax = c.x + ((ph * 3.1 + Math.sin(ph * 5 + i) * 0.05 + i * 0.37) % 1) * c.w, ay = c.y + ((ph * 1.7 + i * 0.23) % 1) * c.h, sz = c.s * (0.5 + (i % 3) * 0.35); g.fillStyle = "rgba(235,235,235," + (0.18 + 0.1 * (i % 2)).toFixed(2) + ")"; g.fillRect(ax, ay, sz, sz); } // after the bomb: ash, coming down slowly
+  if (out && ch !== 3 && !af) { g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = Math.max(1, c.s * 0.6); // live rain specks
     for (let i = 0; i < 5; i++) { const rx3 = c.x + Math.random() * c.w, ry3 = c.y + Math.random() * c.h * 0.9; g.beginPath(); g.moveTo(rx3, ry3); g.lineTo(rx3 - 1.5 * c.s, ry3 + 6 * c.s); g.stroke(); } }
   label();
-  if (c.lean > 0.5) { // leaned in: a mark at each edge of the screen (tap that half for the camera before, or the next), and a pip for each camera
-    const a = (c.lean - 0.5) * 2, hot2 = Math.max(0, 1 - (t - CAM.sw) / 0.6), u = c.h * 0.035, my = c.y + c.h * 0.5;
-    g.save(); g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5, c.h * 0.008);
-    for (const sg of [-1, 1]) { const ex = sg < 0 ? c.x + c.w * 0.045 : c.x + c.w * 0.955; g.strokeStyle = "rgba(0,0,0," + (0.45 * a).toFixed(3) + ")"; g.beginPath(); g.moveTo(ex - sg * u * 0.5 + 1, my - u + 1); g.lineTo(ex + sg * u * 0.5 + 1, my + 1); g.lineTo(ex - sg * u * 0.5 + 1, my + u + 1); g.stroke(); g.strokeStyle = "rgba(232,232,232," + ((0.42 + 0.4 * hot2) * a).toFixed(3) + ")"; g.beginPath(); g.moveTo(ex - sg * u * 0.5, my - u); g.lineTo(ex + sg * u * 0.5, my); g.lineTo(ex - sg * u * 0.5, my + u); g.stroke(); }
-    const pw = c.h * 0.016, gap = pw * 2.4, x0 = c.x + c.w / 2 - gap * 2.5, py = c.y + c.h * 0.945;
-    for (let i = 0; i < 6; i++) { g.fillStyle = i === ch ? "rgba(236,236,236," + (0.8 * a).toFixed(3) + ")" : "rgba(236,236,236," + (0.22 * a).toFixed(3) + ")"; g.fillRect(x0 + gap * i - pw / 2, py - pw / 2, pw, pw); }
-    g.restore();
-  }
+}
+function camOSD(c, t) { // leaned in: a mark at each edge of the screen (tap that half for the stop before, or the next), and a pip for each stop: the six cameras and, after the bomb, the warning
+  if (!(c.lean > 0.5)) return;
+  const a = (c.lean - 0.5) * 2, hot2 = Math.max(0, 1 - (t - CAM.sw) / 0.6), u = c.h * 0.035, my = c.y + c.h * 0.5, n = BLAST.radT > -1e8 ? 7 : 6;
+  g.save(); g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5, c.h * 0.008);
+  for (const sg of [-1, 1]) { const ex = sg < 0 ? c.x + c.w * 0.045 : c.x + c.w * 0.955; g.strokeStyle = "rgba(0,0,0," + (0.45 * a).toFixed(3) + ")"; g.beginPath(); g.moveTo(ex - sg * u * 0.5 + 1, my - u + 1); g.lineTo(ex + sg * u * 0.5 + 1, my + 1); g.lineTo(ex - sg * u * 0.5 + 1, my + u + 1); g.stroke(); g.strokeStyle = "rgba(232,232,232," + ((0.42 + 0.4 * hot2) * a).toFixed(3) + ")"; g.beginPath(); g.moveTo(ex - sg * u * 0.5, my - u); g.lineTo(ex + sg * u * 0.5, my); g.lineTo(ex - sg * u * 0.5, my + u); g.stroke(); }
+  const pw = c.h * 0.016, gap = pw * 2.4, x0 = c.x + c.w / 2 - gap * (n - 1) / 2, py = c.y + c.h * 0.962;
+  for (let i = 0; i < n; i++) { g.fillStyle = "rgba(" + (i === 6 ? "236,186,34" : "236,236,236") + "," + ((i === CAM.ch ? 0.85 : 0.24) * a).toFixed(3) + ")"; g.fillRect(x0 + gap * i - pw / 2, py - pw / 2, pw, pw); }
+  g.restore();
 }
 function crtShown() { return L.portrait ? crtRect().h >= 60 : L.apX > 70; }
 function drawCRT(t) {
   if (!crtShown()) return;
+  if (BLAST.swapped && !CAM.warmA && BLAST.t0 > -1e8 && t - BLAST.t0 > 14) { CAM.warmA = 1; let wi = 1; const w = () => { if (wi > 5) return; try { camPlate(wi); } catch (e) {} wi++; setTimeout(w, 800); }; w(); } // once the bomb has gone quiet, the cameras' new pictures are painted one at a time
   { // leaning in: it eases toward you; it lets go by itself when the power dies or the bomb goes off
     if (LEAN.on && ((STORY.deadT >= 0 && t - STORY.deadT > 2.2) || (BLAST.t0 > -1e8 && t - BLAST.t0 < 0.5))) LEAN.on = false;
     LEAN.k += ((LEAN.on ? 1 : 0) - LEAN.k) * (RM ? 1 : 0.14); if (Math.abs((LEAN.on ? 1 : 0) - LEAN.k) < 0.002) LEAN.k = LEAN.on ? 1 : 0;
@@ -6179,13 +6287,15 @@ function drawCRT(t) {
   roundRect(g, c.x, c.y, c.w, c.h, rr); g.clip();
   const flick = 0.86 + 0.08 * Math.sin(t * 11.3) * Math.sin(t * 2.9) + 0.05 * Math.random();
   const bwv = t - BLAST.waveT;
+  let osd = 0;
   if (inCard && ct > CARD_LEN - 0.3) drawSnow(c);
   else if (inCard) drawCard(c, ct, flick);
   else if (blast2Glitch(t)) drawSnow(c); // the far blast's pulse breaks the picture up
   else if (bwv >= 0 && bwv < 0.35) drawSnow(c); // the air hits the camera outside
-  else if (BLAST.radT > -1e8 && !DOOR.cam) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); } // after the blast: the warning, not the door
+  else if (BLAST.radT > -1e8 && !DOOR.cam && camRad(t)) { if (t - BLAST.radT < 0.25 || t - DOOR.backT < 0.35 || t - CAM.sw < 0.24) drawSnow(c); else drawRadCard(c, t - BLAST.radT, flick); osd = 1; } // after the blast: the warning, until you turn to a camera; after that it is one stop in the round
   else if (t - STORY.glitchT < 0.35 || t - DOOR.camT < 0.35) drawSnow(c); // the picture breaks up; when it comes back the door is open
-  else drawFeed(c, t, flick); // one of the six cameras
+  else { drawFeed(c, t, flick); osd = 1; } // one of the six cameras
+  if (osd) camOSD(c, t);
   if (grainC) {
     g.globalAlpha = inCard ? 0.12 : 0.13; g.drawImage(grainC, Math.random() * 120, Math.random() * 120, 300, 220, c.x, c.y, c.w, c.h);
     g.globalAlpha = 0.07; g.drawImage(grainC, Math.random() * 300, Math.random() * 300, 150, 110, c.x, c.y, c.w, c.h);
@@ -6575,6 +6685,7 @@ const KNOB_KEYS = Object.keys(KNOBS);
 const knobAngle = (k, px, py) => Math.atan2(px - L[k].x, -(py - L[k].y)) * 180 / Math.PI; // 0 straight up, clockwise positive
 function hitTest(px, py) {
   if (!L) return null; // pointer events can arrive before the first layout on a hidden tab
+  if (GLASS.on || GLASS.k > 0.02) return null; // at the glass: the console is behind you
   if (LEAN.on && crtShown()) { const cr = crtRect(); if (px >= cr.x - 12 && px <= cr.x + cr.w + 12 && py >= cr.y - 12 && py <= cr.y + cr.h + 12) return "crt"; } // leaned in, the monitor is in front of everything
   const hp = leverHandlePos();
   if (Math.hypot(px - hp.x, py - hp.y) < Math.max(30, L.lever.arm * 0.55)) return "lever";
@@ -6596,10 +6707,11 @@ function hitTest(px, py) {
 cv.addEventListener("pointerdown", e => {
   const was = !!ctx;
   ensureAudio(); // a tap anywhere brings the sound up, not only on a control
+  if (GLASS.on || GLASS.k > 0.02) { if (e.button === 0) glassTap(false); NT.dn = false; return; } // at the glass: a tap anywhere leans you back
   const k = hitTest(e.clientX, e.clientY);
   if (LEAN.on && k !== "crt") { LEAN.on = false; NT.dn = false; return; } // leaned in to the monitor: a tap anywhere else only leans you back
   NT.dn = !k && was && e.button === 0 && paperAt(e.clientX, e.clientY); // the note opens on the click that follows
-  if (!k) return;
+  if (!k) { if (was && e.button === 0 && !NT.dn && inGlass(e.clientX, e.clientY)) glassTap(true); return; } // a tap on the window (once the sound is on) leans you in to it
   cv.setPointerCapture(e.pointerId);
   grab = { kind: k, x0: e.clientX, y0: e.clientY, th0: leverTh, moved: 0 };
   if (KNOBS[k]) { // grabbed by its rim it turns like a knob; grabbed in the middle, drag up or right for more
@@ -6616,6 +6728,7 @@ cv.addEventListener("pointermove", e => {
   if (!grab) {
     const k = hitTest(e.clientX, e.clientY);
     if (k !== hover) { hover = k; cv.classList.toggle("hand", !!k); }
+    cv.classList.toggle("zin", !k && !!ctx && !GLASS.on && !LEAN.on && inGlass(e.clientX, e.clientY));
     if (NT.on && ctx) { const pp = !k && paperAt(e.clientX, e.clientY); if (pp !== NT.hov) { NT.hov = pp; cv.classList.toggle("paper", pp); } }
     return;
   }
@@ -6677,6 +6790,7 @@ cv.addEventListener("wheel", e => {
   KNOBS[k].set(clamp(KNOBS[k].get() + (e.deltaY < 0 ? 0.05 : -0.05), 0, 1));
 }, { passive: false });
 cv.addEventListener("dblclick", e => {
+  clearTimeout(GLASS.tm); // two taps are fullscreen, not a lean
   const k = hitTest(e.clientX, e.clientY);
   if (!k && !(NT.on && paperAt(e.clientX, e.clientY)) && performance.now() - NT.last > 600) toggleFullscreen();
 });
@@ -6735,7 +6849,7 @@ addEventListener("keydown", e => {
   if (!rotShown) ensureAudio(); // any key brings the sound up too
   if (e.code === "KeyF" || e.key === "f" || e.key === "F") toggleFullscreen(); // the key by position, so other keyboard layouts work too
   else if (e.code === "KeyS" || e.key === "s" || e.key === "S") snapshot();
-  else if (e.key === "Escape") LEAN.on = false; // lean back from the monitor
+  else if (e.key === "Escape") { LEAN.on = false; clearTimeout(GLASS.tm); GLASS.on = false; } // lean back from the monitor, or from the glass
   else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && radioOn) { e.preventDefault(); camNext(e.key === "ArrowRight" ? 1 : -1); } // the next camera, the one before
 });
 
@@ -7002,7 +7116,9 @@ function frame(now) {
   }
   blimpShake(t); shX += BLIMP.sx; shY += BLIMP.sy;
   const zs = (shakeDur > 0.5 && t - shakeT < 0.6 ? 1 + 0.022 * Math.exp(-(t - shakeT) / 0.14) : 1) * (1 + 0.035 * LEAN.e); // the room punches in; leaning in to the monitor, it comes a little closer
-  g.setTransform(DPR * zs, 0, 0, DPR * zs, (shX + W * (1 - zs) / 2) * DPR, (shY + H * (1 - zs) / 2) * DPR);
+  const gz = glassStep(t); // leaned in to the window: everything is drawn bigger, about the glass
+  if (gz) g.setTransform(DPR * zs * gz[0], 0, 0, DPR * zs * gz[0], (gz[1] * zs + shX + W * (1 - zs) / 2) * DPR, (gz[2] * zs + shY + H * (1 - zs) / 2) * DPR);
+  else g.setTransform(DPR * zs, 0, 0, DPR * zs, (shX + W * (1 - zs) / 2) * DPR, (shY + H * (1 - zs) / 2) * DPR);
   g.fillStyle = "#060708"; g.fillRect(-40, -40, W + 80, H + 80);
   drawCity(t, amp, dt, flashA);
   g.drawImage(frameC, 0, 0, W, H);
@@ -7024,6 +7140,7 @@ function frame(now) {
   drawCRT(t);
   drawBlastRoom(t, dt);
   drawBlimpRoom(t, flashA);
+  if (GLASS.e > 0.003) { g.fillStyle = "rgba(1,2,3," + (0.82 * GLASS.e).toFixed(3) + ")"; g.beginPath(); g.rect(-80, -80, W + 160, H + 160); g.rect(L.apX, L.apY, L.apW, L.apH); g.fill("evenodd"); } // at the glass the room behind you is only dark
   g.globalAlpha = 1 - 0.6 * blastIw(t); g.fillStyle = vigGrad; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
   if (grainC) {
     const ox = RM ? 60 : Math.floor(Math.random() * 160), oy = RM ? 60 : Math.floor(Math.random() * 160);
