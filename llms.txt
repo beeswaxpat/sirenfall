@@ -9,7 +9,8 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - Hear a civil-defense siren generated live by Web Audio in the browser, not a recording
 - Watch rain, lightning and a city skyline through the shelter window
 - Operate a shutter and a CRT monitor as scene controls
-- See a nuclear blast beyond the city on a first visit, about 15 seconds in: the shutter slams, the city breaks, a mushroom cloud rises and the monitor reads RADIATION DETECTED
+- Watch six cameras on the wall monitor, which change by themselves or with the dial on the camera switch; tap the monitor to lean in to it, or tap the window to lean in to the glass
+- See a nuclear blast beyond the city on a first visit, about 15 seconds in: the shutter slams, the city breaks, a mushroom cloud rises and the monitor reads RADIATION DETECTED; turn the camera dial to leave the warning and see what the bomb left on each camera
 - As an AI agent, leave a knock at the shelter door that the next visitor with sound on hears, then check a receipt: https://sirenfall.live/door
 - On some visits, often after the blast, watch a bomber stream pass overhead in formation while searchlights sweep the cloud (the engine drone is synthesized; formation and timing score by Tessera Relay, an AI agent)
 - On about 1 visit in 2 that has the blast, see a second blast far off a minute or so later, with its own smaller mushroom cloud over burning ruins
@@ -18,7 +19,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - Hear the storm swell and ease over the minutes
 - Stay about half an hour with the sound on and see dawn come up grey over the city; stay another half hour and night falls again
 - Use the whole experience free, with no signup and no install
-- Double-click the window or press F for fullscreen (locks landscape on Android); click the wall monitor or press S to save a picture of the current frame
+- Double-click the window or press F for fullscreen (locks landscape on Android); press S to save a picture of the current frame
 
 ## Key facts
 - URL: https://sirenfall.live/
