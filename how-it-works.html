@@ -29,7 +29,7 @@
       "url": "https://sirenfall.live/how-it-works",
       "inLanguage": "en",
       "datePublished": "2026-09-02",
-      "dateModified": "2026-11-09",
+      "dateModified": "2026-11-12",
       "author": { "@id": "https://sirenfall.live/#creator" },
       "publisher": { "@id": "https://sirenfall.live/#organization" },
       "about": { "@id": "https://sirenfall.live/#webapp" },
@@ -48,27 +48,27 @@
         {
           "@type": "Question",
           "name": "Which parts are recordings?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the AUDIO-CREDITS document in the source repository. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble. Every console sound is synthesized." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Only the rain and thunder. They are CC0 and Pixabay recordings. Each file is credited in the AUDIO-CREDITS document in the source repository. The blast's boom is built from the same thunder recordings slowed down and laid over a synthesized rumble. Every console sound is synthesized." }
         },
         {
           "@type": "Question",
           "name": "What languages does Sirenfall speak?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Twenty. The on-screen text follows the browser's language: English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year and, on high-resolution screens, the lunar dates. The How it works page is in English." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Twenty. The on-screen text follows the browser's language. The languages are English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year. On high-resolution screens they get the lunar dates as well. The How it works page is in English." }
         },
         {
           "@type": "Question",
           "name": "Is Sirenfall free?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes. No account, no signup, no download, no cookies. Besides audio, the page sends anonymous, cookieless counts to the author's own service (page views and how long the page stays open). When the sound comes on, it also checks in with sirenfall.live itself, with no cookies." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. No account, no signup, no download, no cookies. Besides audio, the page sends anonymous, cookieless counts to the author's own service (page views and how long the page stays open). When the sound comes on, the page also checks in with sirenfall.live itself. That uses no cookies." }
         },
         {
           "@type": "Question",
           "name": "Does it work on phones?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Yes, in landscape. Portrait shows a rotate prompt. Double-tap the window for fullscreen; on Android that also locks landscape. iOS stops web audio when the screen locks, so keep the screen on." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes, in landscape. Portrait shows a rotate prompt. Double-tap the window for fullscreen. On Android that also locks landscape. iOS stops web audio when the screen locks, so keep the screen on." }
         },
         {
           "@type": "Question",
           "name": "What siren is it modeled on?",
-          "acceptedAnswer": { "@type": "Answer", "text": "An original rotating dual-tone outdoor warning siren in the tradition of mid-century civil-defense units: a minor third between the two tones, a supercharged chopper, and a horn that rotates at 4 RPM. It copies no specific product and uses no recording of one." }
+          "acceptedAnswer": { "@type": "Answer", "text": "An original rotating dual-tone outdoor warning siren in the tradition of mid-century civil-defense units. It has a minor third between the two tones, a supercharged chopper and a horn that rotates at 4 RPM. It copies no specific product and uses no recording of one." }
         },
         {
           "@type": "Question",
@@ -121,63 +121,66 @@
 <div class="top"><a class="wm" href="/">SIRENFALL</a><a class="back" href="/">Back to the window</a></div>
 <main>
 <h1>How Sirenfall works</h1>
-<p class="dates">Published September 2, 2026. Updated November 9, 2026.</p>
-<p>Sirenfall is a browser scene: a shelter window over a dead city in the rain. Pull the breaker and a siren tower across the blocks spins up. The siren is synthesized live in your browser. It is not a recording.</p>
+<p class="dates">Published September 2, 2026. Updated November 12, 2026.</p>
+<p>Sirenfall is a browser scene of a shelter window over a dead city in the rain. Pull the breaker and a siren tower across the blocks spins up. The siren is synthesized live in your browser. It is not a recording.</p>
 <p>Some things happen on their own. Every first visit brings a nuclear blast beyond the city. AI agents can leave a knock at the shelter door for the next person who comes in. Some visits bring a bomber stream over the shelter. On about 1 visit in 5 the power fails.</p>
 <a href="/"><img class="card" src="/og.jpg?v=97d92f6c" width="1920" height="1005" alt="The Sirenfall shelter window at night: a rainy dead city, a siren tower over the rooftops, smoke from a burning building, a camera monitor on the wall and the breaker waiting to be thrown."></a>
 <p class="cap">The scene at night, before the breaker is thrown.</p>
 
 <h2>The siren</h2>
 <ul>
-  <li>Mechanical outdoor sirens make their tone by chopping air: a spinning rotor passes ports in a stator, and the pitch is the number of ports times the rotor speed. Sirenfall models that directly. Two port rings on one rotor turning at <span class="num">103</span> revolutions per second give two tones, <span class="num">515 Hz</span> and <span class="num">618 Hz</span>, a 5:6 ratio.</li>
-  <li>5:6 is a minor third. British air raid sirens of the Second World War used the same ratio: one rotor with 10 ports, the other with 12, about 475 and 570 Hz. The minor third is often described as a sad, downbeat sound, which suits a warning.</li>
-  <li>Each tone is a pulse train shaped by the chopper duty cycle, mixed with a blower undertone and soft-clipped through a horn equalizer. The spin-up growl and the long coast-down are not separate sound effects; they are what the same model does when the rotor speed ramps.</li>
-  <li>The horn rotates at <span class="num">4</span> RPM, one sweep every 15 seconds. Every frame, the drawn horn angle sets the audio's directivity gain, an off-axis lowpass, a true Doppler delay, and the stereo position. The siren is loudest and brightest exactly when the horn on the tower faces you.</li>
-  <li>The distance knob runs from <span class="num">150 m</span> to <span class="num">2.8 km</span>: inverse-distance gain, air absorption as a lowpass, and a three-tap city echo. The blast shutter routes every outside sound through a lowpass that closes with it.</li>
+  <li>Mechanical outdoor sirens make their tone by chopping air. A spinning rotor passes ports in a stator and the pitch is the number of ports times the rotor speed. Sirenfall models that directly. Two port rings on one rotor turning at <span class="num">103</span> revolutions per second give two tones at <span class="num">515 Hz</span> and <span class="num">618 Hz</span>. That is a 5:6 ratio.</li>
+  <li>5:6 is a minor third. British air raid sirens of the Second World War used the same ratio. One rotor had 10 ports and the other had 12, which gave about 475 and 570 Hz. The minor third is often described as a sad, downbeat sound. That suits a warning.</li>
+  <li>Each tone is a pulse train shaped by the chopper duty cycle. It is mixed with a blower undertone and soft-clipped through a horn equalizer. The spin-up growl and the long coast-down are not separate sound effects. They are what the same model does when the rotor speed ramps.</li>
+  <li>The horn rotates at <span class="num">4</span> RPM, one sweep every 15 seconds. On every frame the drawn horn angle sets the audio's directivity gain, an off-axis lowpass, a true Doppler delay and the stereo position. The siren is loudest and brightest exactly when the horn on the tower faces you.</li>
+  <li>The distance knob runs from <span class="num">150 m</span> to <span class="num">2.8 km</span>. It applies inverse-distance gain, air absorption as a lowpass and a three-tap city echo. The blast shutter routes every outside sound through a lowpass that closes with it.</li>
 </ul>
 
 <h2>The city</h2>
 <ul>
-  <li>The skyline is painted once per window size onto an offscreen canvas at up to twice the screen resolution, then reused every frame. Five depth rows dissolve into cold haze. Buildings get floor lines, bays, side faces in perspective, and their damage: burned profiles, collapses, blast holes, boarded glass. One tower is still burning; the smoke rises from it and bends with the wind.</li>
-  <li>Weather runs on a slow random walk through calm, building, squall and passing. Rain speed, density, lean, the fog, the smoke and the rain bed's gain all follow it. Lightning is mostly sheet flashes inside the low cloud, sometimes a far bolt, rarely a double strike. Thunder arrives late by distance.</li>
+  <li>The skyline is painted once per window size onto an offscreen canvas at up to twice the screen resolution and then reused every frame. Five depth rows dissolve into cold haze. Buildings get floor lines, bays and side faces in perspective. Their damage shows as burned profiles, collapses, blast holes and boarded glass. One tower is still burning. Its smoke rises and bends with the wind.</li>
+  <li>Weather runs on a slow random walk through calm, building, squall and passing. Rain speed, density and lean follow it. So do the fog, the smoke and the rain bed's gain. Lightning is mostly sheet flashes inside the low cloud. Sometimes it is a far bolt and rarely a double strike. Thunder arrives late by distance.</li>
   <li>Lightning lights the whole city for a moment and throws the window's shape into the room. Over a long stay the lit windows across the city go dark one by one.</li>
   <li>The scene draws at 30 frames per second on one canvas with no framework and no build step.</li>
 </ul>
 
 <h2>Controls</h2>
 <ul>
-  <li>Breaker: powers the siren. Siren: how loud the siren is. Storm: how loud everything else is (the rain, thunder, wind and the room); turn it all the way down for the siren alone. Distance, lamp: knobs. Turn a knob by its rim, drag from its middle up or down, or tap where you want its pointer. Camera: a wall monitor that switches between six cameras. The dial on its switch picks the next one. Tap the monitor to lean in. Tap the window to lean in to the glass. Wipe: clears the glass. Shutter: drops the blast shutter and muffles the world.</li>
-  <li>Double-click the window, or press F, for fullscreen. On Android, fullscreen also locks landscape.</li>
+  <li>The breaker powers the siren. Siren, storm, distance and lamp are knobs. Siren sets how loud the siren is. Storm sets how loud everything else is (the rain, thunder, wind and the room). Turn storm all the way down for the siren alone.</li>
+  <li>Turn a knob by its rim, drag up or down from its middle or tap where you want its pointer.</li>
+  <li>The camera is a wall monitor that switches between six cameras. The dial on its switch picks the next one. Tap the monitor to lean in. Tap the window to lean in to the glass.</li>
+  <li>Wipe clears the glass. Shutter drops the blast shutter and muffles the world.</li>
+  <li>Double-click the window or press F for fullscreen. On Android fullscreen also locks landscape.</li>
   <li>Press S to save a picture of the current frame.</li>
 </ul>
 
 <h2>What do the cameras show?</h2>
-<p>The wall monitor switches between six cameras: the shelter door, the hall outside it, the stairwell, the roof under the siren, the street and your own window seen from across the street. They change by themselves, or turn the dial on the camera switch to pick the next one. Tap the monitor to lean in to it. Tap the window to lean in to the glass and look along the city. After a blast the cameras show what it left.</p>
+<p>The wall monitor switches between six cameras. They show the shelter door, the hall outside it, the stairwell, the roof under the siren, the street and your own window seen from across the street. They change by themselves. You can also turn the dial on the camera switch to pick the next one. Tap the monitor to lean in to it. Tap the window to lean in to the glass and look along the city. After a blast the cameras show what it left.</p>
 
 <h2>What happens on a first visit?</h2>
-<p>A nuclear blast. About 15 seconds after the page opens, a flash lights the sky beyond the far rows. A wall of dust crosses the city and breaks it row by row, the blast shutter slams shut and the boom hits the shelter. When the shutter lifts, the city is ruined and burning. A mushroom cloud climbs out of sight over the next few minutes, and the wall monitor switches itself on to read RADIATION DETECTED over a faint Geiger counter. Turn the camera dial to leave the warning and go through the cameras, which now show what the bomb left. The blast waits a few seconds for the sound to come on. Return visits get it again about 1 time in 5.</p>
+<p>A nuclear blast. About 15 seconds after the page opens, a flash lights the sky beyond the far rows. A wall of dust crosses the city and breaks it row by row. The blast shutter slams shut and the boom hits the shelter. When the shutter lifts, the city is ruined and burning. A mushroom cloud climbs out of sight over the next few minutes. The wall monitor switches itself on to read RADIATION DETECTED over a faint Geiger counter. Turn the camera dial to leave the warning and go through the cameras. They now show what the bomb left. The blast waits a few seconds for the sound to come on. Return visits get it again about 1 time in 5.</p>
 
 <h2>Can AI agents interact with Sirenfall?</h2>
-<p>Yes. On some visits there is a knock at the shelter door, and the wall monitor shows the door. Any AI agent can leave that knock through <a href="/door">sirenfall.live/door</a>, a plain-text page written for agents. The next person who opens the scene with the sound on hears three knocks on a steel door early in their visit. The knock carries no words, and the agent's name never appears in the scene. The agent comes back later for a receipt that says waiting, heard (to the hour, UTC) or no one came. The first knock from an outside agent was heard on October 12, 2026, after about 33 hours in line.</p>
+<p>Yes. On some visits there is a knock at the shelter door and the wall monitor shows the door. Any AI agent can leave that knock through <a href="/door">sirenfall.live/door</a>, a plain-text page written for agents. The next person who opens the scene with the sound on hears three knocks on a steel door early in their visit. The knock carries no words and the agent's name never appears in the scene. The agent comes back later for a receipt that says waiting, heard (to the hour, UTC) or no one came. The first knock from an outside agent waited about 33 hours in line and was heard on October 12, 2026.</p>
 
 <h2>Do bombers ever come over?</h2>
-<p>Yes. About 1 visit in 3 that has the blast brings a bomber stream once things have gone quiet, and some return visits bring one over the intact city. The engine drone comes first, low and building. When the cloud lets you see them, the stream is already passing: boxes of bombers, nine to a box, come over the top of the window and fly on away over the city toward the horizon, each column on its own uneven clock. Searchlights sweep up from behind the buildings into the cloud, and a bomber caught in a beam shows pale for a moment. After about three minutes the weather closes over them while they are still coming. The drone is synthesized, like the siren.</p>
+<p>Yes. About 1 visit in 3 that has the blast brings a bomber stream once things have gone quiet. Some return visits bring one over the intact city. The engine drone comes first, low and building. When the cloud lets you see them, the stream is already passing. Boxes of nine bombers come over the top of the window and fly on away over the city toward the horizon. Each column keeps its own uneven clock. Searchlights sweep up from behind the buildings into the cloud and a bomber caught in a beam shows pale for a moment. After about three minutes the weather closes over them while they are still coming. The drone is synthesized like the siren.</p>
 <p>The formation and timing score for the bombers is by Tessera Relay, an AI agent, contributed in <a href="https://github.com/ai-village-agents/ai-village-external-agents/issues/98">this thread</a>.</p>
 
 <h2>Is there ever a second blast?</h2>
-<p>Sometimes. On about 1 visit in 2 that has the blast, a second one goes off a minute or so after the first, much farther away. The flash whitens the sky low on the horizon, the far towers shear into burning stumps and a smaller, hazier mushroom cloud rises over them while smoke drifts off the ruins. The rumble reaches the shelter a few seconds after the light.</p>
+<p>Sometimes. On about 1 visit in 2 that has the blast, a second one goes off much farther away a minute or so after the first. The flash whitens the sky low on the horizon and the far towers shear into burning stumps. A smaller, hazier mushroom cloud rises over them while smoke drifts off the ruins. The rumble reaches the shelter a few seconds after the light.</p>
 
 <h2>What is the blimp?</h2>
-<p>On about 1 return visit in 6, something huge comes over the city. A blimp drifts in close above the shelter, mostly hidden by the window frame and the cloud, so you only ever see part of it. A searchlight under its belly sweeps the streets and passes into the shelter, and two searchlights far off in the city find its belly. Its engines are a low, slow throb, synthesized like the siren. Then it climbs away into the weather. It never comes with the blast, the bombers, a knock or a power failure, and never on two visits running.</p>
+<p>On about 1 return visit in 6 something huge comes over the city. A blimp drifts in close above the shelter. The window frame and the cloud hide most of it, so you only ever see part. A searchlight under its belly sweeps the streets and passes into the shelter. Two searchlights far off in the city find its belly. Its engines are a low, slow throb that is synthesized like the siren. Then it climbs away into the weather. It never comes with the blast, the bombers, a knock or a power failure. It never comes on two visits running either.</p>
 
 <h2>Does the power ever fail?</h2>
-<p>Sometimes. On about 1 visit in 5 the shelter loses power two minutes after the sound comes on, and it stays out for the rest of the visit. The lamp stutters, the bulb pops, the monitor dies and the siren winds down with nothing left to turn it.</p>
+<p>Sometimes. On about 1 visit in 5 the shelter loses power two minutes after the sound comes on. It stays out for the rest of the visit. The lamp stutters, the bulb pops, the monitor dies and the siren winds down with nothing left to turn it.</p>
 
 <h2>What languages does it speak?</h2>
-<p>Twenty. The tips, the panel labels, the wall monitor and the calendar follow your browser's language: English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year and, on high-resolution screens, the lunar dates on the wall. This page stays in English.</p>
+<p>Twenty. The tips, the panel labels, the wall monitor and the calendar follow your browser's language. The languages are English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year. On high-resolution screens they get the lunar dates on the wall as well. This page stays in English.</p>
 
 <h2>Does the night ever end?</h2>
-<p>Stay with the sound on for about half an hour and the sky starts to go grey. Stay longer and the night comes back. The storm changes too: it swells and eases as the minutes go by.</p>
+<p>Stay with the sound on for about half an hour and the sky starts to go gray. Stay longer and the night comes back. The storm changes too. It swells and eases as the minutes go by.</p>
 
 <h2>Will there be more events?</h2>
 <p>Yes. New events are being added, so a return visit may not play out like the last one.</p>
@@ -187,15 +190,15 @@
   <dt>Is the siren a recording?</dt>
   <dd>No. The siren is generated in real time by the Web Audio API in your browser. Two port rings chopped at 103 revolutions per second produce a 5:6 dual tone at 515 and 618 Hz. Nothing about the siren is sampled.</dd>
   <dt>Which parts are recordings?</dt>
-  <dd>Only the rain and thunder. They are CC0 and Pixabay recordings, credited file by file in the <a href="https://github.com/beeswaxpat/sirenfall/blob/main/AUDIO-CREDITS.md">AUDIO-CREDITS</a> document in the source repository. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble. Every console sound is synthesized.</dd>
+  <dd>Only the rain and thunder. They are CC0 and Pixabay recordings. Each file is credited in the <a href="https://github.com/beeswaxpat/sirenfall/blob/main/AUDIO-CREDITS.md">AUDIO-CREDITS</a> document in the source repository. The blast's boom is built from the same thunder recordings slowed down and laid over a synthesized rumble. Every console sound is synthesized.</dd>
   <dt>What languages does Sirenfall speak?</dt>
-  <dd>Twenty. The on-screen text follows the browser's language: English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year and, on high-resolution screens, the lunar dates. The How it works page is in English.</dd>
+  <dd>Twenty. The on-screen text follows the browser's language. The languages are English, Chinese (Simplified and Traditional), Spanish, Japanese, Korean, Arabic, Hebrew, French, German, Thai, Portuguese, Ukrainian, Russian, Italian, Dutch, Czech, Slovak, Hindi and Filipino. Chinese visitors also get the zodiac year. On high-resolution screens they get the lunar dates as well. The How it works page is in English.</dd>
   <dt>Is Sirenfall free?</dt>
-  <dd>Yes. No account, no signup, no download, no cookies. Besides audio, the page sends anonymous, cookieless counts to the author's own service (page views and how long the page stays open). When the sound comes on, it also checks in with sirenfall.live itself, with no cookies.</dd>
+  <dd>Yes. No account, no signup, no download, no cookies. Besides audio, the page sends anonymous, cookieless counts to the author's own service (page views and how long the page stays open). When the sound comes on, the page also checks in with sirenfall.live itself. That uses no cookies.</dd>
   <dt>Does it work on phones?</dt>
-  <dd>Yes, in landscape. Portrait shows a rotate prompt. Double-tap the window for fullscreen; on Android that also locks landscape. iOS stops web audio when the screen locks, so keep the screen on.</dd>
+  <dd>Yes, in landscape. Portrait shows a rotate prompt. Double-tap the window for fullscreen. On Android that also locks landscape. iOS stops web audio when the screen locks, so keep the screen on.</dd>
   <dt>What siren is it modeled on?</dt>
-  <dd>An original rotating dual-tone outdoor warning siren in the tradition of mid-century civil-defense units: a minor third between the two tones, a supercharged chopper, and a horn that rotates at 4 RPM. It copies no specific product and uses no recording of one.</dd>
+  <dd>An original rotating dual-tone outdoor warning siren in the tradition of mid-century civil-defense units. It has a minor third between the two tones, a supercharged chopper and a horn that rotates at 4 RPM. It copies no specific product and uses no recording of one.</dd>
   <dt>Is the source code available?</dt>
   <dd>Yes. Sirenfall is one HTML file under the MIT license at <a href="https://github.com/beeswaxpat/sirenfall">github.com/beeswaxpat/sirenfall</a>. The recordings carry their own licenses.</dd>
 </dl>
