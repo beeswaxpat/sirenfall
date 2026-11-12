@@ -6201,8 +6201,12 @@ function drawFeed(c, t, flick) {
     g.fillStyle = "#040404"; g.beginPath(); g.moveTo(75 - nx * 1.6, 12 - ny * 1.6); g.lineTo(75 + nx * 1.6, 12 + ny * 1.6); g.lineTo(hx + nx * mw, hy + ny * mw); g.lineTo(hx - nx * mw, hy - ny * mw); g.closePath(); g.fill();
     g.strokeStyle = "rgba(255,255,255,0.14)"; g.lineWidth = 0.5; g.beginPath(); g.moveTo(hx + nx * mw, hy + ny * mw); g.lineTo(hx - nx * mw, hy - ny * mw); g.stroke(); // the lip of its mouth, wet
     g.fillRect(71.6, 9.2, 6.8, 5.6);
-    const pl = powered ? 0.5 + 0.5 * Math.sin(t * 5) : 0.12; // its beacon
-    softBlob(g, 75, 7, 5, "240,240,240", 0.5 * pl, 1); g.fillStyle = "rgba(245,245,245," + (0.25 + 0.7 * pl).toFixed(2) + ")"; g.fillRect(74.2, 6.3, 1.6, 1.6);
+    const pl = powered ? 0.5 + 0.5 * Math.sin(t * 5) : 0; // its beacon: red like the one out the window, and on the same beat
+    if (powered) softBlob(g, 75, 7, 7, "255,64,42", 0.55 * pl, 1);
+    g.fillStyle = powered ? "rgba(255,64,42," + (0.35 + 0.6 * pl).toFixed(2) + ")" : "rgba(255,64,42,0.14)"; g.beginPath(); g.arc(75, 7, 1.5, 0, 7); g.fill();
+    { const on = Math.sin(t * 4.19 + 2.1) > 0.55; // and the light part way up the mast, blinking in step with the one outside
+      if (on) softBlob(g, 75, 41.3, 4.5, "255,70,46", 0.4, 1);
+      g.fillStyle = "rgba(255,70,46," + (on ? 0.8 : 0.06) + ")"; g.beginPath(); g.arc(75, 41.3, 1.1, 0, 7); g.fill(); }
     if (af) g.restore();
     g.strokeStyle = "rgba(225,225,225,0.22)"; g.lineWidth = 0.5; // rain coming down at the lens
     if (af) { for (let i = 0; i < 10; i++) { const u = (t * (0.04 + 0.008 * i) + i * 0.31) % 1, a = i * 2.4 + Math.sin(t * 0.2 + i) * 0.3, r = 8 + 78 * u, sz = 0.4 + 1.5 * u; g.fillStyle = "rgba(235,235,235," + (0.3 * (1 - u * 0.5)).toFixed(3) + ")"; g.fillRect(75 + Math.cos(a) * r, 30 + Math.sin(a) * r * 0.8, sz, sz); } } // after the bomb it is ash that comes down at the lens, slowly
