@@ -165,12 +165,21 @@
     #hint { font-size: 12px; }
     #hp { font-size: 10.5px; }
   }
+  /* an upright phone: the whole scene is drawn turned on its side (it is a landscape scene), so turning the phone in the hand
+     shows it whole even where the screen itself will not turn. The words say so once, over the scene, and get out of the way */
+  #stage { position: fixed; inset: 0; }
+  html.side #stage { inset: auto; left: 0; top: 0; transform-origin: 0 0; }
+  html.side #disc { font-size: 10px; bottom: 6px; }
+  html.side #hint { font-size: 12px; }
+  html.side #hp { font-size: 10.5px; }
   #rot {
-    position: fixed; inset: 0; z-index: 9; display: none;
-    background: #0a0b0e; align-items: center; justify-content: center;
+    position: fixed; inset: 0; z-index: 9; display: flex; pointer-events: none;
+    align-items: center; justify-content: center;
     text-align: center; padding: 30px;
+    opacity: 0; visibility: hidden; transition: opacity 0.9s ease, visibility 0s linear 0.9s;
   }
-  #rot.show { display: flex; }
+  #rot > div { padding: 24px 26px 22px; border-radius: 14px; background: rgba(8,9,12,0.9); border: 1px solid rgba(214,196,166,0.16); box-shadow: 0 12px 44px rgba(0,0,0,0.65); } /* a dark card, so the words read over the turned scene */
+  #rot.show { opacity: 1; visibility: visible; transition: opacity 0.6s ease, visibility 0s; }
   #rot .rt1 { font-size: 15px; letter-spacing: 1.4px; color: #d6c4a6; margin-top: 18px; }
   #rot .rt2 { font-size: 12px; letter-spacing: 0.4px; color: #8a93a6; margin-top: 9px; line-height: 1.6; }
   #rot .rt3 { font-size: 12px; letter-spacing: 0.2px; color: #8a93a6; line-height: 1.65; text-align: left; max-width: 440px; margin: 16px auto 0; }
@@ -227,11 +236,22 @@
 <p data-i="sr_p3"><a href="/how-it-works">How it works</a>: the siren physics, the numbers, and answers to common questions. Double-click the window or press F for fullscreen; press S to save a picture.</p>
 <p data-i="sr_p4">Built by <a href="https://github.com/beeswaxpat">Beeswaxpat</a>. Source code: <a href="https://github.com/beeswaxpat/sirenfall">github.com/beeswaxpat/sirenfall</a> (MIT).</p>
 </div>
+<div id="stage">
 <canvas id="scene"></canvas>
 <div class="ov" id="wm">SIRENFALL</div>
 <div class="ov" id="hint">Pull the breaker to power the siren.</div>
 <div class="ov" id="hp">&#127911; Headphones recommended</div>
 <div class="ov" id="disc">The siren is synthesized live in your browser. It is not a recording.</div>
+<button id="nbtn" type="button"></button>
+<div id="note" role="dialog" aria-labelledby="notep">
+  <button class="nx" type="button">&times;</button>
+  <p class="np" id="notep" dir="auto"></p>
+  <textarea id="notet" maxlength="1000"></textarea>
+  <input class="nh" type="text" name="nk" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <div class="nf"><span class="nv" dir="auto"></span><button class="ny" type="button"></button></div>
+  <div class="nm" dir="auto" role="status" aria-live="polite"></div>
+</div>
+</div>
 <div id="rot">
   <div>
     <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -242,15 +262,6 @@
     </svg>
     <div class="rt1">Turn your phone sideways.</div>
   </div>
-</div>
-<button id="nbtn" type="button"></button>
-<div id="note" role="dialog" aria-labelledby="notep">
-  <button class="nx" type="button">&times;</button>
-  <p class="np" id="notep" dir="auto"></p>
-  <textarea id="notet" maxlength="1000"></textarea>
-  <input class="nh" type="text" name="nk" tabindex="-1" autocomplete="off" aria-hidden="true">
-  <div class="nf"><span class="nv" dir="auto"></span><button class="ny" type="button"></button></div>
-  <div class="nm" dir="auto" role="status" aria-live="polite"></div>
 </div>
 <script>
 "use strict";
@@ -1065,12 +1076,25 @@ const cv = document.getElementById("scene");
 const g = cv.getContext("2d");
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DPR = 1, W = 0, H = 0, L = null;
+// an upright phone: the scene is landscape, so it is drawn turned a quarter (its top along the screen's right edge) and W and H are
+// the scene's own width and height. Turning the phone in the hand shows it whole, even where the screen itself will not turn
+let SIDE = false, rotSeen = false, rotT = 0;
+const stageEl = document.getElementById("stage");
+const ptX = e => SIDE ? e["clientY"] : e["clientX"], ptY = e => SIDE ? innerWidth - e["clientX"] : e["clientY"]; // a pointer, in the scene's own left-to-right and top-to-bottom
+function stRect(el) { const b = el.getBoundingClientRect(); return SIDE ? { left: b.top, top: innerWidth - b.right, width: b.height, height: b.width } : b; } // and an element's box the same way
+function rotDone() { rotSeen = true; clearTimeout(rotT); document.getElementById("rot").classList.remove("show"); }
+function rotPrompt() { // said once, over the turned scene, for a few seconds or until the first tap
+  const el = document.getElementById("rot");
+  if (!SIDE || rotSeen) { clearTimeout(rotT); el.classList.remove("show"); return; }
+  if (el.classList.contains("show")) return;
+  el.classList.add("show"); rotT = setTimeout(rotDone, 5000);
+}
 let cityC = null, frameC = null, fogC = null, grainC = null, vigGrad = null;
 let litWindows = [], anchors = null;
 let rainNear = null, rainFar = null, runnels = [], strike = null, nextStrikeT = -1;
 let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
 let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, shakeDur = 0.32, shakeAmp = 6, feedC = null, feedOpenC = null;
-let silC = null, lightC = null, mushC = null, cloudWarmC = null, cloudHotC = null, rotShown = false, variantT = null;
+let silC = null, lightC = null, mushC = null, cloudWarmC = null, cloudHotC = null, rotShown = false, variantT = null; // rotShown: nothing covers the scene any more (an upright phone draws it turned, see SIDE), so this stays false
 let B2HIT = null; // the far blast's mark on the skyline (set while its broken plates are baked, and for good once they are on screen)
 let veilC = null; // far rain curtains: [pale for the night, dark for the morning]
 let bakeFlash = false, flashC = null, flashT = 0; // the city as a lightning flash shows it (made a moment after load, and again once the city is broken)
@@ -2331,7 +2355,7 @@ function blimpInRoom(t) { // the searchlight through the glass: the window's sha
     const q2 = g.createRadialGradient(0, 0, 0, 0, 0, 1); q2.addColorStop(0, "rgba(236,244,255,1)"); q2.addColorStop(0.12, "rgba(214,228,255,0.7)"); q2.addColorStop(0.4, "rgba(190,208,246,0.22)"); q2.addColorStop(1, "rgba(180,198,240,0)"); B.rgG = q2;
     const q3 = g.createRadialGradient(0, 0, 0, 0, 0, 1); q3.addColorStop(0, "rgba(234,242,255,0.95)"); q3.addColorStop(0.25, "rgba(216,230,255,0.8)"); q3.addColorStop(0.55, "rgba(198,214,248,0.4)"); q3.addColorStop(1, "rgba(186,202,240,0)"); B.bmG = q3; // the glare
   }
-  if (t - B.rlT > 0.5) { B.rlT = t; for (let j = 0; j < 2; j++) { const el = document.getElementById(j ? "hp" : "hint"), b = el && el.getBoundingClientRect(); if (b && b.height > 0 && parseFloat(getComputedStyle(el).opacity) > 0.05) { blTB[j * 4] = b.left - 10; blTB[j * 4 + 1] = b.top - 4; blTB[j * 4 + 2] = b.width + 20; blTB[j * 4 + 3] = b.height + 8; } else blTB[j * 4 + 3] = 0; } } // where the words are
+  if (t - B.rlT > 0.5) { B.rlT = t; for (let j = 0; j < 2; j++) { const el = document.getElementById(j ? "hp" : "hint"), b = el && stRect(el); if (b && b.height > 0 && parseFloat(getComputedStyle(el).opacity) > 0.05) { blTB[j * 4] = b.left - 10; blTB[j * 4 + 1] = b.top - 4; blTB[j * 4 + 2] = b.width + 20; blTB[j * 4 + 3] = b.height + 8; } else blTB[j * 4 + 3] = 0; } } // where the words are
   if (op > 0.02) {
     const r = B.rl.getContext("2d"), m = 1.08 + 0.45 * G, ox = -(lx - mx) * 0.3 + B.pp * apW * 0.7, oy = apH * (0.5 - 0.3 * G + B.py * 0.35); // the patch: the panes, a little larger, swung with the beam across the wall, the calendar and the panel
     const dx = W / 2 + B.pp * W * 0.62, dy = H * (0.55 + B.py * 0.6), R = Math.max(W, H) * (0.46 + 0.4 * G); // the beam's own round edge, swinging across
@@ -2790,7 +2814,7 @@ function hashRng(seed) { let sd = seed; return () => { sd = sd + 0x6D2B79F5 | 0;
 function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
 
 function computeLayout() {
-  const w = innerWidth, h = innerHeight, portrait = h > w * 1.05;
+  const w = SIDE ? innerHeight : innerWidth, h = SIDE ? innerWidth : innerHeight, portrait = h > w * 1.05;
   const m = Math.min(w, h);
   const apX = portrait ? w * 0.07 : w * 0.12;
   const apW = portrait ? w * 0.86 : w * 0.76;
@@ -4163,10 +4187,14 @@ function buildGrain() {
 
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
-  W = innerWidth; H = innerHeight;
-  if (W < 10 || H < 10) { setTimeout(resize, 300); return; }
-  rotShown = H > W && Math.min(W, H) < 620;
-  document.getElementById("rot").classList.toggle("show", rotShown);
+  const iw = innerWidth, ih = innerHeight;
+  if (iw < 10 || ih < 10) { setTimeout(resize, 300); return; }
+  SIDE = ih > iw && Math.min(iw, ih) < 620; // an upright phone (an upright tablet keeps its own upright room)
+  W = SIDE ? ih : iw; H = SIDE ? iw : ih;
+  document.documentElement.classList.toggle("side", SIDE);
+  stageEl.style.width = SIDE ? W + "px" : ""; stageEl.style.height = SIDE ? H + "px" : "";
+  stageEl.style.transform = SIDE ? "translateX(" + iw + "px) rotate(90deg)" : "";
+  rotPrompt();
   cv.width = Math.ceil(W * DPR); cv.height = Math.ceil(H * DPR);
   L = computeLayout();
   cityC = bakeBackdrop();
@@ -6722,42 +6750,43 @@ function hitTest(px, py) {
 }
 cv.addEventListener("pointerdown", e => {
   const was = !!ctx;
+  if (!rotSeen && SIDE) rotDone(); // the first tap clears the words about turning the phone
   ensureAudio(); // a tap anywhere brings the sound up, not only on a control
   if (GLASS.on || GLASS.k > 0.02) { if (e.button === 0) glassTap(false); NT.dn = false; return; } // at the glass: a tap anywhere leans you back
-  const k = hitTest(e.clientX, e.clientY);
+  const k = hitTest(ptX(e), ptY(e));
   if (LEAN.on && k !== "crt") { LEAN.on = false; NT.dn = false; return; } // leaned in to the monitor: a tap anywhere else only leans you back
-  NT.dn = !k && was && e.button === 0 && paperAt(e.clientX, e.clientY); // the note opens on the click that follows
-  if (!k) { if (was && e.button === 0 && !NT.dn && inGlass(e.clientX, e.clientY)) glassTap(true); return; } // a tap on the window (once the sound is on) leans you in to it
+  NT.dn = !k && was && e.button === 0 && paperAt(ptX(e), ptY(e)); // the note opens on the click that follows
+  if (!k) { if (was && e.button === 0 && !NT.dn && inGlass(ptX(e), ptY(e))) glassTap(true); return; } // a tap on the window (once the sound is on) leans you in to it
   cv.setPointerCapture(e.pointerId);
-  grab = { kind: k, x0: e.clientX, y0: e.clientY, th0: leverTh, moved: 0 };
+  grab = { kind: k, x0: ptX(e), y0: ptY(e), th0: leverTh, moved: 0 };
   if (KNOBS[k]) { // grabbed by its rim it turns like a knob; grabbed in the middle, drag up or right for more
     grab.f0 = KNOBS[k].get(); grab.turn = 0;
-    grab.rim = Math.hypot(e.clientX - L[k].x, e.clientY - L[k].y) > L[k].r * 0.5;
-    grab.a = knobAngle(k, e.clientX, e.clientY);
+    grab.rim = Math.hypot(ptX(e) - L[k].x, ptY(e) - L[k].y) > L[k].r * 0.5;
+    grab.a = knobAngle(k, ptX(e), ptY(e));
   }
   document.body.classList.add("grabbing");
 });
 // some phones only let the sound start as the finger lifts
 for (const ev of ["pointerup", "touchend"]) cv.addEventListener(ev, () => { if (ctx && ctx.state !== "running") ctx.resume(); }, { passive: true });
 cv.addEventListener("pointermove", e => {
-  ptrX = e.clientX;
+  ptrX = ptX(e);
   if (!grab) {
-    const k = hitTest(e.clientX, e.clientY);
+    const k = hitTest(ptX(e), ptY(e));
     if (k !== hover) { hover = k; cv.classList.toggle("hand", !!k); }
-    cv.classList.toggle("zin", !k && !!ctx && !GLASS.on && !LEAN.on && inGlass(e.clientX, e.clientY));
-    if (NT.on && ctx) { const pp = !k && paperAt(e.clientX, e.clientY); if (pp !== NT.hov) { NT.hov = pp; cv.classList.toggle("paper", pp); } }
+    cv.classList.toggle("zin", !k && !!ctx && !GLASS.on && !LEAN.on && inGlass(ptX(e), ptY(e)));
+    if (NT.on && ctx) { const pp = !k && paperAt(ptX(e), ptY(e)); if (pp !== NT.hov) { NT.hov = pp; cv.classList.toggle("paper", pp); } }
     return;
   }
-  const dy = e.clientY - grab.y0;
-  grab.moved = Math.max(grab.moved, Math.abs(dy), Math.abs(e.clientX - grab.x0));
+  const dy = ptY(e) - grab.y0;
+  grab.moved = Math.max(grab.moved, Math.abs(dy), Math.abs(ptX(e) - grab.x0));
   const kn = KNOBS[grab.kind];
   if (kn) {
     if (grab.rim) { // follow the hand round, one turn of the hand for one turn of the knob
-      const a = knobAngle(grab.kind, e.clientX, e.clientY);
+      const a = knobAngle(grab.kind, ptX(e), ptY(e));
       let d = a - grab.a; if (d > 180) d -= 360; if (d < -180) d += 360;
       grab.a = a; grab.turn += d;
       if (grab.moved >= 3) kn.set(clamp(grab.f0 + grab.turn / 270, 0, 1));
-    } else if (grab.moved >= 3) kn.set(clamp(grab.f0 + (e.clientX - grab.x0 - dy) / 200, 0, 1));
+    } else if (grab.moved >= 3) kn.set(clamp(grab.f0 + (ptX(e) - grab.x0 - dy) / 200, 0, 1));
     return;
   }
   if (grab.kind === "lever") leverTh = clamp(grab.th0 + dy * 0.85, ON_TH, OFF_TH);
@@ -6799,7 +6828,7 @@ function endGrab(e) {
 cv.addEventListener("pointerup", endGrab);
 cv.addEventListener("pointercancel", endGrab);
 cv.addEventListener("wheel", e => {
-  const k = hitTest(e.clientX, e.clientY);
+  const k = hitTest(ptX(e), ptY(e));
   if (k === "crt" && radioOn) { e.preventDefault(); camNext(e.deltaY > 0 ? 1 : -1); return; } // the wheel over the monitor changes the camera
   if (!KNOBS[k]) return;
   e.preventDefault();
@@ -6807,8 +6836,8 @@ cv.addEventListener("wheel", e => {
 }, { passive: false });
 cv.addEventListener("dblclick", e => {
   clearTimeout(GLASS.tm); // two taps are fullscreen, not a lean
-  const k = hitTest(e.clientX, e.clientY);
-  if (!k && !(NT.on && paperAt(e.clientX, e.clientY)) && performance.now() - NT.last > 600) toggleFullscreen();
+  const k = hitTest(ptX(e), ptY(e));
+  if (!k && !(NT.on && paperAt(ptX(e), ptY(e))) && performance.now() - NT.last > 600) toggleFullscreen();
 });
 
 /* ---------- fullscreen, idle cursor, snapshot ---------- */
