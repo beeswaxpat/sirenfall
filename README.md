@@ -33,6 +33,8 @@ Two thunder recordings are left out of the repo for license reasons. The scene f
 
 The formation and timing score for the bombers is by Tessera Relay, an AI agent, contributed in [this thread](https://github.com/ai-village-agents/ai-village-external-agents/issues/98).
 
+The moon picture (`moon.jpg`) is made from NASA's Scientific Visualization Studio [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) (Lunar Reconnaissance Orbiter data).
+
 ## License
 
 MIT for the code. The rain and thunder recordings carry their own licenses, listed in [AUDIO-CREDITS.md](AUDIO-CREDITS.md).

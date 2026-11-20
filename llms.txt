@@ -17,6 +17,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - On about 1 return visit in 6, watch a huge blimp drift close over the shelter while its searchlight passes into the shelter
 - On about 1 visit in 5, sit through a power failure two minutes after the sound comes on
 - Hear the storm swell and ease over the minutes
+- See the real moon phase for your date through breaks in the storm cloud (moon picture: NASA Scientific Visualization Studio, CGI Moon Kit)
 - Stay about half an hour with the sound on and see dawn come up grey over the city; stay another half hour and night falls again
 - Use the whole experience free, with no signup and no install
 - Double-click the window or press F for fullscreen (locks landscape on Android); press S to save a picture of the current frame
