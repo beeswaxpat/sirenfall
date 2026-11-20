@@ -18,6 +18,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - On about 1 visit in 5, sit through a power failure two minutes after the sound comes on
 - Hear the storm swell and ease over the minutes
 - See the real moon phase for your date through breaks in the storm cloud (moon picture: NASA Scientific Visualization Studio, CGI Moon Kit)
+- On about 1 return visit in 6, watch a blood moon: a bigger full moon goes through a total eclipse while the storm opens a gap around it, and hangs copper red for a few minutes
 - Stay about half an hour with the sound on and see dawn come up grey over the city; stay another half hour and night falls again
 - Use the whole experience free, with no signup and no install
 - Double-click the window or press F for fullscreen (locks landscape on Android); press S to save a picture of the current frame
@@ -30,7 +31,7 @@ SIRENFALL is a single-page interactive scene, not a game with a score or an endi
 - Layout: landscape orientation on phones; a rotate prompt appears in portrait
 - Siren tone: two tones a minor third apart, 515 Hz and 618 Hz, generated in real time by Web Audio, with a horn that sweeps once every 15 seconds. It is synthesized live in the browser, not played from a recording.
 - Rain and thunder: recorded audio files played under the scene, not synthesis. The blast's boom is built from the same thunder recordings, slowed down, over a synthesized rumble.
-- Events: a nuclear blast on every first visit (again on about 1 return visit in 5); a knock at the shelter door on some visits, which AI agents can leave; a bomber stream with searchlights after about 1 blast in 3 and on some other return visits; a second, farther blast on about 1 visit in 2 that has the blast; a blimp on about 1 return visit in 6 (never with the blast, the bombers, a knock or a power failure); a power failure on about 1 visit in 5. The first knock from an outside AI agent was heard on 2026-10-12.
+- Events: a nuclear blast on every first visit (again on about 1 return visit in 5); a knock at the shelter door on some visits, which AI agents can leave; a bomber stream with searchlights after about 1 blast in 3 and on some other return visits; a second, farther blast on about 1 visit in 2 that has the blast; a blimp on about 1 return visit in 6 (never with the blast, the bombers, a knock or a power failure); a power failure on about 1 visit in 5; a blood moon (a total eclipse of the moon) on about 1 return visit in 6 (never with the blast, the bombers or the blimp). The first knock from an outside AI agent was heard on 2026-10-12.
 
 - Author: Beeswaxpat (https://github.com/beeswaxpat)
 - Source code: https://github.com/beeswaxpat/sirenfall (MIT; audio licenses documented in the repo)

@@ -92,6 +92,7 @@
         "A power failure on about 1 visit in 5",
         "A storm that swells and eases over the minutes",
         "The real moon phase for the visitor's date, showing through breaks in the storm cloud",
+        "A blood moon on about 1 return visit in 6: a total eclipse of the moon that leaves it copper red for a few minutes",
         "Dawn after about half an hour with the sound on, then night again half an hour later",
         "Six cameras on the wall monitor, with a dial to change them, and leaning in to the monitor or the window glass",
         "Rain, thunder and lightning, with a blast shutter, a wall monitor and a lamp to control"
@@ -4666,7 +4667,7 @@ const FLICK = { next: -1, t0: -1e9, x: 0.5, y: 0.4, k: 0, d: 0.15, n: 1, r: 0.25
    cloud), ?moonsouth=1; on the live site only with &evtest=1. MOON_LIVE true (live 11-20): every visitor gets tonight's moon. */
 const MOON_LIVE = true;
 const MOON = { on: MOON_LIVE, phase: 0.5, frac: 1, fixP: -1, south: false, size: 2, fixClear: -1, tex: null, tW: 0, tH: 0, loading: false,
-  c: null, cKey: "", tmp: null, vis: 0, gap: 0.5, lastT: -1, calcT: -1e9, tint: [1, 1, 1], dim: 1, umbra: null, ring: 0, smoke: 0, mx: 0, my: 0, r: 0, room: 0 };
+  c: null, cKey: "", tmp: null, vis: 0, gap: 0.5, lastT: -1, calcT: -1e9, tint: [1, 1, 1], dim: 1, umbra: null, ring: 0, smoke: 0, mx: 0, my: 0, r: 0, room: 0, red: 0 };
 {
   const q = location.search, lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(q);
   const m = lh ? q.match(/[?&]moon(?:=(\d*\.?\d+))?(?=&|$)/) : null;
@@ -4677,6 +4678,52 @@ const MOON = { on: MOON_LIVE, phase: 0.5, frac: 1, fixP: -1, south: false, size:
   let tz = ""; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
   MOON.south = /^(Australia|Antarctica)\/|^Pacific\/(Auckland|Chatham|Fiji|Tongatapu|Apia|Noumea|Efate|Port_Moresby)|^America\/(Argentina|Sao_Paulo|Santiago|Montevideo|Asuncion|La_Paz|Lima|Punta_Arenas|Bahia|Recife|Fortaleza|Belem|Maceio|Cuiaba|Campo_Grande|Porto_Velho|Manaus|Rio_Branco)|^Africa\/(Johannesburg|Maputo|Harare|Windhoek|Lusaka|Gaborone|Maseru|Mbabane|Lubumbashi|Luanda|Blantyre|Dar_es_Salaam|Kinshasa)|^Indian\/(Mauritius|Reunion|Antananarivo|Comoro|Mayotte)|^Asia\/(Jakarta|Makassar|Jayapura|Dili)/.test(tz);
   if (lh && /[?&]moonsouth=1\b/.test(q)) MOON.south = true;
+}
+/* ---------- the blood moon (event, uses the moon above): a total eclipse of the moon, as it really goes ----------
+   An eclipse only happens at full moon, so on a blood moon night the moon is full whatever the date, and twice as big (Patrick's pick 11-20) and a little
+   lower in the sky (a low full moon looks big). A minute or two after the sound comes on the storm opens a gap round it and the
+   rain softens; Earth's shadow comes in from the east (left) limb with a soft edge, after a faint shading first, and takes about
+   4 minutes to cover it; the whole moon then hangs copper red for about 6 minutes, darker on the side nearest the shadow's middle;
+   the shadow slides off over about 4 minutes and the gap closes. The cold light in the room goes dim and faintly red with it.
+   The shadow crosses at one even speed, as the real one does. Natural odds: about 1 in 6 return visits (BLOOD_ODDS_ELIG of the
+   ones with no bomb, raid or blimp), never two visits running, never on a first visit (those always have the bomb).
+   Hooks for the eclipse after it: BLOOD.cover (0..1, how much of the disc is in the shadow) and BLOOD.s (seconds into it).
+   Local test: ?blood (5 s after the sound comes on) or ?blood=N, ?bloodsize=3|4 (3 = 1.5x the everyday moon, 4 = 2x), ?bloodx=K (K times faster); on the
+   live site only with &evtest=1. BLOOD_LIVE true (live 11-20): ordinary return visits can have it. Times are story seconds. */
+const BLOOD_LIVE = true, BLOOD_ODDS_ELIG = 0.3; // live 11-20 on Patrick's 'go live'
+const BD_GAP = 40, BD_RUN = 840, BD_K = 2.6, BD_Y = 0.5, BD_P = 4.6, BD_LOW = 0.07; // the gap opening; first to last touch of the shadow; the shadow's radius, how far off the moon's middle it passes, the faint outer shading's radius (all in moon radii); how much lower it sits
+const BD_X1 = Math.sqrt((BD_K + 1) * (BD_K + 1) - BD_Y * BD_Y); // where the shadow's middle is at first touch
+const BLOOD = { on: false, test: false, at: -1, s: -1, clear: 0, cover: 0, seen: false, size: 4, x: 1 };
+{
+  const q = location.search, lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(q);
+  const m = lh ? q.match(/[?&]blood(?:=(\d+(?:\.\d+)?))?(?=&|$)/) : null;
+  if (m) {
+    BLOOD.on = BLOOD.test = true; BLOOD.at = m[1] !== undefined ? +m[1] : 5;
+    BLAST.at = BLAST.at0 = -1; BLAST.jump = -1; RAID.at = -1; BLIMP.at = -1; // the blood moon alone
+    STORY.blackout = STORY.fastDark; if (!STORY.fast) { STORY.knock = false; STORY.card = false; }
+  } else if (BLOOD_LIVE && MOON_LIVE) {
+    let last = "0";
+    try { last = localStorage.getItem("sf.blood") || "0"; localStorage.setItem("sf.blood", "0"); } catch (e) {}
+    if (last !== "1" && BLAST.at < 0 && BLAST.jump < 0 && RAID.at < 0 && BLIMP.at < 0 && Math.random() < BLOOD_ODDS_ELIG) { BLOOD.on = true; BLOOD.at = 60 + Math.random() * 60; }
+  }
+  const sz = lh ? q.match(/[?&]bloodsize=(\d*\.?\d+)/) : null;
+  if (sz) BLOOD.size = clamp(+sz[1], 1, 6);
+  const bx = lh ? q.match(/[?&]bloodx=(\d*\.?\d+)/) : null;
+  if (bx) BLOOD.x = clamp(+bx[1], 0.1, 60);
+  if (BLOOD.on) { MOON.on = true; if (MOON.fixP < 0) MOON.fixP = 0.5; if (!/[?&]moonsize=/.test(q)) MOON.size = BLOOD.size; }
+}
+function bloodStep() { // how far the night has got: the gap in the cloud, and where Earth's shadow is on the disc
+  const B = BLOOD;
+  if (!B.on) return;
+  const s = B.s = STORY.clk < 0 ? -1 : (STORY.clk - B.at) * B.x;
+  if (s < 0) { B.clear = 0; B.cover = 0; MOON.umbra = null; return; }
+  if (!B.seen) { B.seen = true; if (!B.test) try { localStorage.setItem("sf.blood", "1"); } catch (e) {} }
+  const end = BD_GAP + BD_RUN;
+  B.clear = s < BD_GAP ? smooth01(s / BD_GAP) : s < end + 20 ? 1 : 1 - smooth01((s - end - 20) / 60);
+  const x = -BD_X1 + 2 * BD_X1 * (s - BD_GAP) / BD_RUN; // the shadow's middle, crossing from the left at one even speed
+  if (x > BD_P + 1) { B.cover = 0; MOON.umbra = null; return; }
+  MOON.umbra = { k: BD_K, x: x, y: BD_Y, p: BD_P };
+  B.cover = clamp((BD_K + 1 - Math.hypot(x, BD_Y)) / 2, 0, 1);
 }
 function moonPhaseNow(date) { // Meeus, abridged (the same terms as lumara-core.js): the phase 0..1 (0 new, 0.5 full) and the lit fraction
   const R = Math.PI / 180, E = R * 23.4397, d = date.getTime() / 86400000 - 0.5 + 2440588 - 2451545;
@@ -4722,7 +4769,8 @@ function moonBake(px) { // the disc, north up, lit for the phase; tint, umbra an
     let r = v * tn[0], gg = v * tn[1], b = v * tn[2];
     if (U) { // Earth's shadow: dim and copper inside it, a soft edge (the same rule as Lumara's)
       const du = Math.hypot(nx - U.x, ny - U.y), uIn = clamp((U.k - du) / 0.11 + 0.5, 0, 1);
-      if (uIn > 0) { const lum = tv * limb * M.dim, dep = clamp((U.k - du) / (U.k * 0.75), 0, 1), dm = 0.34 - 0.19 * dep; r += (lum * dm * 2.45 - r) * uIn; gg += (lum * dm * 0.78 - gg) * uIn; b += (lum * dm * 0.46 - b) * uIn; }
+      if (U.p && du > U.k) { const pf = clamp((U.p - du) / (U.p - U.k), 0, 1), f = 1 - 0.5 * pf * pf; r *= f; gg *= f; b *= f; } // the faint outer shading
+      if (uIn > 0) { const lum = tv * limb * M.dim, dep = clamp((U.k - du) / (U.k * 0.75), 0, 1), dm = (U.p ? 0.46 : 0.34) - 0.19 * dep; r += (lum * dm * 2.45 - r) * uIn; gg += (lum * dm * (U.p ? 0.66 : 0.78) - gg) * uIn; b += (lum * dm * (U.p ? 0.38 : 0.46) - b) * uIn; } // (a blood moon a little brighter and deeper red than the true one, so it reads through the rain)
     }
     const i = (y * n + xx) << 2; // 'lighter' adds colour, so the disc's own alpha is folded in and the canvas stays opaque black
     o[i] = r * al * 0.97; o[i + 1] = gg * al; o[i + 2] = b * al * 1.04; o[i + 3] = 255;
@@ -4743,11 +4791,12 @@ function drawMoon(t, flashA) { // in the backdrop: over the painted sky, under t
   if (!M.on || !L) return;
   moonLoad();
   const dt = M.lastT < 0 ? 0 : clamp(t - M.lastT, 0, 0.5); M.lastT = t;
+  bloodStep();
   if (t - M.calcT > 600 || M.calcT < -1e8) { const p = moonPhaseNow(new Date()); M.calcT = t; M.phase = M.fixP >= 0 ? M.fixP : p.phase; M.frac = M.fixP >= 0 ? (1 - Math.cos(M.fixP * 2 * Math.PI)) / 2 : p.frac; }
   // the cloud: the storm's level, and rifts drifting past on the wind
-  const wk = SX.on ? SX.eff(WX.k) : WX.k, open = 1 - smooth01((wk - 0.1) / 0.55);
+  const wk = SX.on ? SX.eff(WX.k) : WX.k, open = Math.max(1 - smooth01((wk - 0.1) / 0.55), 0.9 * BLOOD.clear); // (a blood moon opens a gap)
   const n1 = Math.sin(cloudPh * 0.31 + 1.3) * 0.6 + Math.sin(cloudPh * 0.83 + 4.1) * 0.4, rift = RM ? 0.6 : smooth01((n1 + 0.25) / 0.9);
-  const want = M.fixClear >= 0 ? M.fixClear : open * (0.25 + 0.75 * rift);
+  const want = M.fixClear >= 0 ? M.fixClear : Math.max(open * (0.25 + 0.75 * rift), 0.95 * BLOOD.clear);
   M.vis += (want - M.vis) * Math.min(1, dt / 5);
   // after the bomb: the smoke climbs into the sky and the moon goes a dull red through it
   const sw = BLAST.swapped ? clamp((t - BLAST.t0) / 40, 0, 1) : 0;
@@ -4758,17 +4807,17 @@ function drawMoon(t, flashA) { // in the backdrop: over the painted sky, under t
   const sil = BLAST.swapped ? silAfterC : (silC || dayOwn("sil", 0, true)); // the city's black shape: the bomb's, or one of our own made once
   if (day < 0.01 || !sil) { M.room = 0; return; }
   const { apW, apH } = L, u = moonNight(), dir = M.south ? -1 : 1;
-  const mx = apW * (M.south ? 0.86 : 0.8) + dir * apW * 0.06 * u, my = apH * (0.12 + 0.07 * u * u), r = apW * 0.0042 * M.size;
+  const mx = apW * (M.south ? 0.86 : 0.8) + dir * apW * 0.06 * u, my = apH * (0.12 + (BLOOD.on ? BD_LOW : 0) + 0.07 * u * u), r = apW * 0.0042 * M.size;
   M.mx = mx; M.my = my; M.r = r;
-  const lightK = Math.pow(M.frac, 1.3) * day; // how much light it has to give: a thin crescent barely lights the cloud
-  M.room = M.vis * lightK * (1 - M.smoke * 0.7) * fl;
+  const cv = BLOOD.cover, lightK = Math.pow(M.frac, 1.3) * day * (1 - 0.6 * cv); // how much light it has to give: a thin crescent barely lights the cloud; in the shadow, little
+  M.room = M.vis * lightK * (1 - M.smoke * 0.7) * fl * (1 - 0.4 * cv); M.red = cv;
   // everything is drawn into a small square around it, cut by the city's black shape, then added to the sky
   const gr = Math.max(r * 9, apW * 0.06), S = gr * 2, sc = Math.min(2, Math.max(1, DPR)), tw = Math.ceil(S * sc);
   if (!M.tmp || M.tmp.width !== tw) { M.tmp = document.createElement("canvas"); M.tmp.width = M.tmp.height = tw; }
   const x = M.tmp.getContext("2d");
   x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, tw, tw);
   x.setTransform(sc, 0, 0, sc, 0, 0); x.globalCompositeOperation = "lighter";
-  const tc = M.tint.map((v, i) => Math.round([150, 160, 178][i] * v)).join(",");
+  const tc = M.tint.map((v, i) => Math.round([150, 160, 178][i] * v * (1 - cv) + [170, 58, 32][i] * cv)).join(","); // cold, or the copper of the shadow
   // the cloud in front of it, lit from behind: wide and faint, strongest when it is thin cloud rather than a clear rift
   // behind thick cloud there is no disc, only a pale patch where it is: you can still tell where the moon is until the squall buries it
   const hide = 1 - M.vis, bury = 1 - 0.7 * smooth01((wk - 0.62) / 0.38);
@@ -4791,13 +4840,14 @@ function drawMoonRoom() { // in a clear spell the window's right reveal and the 
   if (!M.on || !L || M.room < 0.01) return;
   const a = M.room * (1 - 0.92 * shutterPos) * (1 - 0.6 * BLIMP.dk);
   if (a < 0.01) return;
-  const { apX, apY, apW, apH } = L, rv = 16;
+  const { apX, apY, apW, apH } = L, rv = 16, rd = M.red, mix = (c, w) => c.map((v, i) => Math.round(v * (1 - rd) + w[i] * rd)).join(",");
+  const c1 = mix([120, 134, 160], [150, 52, 30]), c2 = mix([130, 146, 176], [160, 56, 34]); // cold, or faintly red in the shadow
   g.save(); g.globalCompositeOperation = "lighter";
-  g.fillStyle = "rgba(120,134,160," + (0.05 * a).toFixed(3) + ")";
+  g.fillStyle = "rgba(" + c1 + "," + (0.05 * a).toFixed(3) + ")";
   g.beginPath(); g.moveTo(apX + apW, apY); g.lineTo(apX + apW - rv, apY + rv * 0.6); g.lineTo(apX + apW - rv, apY + apH - rv * 0.6); g.lineTo(apX + apW, apY + apH); g.closePath(); g.fill();
   if (L.sill) {
     const hg = g.createLinearGradient(apX, 0, apX + apW, 0);
-    hg.addColorStop(0, "rgba(130,146,176,0)"); hg.addColorStop(0.75, "rgba(130,146,176,1)"); hg.addColorStop(1, "rgba(130,146,176,0.3)");
+    hg.addColorStop(0, "rgba(" + c2 + ",0)"); hg.addColorStop(0.75, "rgba(" + c2 + ",1)"); hg.addColorStop(1, "rgba(" + c2 + ",0.3)");
     g.fillStyle = hg; g.globalAlpha = 0.09 * a; g.fillRect(apX - 10, L.sill.y, apW + 20, L.sill.tt);
   }
   g.restore();
@@ -6373,7 +6423,8 @@ function drawFeed(c, t, flick) {
     if (fa > 0.004) { g.fillStyle = "rgba(225,230,240," + Math.min(0.75, fa * 3.4).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
     if (MOON.room > 0.02) { // the moon, when the cloud lets it through: a cheap lens makes it a blown-out spot with a bloom round it
       const ma = Math.min(1, MOON.room * 1.4), mxr = MOON.south ? 34 : 116;
-      softBlob(g, mxr, 24, 15, "190,190,190", 0.22 * ma, 1); softBlob(g, mxr, 24, 4.2, "245,245,245", 0.9 * ma, 1);
+      const rd = MOON.red, cm = (a, b) => [0, 1, 2].map(i => Math.round(a[i] * (1 - rd) + b[i] * rd)).join(","); // red in the shadow
+      softBlob(g, mxr, 24, 15, cm([190, 190, 190], [200, 70, 40]), 0.22 * ma, 1); softBlob(g, mxr, 24, 4.2, cm([245, 245, 245], [255, 120, 80]), 0.9 * ma, 1);
     }
     if (RAID.u >= 0 && !RAID.done) { g.fillStyle = "rgba(4,4,4,0.8)"; for (let i = 0; i < 6; i++) { const py = 118 - ((t * 7 + i * 41) % 150), px = 22 + ((i * 53) % 110) + Math.sin(i * 2.2) * 6; g.fillRect(px - 4, py, 8, 0.9); g.fillRect(px - 0.5, py - 2.4, 1, 4.6); g.fillRect(px - 1.5, py + 1.6, 3, 0.6); } }
     if (af) { // after the bomb: its cloud comes over the sky from one side through the minutes; the tower stands a little out of true (or the bracket does)
@@ -7182,7 +7233,7 @@ function stepStormCycle(t, dt) {
   while (p[SX.i + 1][0] < SX.clk) SX.i++;
   const a = p[SX.i], b = p[SX.i + 1], u = clamp((SX.clk - a[0]) / (b[0] - a[0]), 0, 1);
   SX.raw = a[1] + (b[1] - a[1]) * u * u * (3 - 2 * u);
-  const k = SX.k = clamp(SX.raw * (1 - 0.45 * (globalThis.sfDayK || 0)), 0.2, 1.4);
+  const k = SX.k = clamp(SX.raw * (1 - 0.45 * (globalThis.sfDayK || 0)) * (1 - 0.3 * BLOOD.clear), 0.2, 1.4); // (a blood moon's gap softens it)
   SX.rain = Math.pow(k, 0.8); SX.lp = Math.pow(k, 0.6); SX.hp = Math.pow(k, -0.5); SX.wind = Math.pow(k, 0.8); // the rain bed's volume, how bright it is, and the wind
   SX.gap = clamp(Math.pow(k, -1.8), 0.5, 3.5); SX.near = clamp(Math.pow(k, -0.9), 0.75, 2.4); // the quiet between strikes, how late the thunder comes
   SX.mag = 1 + 0.5 * (k - 1); SX.bolt = Math.pow(k, -0.7); SX.sp = Math.pow(k, 0.5); // how hard they hit, how often it is a bolt, the pace of rain and scud
