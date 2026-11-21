@@ -2131,7 +2131,10 @@ function blimpSmall() { // the city and its black shape at the beam layer's size
   if (!B.cityS || B.cityS.width !== w || B.cityS.height !== h) { B.cityS = document.createElement("canvas"); B.cityS.width = w; B.cityS.height = h; B.silS = document.createElement("canvas"); B.silS.width = w; B.silS.height = h; B.silB = document.createElement("canvas"); B.silB.width = w; B.silB.height = h; B.mc = document.createElement("canvas"); B.mc.width = w; B.mc.height = h; B.cityB = document.createElement("canvas"); B.cityB.width = w; B.cityB.height = h; B.rs = document.createElement("canvas"); B.rs.width = w; B.rs.height = h; }
   let x = B.cityS.getContext("2d"); x.clearRect(0, 0, w, h); if (cityC) x.drawImage(cityC, 0, 0, w, h);
   x = B.silS.getContext("2d"); x.clearRect(0, 0, w, h); if (B.sil) x.drawImage(B.sil, 0, 0, w, h);
-  x = B.silB.getContext("2d"); x.clearRect(0, 0, w, h); if (BL_FI) x.filter = "blur(1.5px)"; x.drawImage(B.silS, 0, 0); x.filter = "none"; // the city's shape with its edges feathered: a lit wall fades out at its edge, it does not stop like a cut sheet
+  x = B.silB.getContext("2d"); x.clearRect(0, 0, w, h); if (BL_FI) x.filter = "blur(1.5px)"; x.drawImage(B.silS, 0, 0); x.filter = "none";
+  if (!B.silW || B.silW.width !== w || B.silW.height !== h) { B.silW = document.createElement("canvas"); B.silW.width = w; B.silW.height = h; } // the same shape feathered wide, for where it stands in front of the shaft: the beam dims behind a tower, it is not cut square
+  x = B.silW.getContext("2d"); x.clearRect(0, 0, w, h);
+  if (BL_FI) { x.filter = "blur(4px)"; x.drawImage(B.silS, 0, 0); x.filter = "none"; } else { x.globalAlpha = 1 / 9; for (const ox of [-3, 0, 3]) for (const oy of [-3, 0, 3]) x.drawImage(B.silS, ox, oy); x.globalAlpha = 1; } // the city's shape with its edges feathered: a lit wall fades out at its edge, it does not stop like a cut sheet
   x = B.cityB.getContext("2d"); x.clearRect(0, 0, w, h); x.globalCompositeOperation = "source-over"; if (BL_FI) x.filter = "blur(" + (2.5 * bc.sc).toFixed(2) + "px)"; x.drawImage(B.cityS, 0, 0); x.globalCompositeOperation = "lighter"; x.drawImage(B.cityS, 0, 0); x.filter = "none"; x.globalCompositeOperation = "source-over"; // the city hazed by the rain, once, and doubled (it is dark: nothing clips) so the pool takes it in one draw
   B.rvx = B.rvy = 9; B.cityL = cityC; B.silK = B.sil;
 }
@@ -2158,8 +2161,8 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   const pool = B.tz > BL_ZN * 2 && px0 + hx > 0 && px0 - hx < apW && py0 + hy > 0 && py0 - hy < apH; // the pool and its haze reach this far: when none of it is on the glass, none of it is drawn
   const sil = B.sil;
   if (pool) {
-    const pk = k * (0.55 + 0.45 * clamp(150 / B.rho, 0, 1));
-    const sm = B.silB || B.silS, F2 = (c, a, m) => { c.save(); c.translate(px0, py0); c.scale(rp * m, ry * m); c.globalAlpha = a; c.fillStyle = G.soft; c.fillRect(-1, -1, 2, 2); c.restore(); }; // the light's own fall-off, brightest where the beam stands, gone at its edge
+    const rpe = Math.max(rp, 12), rye = ry * rpe / rp, pk = k * (0.55 + 0.45 * clamp(150 / B.rho, 0, 1)) * Math.pow(rp / rpe, 1.25); // far off the pool would be a few pixels across: there it is drawn as a wider patch and that much fainter (packed small it was a white dot at the end of the beam)
+    const sm = B.silB || B.silS, F2 = (c, a, m) => { c.save(); c.translate(px0, py0); c.scale(rpe * m, rye * m); c.globalAlpha = a; c.fillStyle = G.soft; c.fillRect(-1, -1, 2, 2); c.restore(); }; // the light's own fall-off, brightest where the beam stands, gone at its edge
     F2(b, pk, 1);
     b.globalCompositeOperation = "source-in"; blimpDS(b, B.cityB, sc); b.globalCompositeOperation = "lighter"; // the city's own picture inside the pool, hazed by the rain (and twice as bright, both made once): its tones and windows stay, so a wall is lit, not painted
     F2(b, pk * 0.4, 1); // a light wet wash (not a flat fill: the picture carries the walls)
@@ -2181,9 +2184,10 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
       b.globalCompositeOperation = "lighter"; b.globalAlpha = BL_RIM * pk; b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(B.mc, 0, 0); b.setTransform(sc, 0, 0, sc, 0, 0); b.globalAlpha = 1;
     }
     b.globalCompositeOperation = "lighter"; // and a wide haze round the pool: the light dies out slowly in the wet air, not at an edge
-    b.save(); b.translate(px0, py0); b.scale(rp * 3.2, rp * 3.2 * Math.max(0.3, ry / rp)); b.globalAlpha = pk; b.fillStyle = G.haze; b.fillRect(-1, -1, 2, 2); b.restore();
+    b.save(); b.translate(px0, py0); b.scale(rpe * 3.2, rpe * 3.2 * Math.max(0.3, ry / rp)); b.globalAlpha = pk; b.fillStyle = G.haze; b.fillRect(-1, -1, 2, 2); b.restore();
     b.save(); b.strokeStyle = "rgba(220,232,255," + (0.3 * pk).toFixed(3) + ")"; b.lineWidth = 1; b.lineCap = "round"; b.beginPath(); // the rain falling through it, in front of the walls
-    for (let i = 0; i < 70; i++) { const ph = ((t * blSv[i] * 0.7 + blSp[i]) % 1), X = px0 + blSb[i] * rp * 1.3 - 0.16 * ph * ry * 3, Y = py0 + (blSa[i] * 2 - 1) * ry * 1.6 - ry * 0.8 + ph * ry * 1.6, ln = clamp(bFF * 3.2 * blSl[i] / B.tz, 2, 16) * 0.8; b.moveTo(X, Y); b.lineTo(X - 0.16 * ln, Y - ln); }
+    const nS = Math.round(70 * clamp(rp / 34, 0.08, 1) * clamp(rp / 34, 0.3, 1)); // as many streaks as there is pool for them: seventy in a patch a few pixels wide is solid white
+    for (let i = 0; i < nS; i++) { const ph = ((t * blSv[i] * 0.7 + blSp[i]) % 1), X = px0 + blSb[i] * rpe * 1.3 - 0.16 * ph * rye * 3, Y = py0 + (blSa[i] * 2 - 1) * rye * 1.6 - rye * 0.8 + ph * rye * 1.6, ln = clamp(bFF * 3.2 * blSl[i] / B.tz, 2, 16) * 0.8; b.moveTo(X, Y); b.lineTo(X - 0.16 * ln, Y - ln); }
     b.stroke(); b.restore();
   }
   // the shaft, in its own layer so the city can stand in front of it: wider as it goes (the beam spreads), brightest at the lamp, thinning toward the ground
@@ -2192,23 +2196,24 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   const f3 = Math.min(1, ft + (1 - ft) * 0.5);
   gr.addColorStop(0, "rgba(206,220,250," + (0.34 * sh).toFixed(3) + ")"); gr.addColorStop(ft * 0.5, "rgba(200,214,246," + (0.18 * sh * blMu(ft * 0.5, nf)).toFixed(3) + ")"); gr.addColorStop(ft, "rgba(196,210,240," + (0.1 * sh * blMu(ft, nf)).toFixed(3) + ")"); gr.addColorStop(f3, "rgba(190,204,236," + (0.045 * sh * blMu(f3, nf)).toFixed(3) + ")"); gr.addColorStop(1, "rgba(186,200,232,0)");
   s.fillStyle = gr;
-  for (let pk = 0; pk < 3; pk++) { // three passes so the sides are soft: wide and faint, a narrow bright core, then the shaft itself (its path is the one the rain is clipped to)
-    const km = pk === 0 ? 1.35 : pk === 1 ? 0.55 : 1;
+  const KM = [1.6, 1.28, 0.74, 0.46, 1], KA = [0.12, 0.19, 0.31, 0.36, 0.42];
+  for (let pk = 0; pk < 5; pk++) { // five passes, wide and faint down to a narrow bright core, so the beam has no edge: it thins out to nothing at its sides (the last path is the shaft itself, the one the rain is clipped to)
+    const km = KM[pk];
     s.beginPath();
     for (let pass = 0; pass < 2; pass++) for (let i = 0; i < NS; i++) {
       const ii = pass ? NS - 1 - i : i, f = ii / (NS - 1), qx = x0 + (x1 - x0) * f, qy = y0 + (y1 - y0) * f, qz = z0 + (z1 - z0) * f;
       const hw = Math.min(hmx * km, Math.max(0.7, bFF * (r0 + (s0 + (s1 - s0) * f) * BL_TA) / qz) * km), cx = bCX + bFF * qx / qz, cy = bHZ - bFF * qy / qz, sg = pass ? -1 : 1;
       if (i === 0 && pass === 0) s.moveTo(cx + nx * hw * sg, cy + ny * hw * sg); else s.lineTo(cx + nx * hw * sg, cy + ny * hw * sg);
     }
-    s.closePath(); s.globalAlpha = pk === 0 ? 0.3 : pk === 1 ? 0.45 : 0.8; s.fill();
+    s.closePath(); s.globalAlpha = KA[pk]; s.fill();
   }
   s.globalAlpha = 1;
   // rain in the beam: every streak caught in it shows, falling through; a few hundred drops that are nowhere else
   s.save(); s.clip();
   s.lineCap = "round"; s.lineWidth = 1;
-  const dxr = -0.16, N = blSa.length, span = al * 0.55;
+  const dxr = -0.16, sK = clamp(al / 240, 0.25, 1), N = Math.round(blSa.length * sK), span = al * 0.55; // (a short shaft far off gets fewer streaks, and fainter: all of them in a few pixels made it a solid white line)
   for (let pass = 0; pass < 2; pass++) { // streaks up to the ground, then fewer and fainter beyond it
-    s.strokeStyle = "rgba(236,244,255," + ((pass ? 0.26 : 0.62) * sh).toFixed(3) + ")"; s.beginPath();
+    s.strokeStyle = "rgba(236,244,255," + ((pass ? 0.26 : 0.62) * sh * (0.45 + 0.55 * sK)).toFixed(3) + ")"; s.beginPath();
     for (let i = 0; i < N; i++) {
       const f = blSa[i]; if ((f > ft) !== (pass === 1) || (pass && f > 0.93)) continue;
       const qz = z0 + (z1 - z0) * f, hw = bFF * (r0 + (s0 + (s1 - s0) * f) * BL_TA) / qz, cx = lx + (ex - lx) * f + nx * hw * blSb[i] * 1.1, cy = ly + (ey - ly) * f + ny * hw * blSb[i] * 1.1;
@@ -2219,13 +2224,14 @@ function blimpBeam(t) { // the searchlight: a shaft lit by the rain inside it, a
   }
   s.restore();
   // the city stands in front of the shaft where a tower rises beside it: its black cuts the shaft part of the way (the beam is still there in the rain, dimmer). Not when the beam is at the glass
-  const cut = sil ? BL_CUT * clamp((B.rho - 40) / 70, 0, 1) : 0;
-  if (cut > 0.01) { s.globalCompositeOperation = "destination-out"; s.globalAlpha = cut; blimpDS(s, B.silS, sc); s.globalAlpha = 1; s.globalCompositeOperation = "source-over"; }
+  const cut = sil ? BL_CUT * 0.75 * clamp((B.rho - 40) / 70, 0, 1) : 0;
+  if (cut > 0.01) { s.globalCompositeOperation = "destination-out"; s.globalAlpha = cut; blimpDS(s, B.silW || B.silB || B.silS, sc); s.globalAlpha = 1; s.globalCompositeOperation = "source-over"; }
   b.globalCompositeOperation = "lighter"; b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(B.tc, 0, 0); b.setTransform(sc, 0, 0, sc, 0, 0);
   // the lamp's own glow in the rain around it
   if (lx > -90 && lx < apW + 90 && ly > -90 && ly < apH + 60) {
-    const gl = clamp(bFF * 34 / z0, 6, 140);
-    b.save(); b.translate(lx, ly); b.scale(gl, gl); b.globalAlpha = sh; b.fillStyle = G.lamp; b.fillRect(-1, -1, 2, 2); b.restore();
+    const dxl = B.tx - B.lx, dyl = B.ty - B.ly, dzl = B.tz - B.lz, fc = smooth01((-(dxl * B.lx + dyl * B.ly + dzl * B.lz) / ((Math.hypot(dxl, dyl, dzl) || 1) * (Math.hypot(B.lx, B.ly, B.lz) || 1)) + 0.15) / 0.9); // how much the lamp looks at us: turned away, we see the lit rain round it, not the glare of its face
+    const gl = clamp(bFF * 34 / z0, 6, 140) * (0.34 + 0.46 * fc);
+    b.save(); b.translate(lx, ly); b.scale(gl, gl); b.globalAlpha = sh * (0.3 + 0.7 * fc); b.fillStyle = G.lamp; b.fillRect(-1, -1, 2, 2); b.restore();
   }
 }
 // two lights on the ground far off in the city: each swings up through the rain from behind the skyline, finds the belly for a few seconds (the beam ends ON the hull, which shows its panels lit from below), loses it and goes out.
@@ -2537,7 +2543,7 @@ function stepBlimp(t, dt) {
   if (u >= B.creakAt && u < 170) { blimpCreak(S, (0.03 + 0.06 * near) * (1 - smooth01((u - 140) / 30))); B.creakAt = u + 14 + Math.random() * 10; }
   if (B.ur >= B.whAt && u < 68) { const bell = smooth01((u - 38) / 10) * (1 - smooth01((u - 58) / 8)); if (bell > 0.02) blimpWhump(S, 0.05 * bell); B.whAt = B.ur + 1.25 + 0.05 * Math.sin(u * 0.3); } // as it passes over: a faint soft whump of huge slow propellers, on a steady clock, in step with the throb
   if (u >= 190) { // nothing left to see or hear: only now does it stop
-    B.done = true; clearTimeout(B.silT); B.vis = 0; B.beamI = 0; B.F = 0; B.pump = 0; B.dk = 0; B.rumble = 0; B.gk = 0; B.gl.fill(0); B.c = B.bc = B.tc = B.cityS = B.silS = B.silB = B.mc = B.cityB = B.rs = B.silH = B.rg = B.rl = B.pkG = null; B.G = 0; B.hush = 0; S.out.gain.setTargetAtTime(0.0001, now, 0.5);
+    B.done = true; clearTimeout(B.silT); B.vis = 0; B.beamI = 0; B.F = 0; B.pump = 0; B.dk = 0; B.rumble = 0; B.gk = 0; B.gl.fill(0); B.c = B.bc = B.tc = B.cityS = B.silS = B.silB = B.silW = B.mc = B.cityB = B.rs = B.silH = B.rg = B.rl = B.pkG = null; B.G = 0; B.hush = 0; S.out.gain.setTargetAtTime(0.0001, now, 0.5);
     const sd = S; setTimeout(() => { for (const o of sd.oscs) try { o.stop(); } catch (e) {} }, 4000);
   }
 }
