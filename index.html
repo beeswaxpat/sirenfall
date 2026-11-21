@@ -1096,6 +1096,7 @@ let litWindows = [], anchors = null;
 let rainNear = null, rainFar = null, runnels = [], strike = null, nextStrikeT = -1;
 let shutterPos = 0, shutterTarget = 0, shutterMoving = false;
 let lampDim = 1, radioOn = false, wipeT = -9, droplets = [], shakeT = -9, shakeDur = 0.32, shakeAmp = 6, feedC = null, feedOpenC = null;
+let NEAR_SS = 1; // the scale the rows' black plates are made at (1 for the bomb's wave; Hell wants them as crisp as the city)
 let silC = null, lightC = null, mushC = null, cloudWarmC = null, cloudHotC = null, rotShown = false, variantT = null; // rotShown: nothing covers the scene any more (an upright phone draws it turned, see SIDE), so this stays false
 let B2HIT = null; // the far blast's mark on the skyline (set while its broken plates are baked, and for good once they are on screen)
 let veilC = null; // far rain curtains: [pale for the night, dark for the morning]
@@ -3220,7 +3221,7 @@ function bakeBackdrop(mode) {
   const flash = md === "flash" || md === "afterFlash";
   const after = md === "after" || md === "afterFlash" || md.startsWith("silAfter") || md === "afterLo" || md.startsWith("fireLo"), lo = md === "afterLo" || md.startsWith("fireLo");
   const fireOn = md === "fireLo1" ? 1 : md === "fireLo2" ? 2 : 0, fullAfter = md === "after";
-  const SS = lo ? 0.5 : md === "silS" ? 0.75 : nearK ? 1 : flash ? Math.min(1.5, Math.max(1, DPR)) : Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
+  const SS = lo ? 0.5 : md === "silS" ? 0.75 : nearK ? NEAR_SS : flash ? Math.min(1.5, Math.max(1, DPR)) : Math.min(2, Math.max(1.5, DPR)); // supersample for crispness
   bakeFlash = flash;
   const rd = after ? hashRng(4242) : null, rf = after ? hashRng(9090) : null, fires = [];
   let rq = rd; // the stream the cuts draw from: the ruin's own, but the far blast's new cuts take theirs apart so nothing else re-rolls
@@ -4280,7 +4281,7 @@ function drawVeils(t, flashA, bF) {
   // far rain: three curtains of it crossing the city on the wind, each at its own pace; pale against the night, dark against the grey
   // of morning; a flash lights them from inside. They hang among the far towers and thin out before the near roofs
   if (!veilC || !L) return;
-  const { apW, apH } = L, rk = SX.eff(WX.k), lean = RM ? 0.1 : 0.06 + 0.18 * rk + 0.25 * WX.gust * SX.k, dk = DAY.k, base = (0.5 + 0.7 * rk) * (1 - bF);
+  const { apW, apH } = L, rk = SX.eff(WX.k), lean = RM ? 0.1 : 0.06 + 0.18 * rk + 0.25 * WX.gust * SX.k, dk = DAY.k, base = (0.5 + 0.7 * rk) * (1 - bF) * (1 - HELL.k);
   if (base < 0.02) return;
   for (let i = 0; i < 3; i++) {
     const vw = apW * [0.3, 0.2, 0.26][i], lap = apW + vw * 2, ph = RM ? [0.2, 0.55, 0.85][i] * lap : (fogPh * [5.5, 8, 3.6][i] + [0.13, 0.52, 0.81][i] * lap) % lap;
@@ -4313,6 +4314,7 @@ function drawCity(t, amp, dt, flashA) {
   g.translate(apX, apY);
   const bT = BLAST.t0 > -1e8 ? t - BLAST.t0 : 99, bF = BLAST.t0 > -1e8 ? blastF(bT) : 0, bG = blastG(t);
   drawBackdrop(t, flashA);
+  drawHellHeat(t);
   // everything that drifts takes its pace from the weather
   fogPh += dt * (0.7 + 0.6 * WX.k + 0.6 * WX.gust);
   cloudPh += dt * (0.6 + 1.2 * WX.k + 0.8 * WX.gust) * SX.sp;
@@ -4365,6 +4367,7 @@ function drawCity(t, amp, dt, flashA) {
       g.restore();
     }
     g.globalAlpha = 1;
+    if (HELL.k > 0.01 && cloudWarmC) { g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.26 * HELL.k; g.drawImage(cloudWarmC, -oc, cy0, cw, chh); g.drawImage(cloudWarmC, cw - oc, cy0, cw, chh); g.restore(); } // in Hell the scud is lit from below
     if (bG > 0.01 && lightC && cloudWarmC) {
       const mg0 = mushGeom(t), lx = lightC.getContext("2d"), fx = mg0 ? mg0.cx : apW * NUKE.x, fy = cy0 + chh * 0.85;
       lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = "source-over"; lx.globalAlpha = 1; lx.clearRect(0, 0, lightC.width, lightC.height);
@@ -4392,9 +4395,10 @@ function drawCity(t, amp, dt, flashA) {
   g.strokeStyle = "#05070c"; g.lineWidth = 2.2; g.lineCap = "round";
   g.beginPath(); g.moveTo(tx - 6, tt); g.lineTo(hcx, hcy + s * 0.55); g.moveTo(tx + 6, tt); g.lineTo(hcx, hcy + s * 0.55); g.stroke();
   const hornG = g.createLinearGradient(0, hcy - mouthR, 0, hcy + mouthR);
-  hornG.addColorStop(0, "rgb(" + Math.round(52 * lit) + "," + Math.round(58 * lit) + "," + Math.round(70 * lit) + ")");
-  hornG.addColorStop(0.45, "rgb(" + Math.round(26 * lit) + "," + Math.round(30 * lit) + "," + Math.round(38 * lit) + ")");
-  hornG.addColorStop(1, "rgb(" + Math.round(10 * lit) + "," + Math.round(12 * lit) + "," + Math.round(16 * lit) + ")");
+  const hw1 = 1 - 0.58 * HELL.k, hw2 = 1 - 0.72 * HELL.k; // (in Hell's light the steel goes warm and dark)
+  hornG.addColorStop(0, "rgb(" + Math.round(52 * lit) + "," + Math.round(58 * lit * hw1) + "," + Math.round(70 * lit * hw2) + ")");
+  hornG.addColorStop(0.45, "rgb(" + Math.round(26 * lit) + "," + Math.round(30 * lit * hw1) + "," + Math.round(38 * lit * hw2) + ")");
+  hornG.addColorStop(1, "rgb(" + Math.round(10 * lit) + "," + Math.round(12 * lit * hw1) + "," + Math.round(16 * lit * hw2) + ")");
   const paintHorn = () => {
     g.fillStyle = hornG; g.strokeStyle = "#04060a"; g.lineWidth = 1;
     g.beginPath();
@@ -4417,7 +4421,7 @@ function drawCity(t, amp, dt, flashA) {
   };
   const paintHousing = () => {
     const hsG = g.createLinearGradient(0, hcy - s * 0.62, 0, hcy + s * 0.62);
-    hsG.addColorStop(0, "#3a4150"); hsG.addColorStop(0.5, "#181c24"); hsG.addColorStop(1, "#0a0c11");
+    hsG.addColorStop(0, "rgb(58," + Math.round(65 * hw1) + "," + Math.round(80 * hw2) + ")"); hsG.addColorStop(0.5, "rgb(24," + Math.round(28 * hw1) + "," + Math.round(36 * hw2) + ")"); hsG.addColorStop(1, "#0a0c11");
     g.fillStyle = hsG; g.strokeStyle = "#04060a"; g.lineWidth = 1;
     roundRect(g, hcx - s * 0.55, hcy - s * 0.62, s * 1.1, s * 1.24, 3); g.fill(); g.stroke();
     g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = 0.9;
@@ -4473,7 +4477,7 @@ function drawCity(t, amp, dt, flashA) {
       const py2 = st.y - rise * apH * 0.32;
       const a = 0.20 * (1 - 0.3 * WX.k) * (k < 0.12 ? k / 0.12 : 1 - (k - 0.12) / 0.88);
       const warm = Math.max(0, 1 - k * 3);
-      const col = Math.round(150 + 30 * warm) + "," + Math.round(148 - 8 * warm) + "," + Math.round(158 - 34 * warm);
+      const hq = HELL.k, col = Math.round((150 + 30 * warm) * (1 - hq) + 30 * hq) + "," + Math.round((148 - 8 * warm) * (1 - hq) + 9 * hq) + "," + Math.round((158 - 34 * warm) * (1 - hq) + 7 * hq); // (dark against a burning sky)
       if (a > 0.003) softBlob(g, px2, py2, (8 + k * 34) * ps, col, a * (1 - 0.75 * DAY.k), 0.8 + 0.2 * k); // by day it shows dark (drawDayScud), only its edge catching the grey
     }
     // a second, thinner column far across the city: it is not the only fire
@@ -4486,16 +4490,21 @@ function drawCity(t, amp, dt, flashA) {
     if (s2) for (let i = 0; i < 8; i++) {
       const k = RM ? i / 8 : ((t / 26) + i / 8) % 1;
       const a = 0.07 * (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
-      if (a > 0.003) softBlob(g, s2.x + k * k * apW * 0.03 * (0.5 + lean), s2.y - (1 - Math.pow(1 - k, 1.5)) * apH * 0.13, (3 + k * 11) * ps, "140,142,150", a, 0.9);
+      if (a > 0.003) softBlob(g, s2.x + k * k * apW * 0.03 * (0.5 + lean), s2.y - (1 - Math.pow(1 - k, 1.5)) * apH * 0.13, (3 + k * 11) * ps, HELL.k > 0.5 ? "28,9,7" : "140,142,150", a, 0.9);
     }
   }
 
   // fog band one (behind the survivors' windows)
   const fw = apW * 1.6, fh = apH * 0.34;
-  const o1 = RM ? 0 : (fogPh * 7) % fw;
-  g.globalAlpha = 0.15;
+  const o1 = RM ? 0 : (fogPh * 7) % fw, hellK = HELL.k, coldFog = 1 - 0.75 * hellK;
+  const hotFog = (a, o, y, hh) => { // in Hell the mist is lit by what burns under it
+    if (hellK < 0.01 || !HELL.fog) return;
+    g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = a * hellK; g.drawImage(HELL.fog, -o, y, fw, hh); g.drawImage(HELL.fog, fw - o, y, fw, hh); g.restore();
+  };
+  g.globalAlpha = 0.15 * coldFog;
   g.drawImage(fogC, -o1, apH * 0.48, fw, fh);
   g.drawImage(fogC, fw - o1, apH * 0.48, fw, fh);
+  hotFog(0.2, o1, apH * 0.48, fh);
   const fogFlare = (a, o, y, hh) => { // in the flash the mist between the rows glows
     if (bF < 0.02) return;
     g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = Math.min(1, a * bF);
@@ -4510,7 +4519,7 @@ function drawCity(t, amp, dt, flashA) {
   if (rainFar) {
     const chF = rainFar.height, oyF = RM ? 0 : rainPhF % chF, rwF = rainFar.width;
     g.save(); g.transform(1, 0, -rsh * 0.7, 1, rsh * 0.7 * apH * 0.5, 0);
-    g.globalAlpha = Math.min(1, Math.min(0.8, 0.55 * (0.55 + 0.75 * rk)) * (1 + 1.5 * bF)); // backlit, every streak flares
+    g.globalAlpha = Math.min(1, Math.min(0.8, 0.55 * (0.55 + 0.75 * rk)) * (1 + 1.5 * bF)) * (1 - 0.95 * HELL.k); // backlit, every streak flares (in Hell there is no rain)
     if (bF > 0.05) g.globalCompositeOperation = "lighter";
     g.drawImage(rainFar, -(rwF - apW) / 2, oyF - chF); g.drawImage(rainFar, -(rwF - apW) / 2, oyF);
     g.restore();
@@ -4522,6 +4531,7 @@ function drawCity(t, amp, dt, flashA) {
     const wn = litWindows[wi];
     if (BLAST.swapped) break; // the last lights in the city went out with the blast
     let a = wn.a0 * (1 - bF);
+    if (HELL.k > 0.01) { a *= 1 - smooth01((HELL.k - (0.1 + 0.7 * ((Math.abs(wn.ph) * 7.31) % 1))) / 0.05); if (a < 0.004) continue; } // Hell puts the last of them out, one at a time
     { // through the night they go out, one at a time: each has its minute, stutters for a few seconds, and is gone. One in eight comes back for a while
       if (wn.die === undefined) { const h = hashRng(Math.floor(wn.x * 7 + wn.y * 131) + 5); wn.die = 3 + h() * 49; wn.back = h() < 0.125 ? wn.die + 5 + h() * 18 : 1e9; wn.gone = wn.back + 6 + h() * 16; }
       const nm = DAY.on ? DAY.m : Math.max(0, STORY.clk) / 60, life = (m0) => { const d = (m0 - nm) * 60; return d <= 0 ? 0 : d > 7 || RM ? 1 : (Math.sin(t * 31 + wn.ph) * Math.sin(t * 7.3 + wn.ph * 2) > -0.25 + 0.09 * d ? 0.15 : 1) * Math.min(1, 0.4 + d / 7); };
@@ -4530,7 +4540,7 @@ function drawCity(t, amp, dt, flashA) {
     }
     if (wn.mode === 1) a *= 0.7 + 0.3 * Math.sin(t * wn.sp + wn.ph);
     else if (wn.mode === 2) a *= Math.sin(t * wn.sp * 2.4 + wn.ph) > 0.35 ? 1 : 0.08;
-    const col = wn.cool ? "150,190,255" : "255,186,110";
+    const col = wn.cool ? (HELL.k > 0.5 ? "255,132,70" : "150,190,255") : "255,186,110";
     const cxw = wn.x + wn.w / 2, cyw = wn.y + wn.h / 2;
     softBlob(g, cxw, cyw, wn.w * 2.3, col, a * 0.09, 1);
     g.fillStyle = "rgba(" + col + "," + a.toFixed(3) + ")";
@@ -4539,33 +4549,36 @@ function drawCity(t, amp, dt, flashA) {
 
   // the one streetlight that is losing its fight
   const dl = anchors.dying;
-  const buzz = BLAST.swapped ? 0 : Math.sin(t * 13 + Math.sin(t * 3.7) * 4) > -0.3 ? 1 : 0.12;
+  const buzz = (BLAST.swapped ? 0 : Math.sin(t * 13 + Math.sin(t * 3.7) * 4) > -0.3 ? 1 : 0.12) * (1 - smooth01(HELL.k / 0.4));
   softBlob(g, dl.x, dl.y, 26, "255,158,64", 0.10 * buzz * (1 - bF), 0.55);
   g.fillStyle = "rgba(255,190,120," + (0.5 * buzz * (1 - bF)).toFixed(2) + ")";
   g.fillRect(dl.x - 1.2, dl.y - 1.2, 2.4, 2.4);
 
   // fog band two (in front)
   const o2 = RM ? 140 : (fogPh * 13) % fw;
-  g.globalAlpha = 0.22;
+  g.globalAlpha = 0.22 * coldFog;
   g.drawImage(fogC, -o2, apH * 0.62, fw, fh);
   g.drawImage(fogC, fw - o2, apH * 0.62, fw, fh);
+  hotFog(0.2, o2, apH * 0.62, fh);
   fogFlare(0.9, o2, apH * 0.62, fh);
   // near wisps along the bottom
   const o3 = RM ? 300 : (fogPh * 24) % fw;
-  g.globalAlpha = 0.17;
+  g.globalAlpha = 0.17 * coldFog;
   g.drawImage(fogC, -o3, apH * 0.80, fw, fh * 0.8);
   g.drawImage(fogC, fw - o3, apH * 0.80, fw, fh * 0.8);
+  hotFog(0.13, o3, apH * 0.80, fh * 0.8);
   fogFlare(0.6, o3, apH * 0.80, fh * 0.8);
   // near rain sheet
   if (rainNear) {
     const chN = rainNear.height, oyN = RM ? 60 : rainPhN % chN, rwN = rainNear.width;
     g.save(); g.transform(1, 0, -rsh, 1, rsh * apH * 0.5, 0);
-    g.globalAlpha = Math.min(1, 0.8 * (0.5 + 0.75 * rk) * (1 + 1.5 * bF));
+    g.globalAlpha = Math.min(1, 0.8 * (0.5 + 0.75 * rk) * (1 + 1.5 * bF)) * (1 - 0.95 * hellK);
     if (bF > 0.05) g.globalCompositeOperation = "lighter";
     g.drawImage(rainNear, -(rwN - apW) / 2, oyN - chN); g.drawImage(rainNear, -(rwN - apW) / 2, oyN);
     g.restore();
   }
   g.globalAlpha = 1;
+  drawHellAir(t);
 
   // horn sweep brushing the fog when it faces this shelter
   const face = Math.max(0, cy2);
@@ -4602,7 +4615,7 @@ function drawCity(t, amp, dt, flashA) {
   // rain on the glass: only where the shutter is not covering it
   const shEdge = shutterPos * apH;
   const glassOpen = shutterPos < 0.3;
-  if (glassOpen && droplets.length < 90 && Math.random() < 0.02 + 0.07 * rk)
+  if (glassOpen && droplets.length < 90 && Math.random() < (0.02 + 0.07 * rk) * (1 - hellK))
     droplets.push({ x: Math.random() * apW, y: Math.random() * apH, r: 0.5 + Math.random() * 0.7, a: 0.04 + Math.random() * 0.06 });
   // a gust at squall strength throws a spatter across the glass all at once
   if (!RM && glassOpen && !WX.spatDone && WX.gust > 0.55 * WX.gustA && WX.k > 0.45) {
@@ -4611,7 +4624,7 @@ function drawCity(t, amp, dt, flashA) {
     for (let i = 0; i < n3 && droplets.length < 110; i++)
       droplets.push({ x: x0 + Math.random() * apW * 0.3, y: Math.random() * apH, r: 0.6 + Math.random() * 0.9, a: 0.06 + Math.random() * 0.07 });
   }
-  if (!RM && glassOpen && runnels.length < 14 && Math.random() < 0.03 + 0.12 * rk)
+  if (!RM && glassOpen && runnels.length < 14 && Math.random() < (0.03 + 0.12 * rk) * (1 - hellK))
     runnels.push({ x: Math.random() * apW, y: Math.random() * apH * 0.2, sp: 15 + Math.random() * 30, ph: Math.random() * 6.28, ln: 16 + Math.random() * 42 });
   const wk = (t - wipeT) / 1.1;
   const bandX = wk >= 0 && wk <= 1.15 ? wk * (apW + 90) - 45 : null;
@@ -4636,7 +4649,7 @@ function drawCity(t, amp, dt, flashA) {
     if (!RM) {
       rn.y += rn.sp * dt * (0.7 + 0.5 * Math.sin(t * 2.4 + rn.ph));
       rn.x += Math.sin(t * 1.7 + rn.ph) * 0.12;
-      if (rn.y - rn.ln > apH) { if (Math.random() < 0.7 - 0.55 * rk) rn.dead = true; else { rn.y = -4; rn.x = Math.random() * apW; rn.sp = 15 + Math.random() * 30; } }
+      if (rn.y - rn.ln > apH) { if (hellK > 0.3 || Math.random() < 0.7 - 0.55 * rk) rn.dead = true; else { rn.y = -4; rn.x = Math.random() * apW; rn.sp = 15 + Math.random() * 30; } }
     }
     const tg2 = g.createLinearGradient(0, rn.y - rn.ln, 0, rn.y);
     tg2.addColorStop(0, "rgba(190,210,235,0)");
@@ -4694,11 +4707,14 @@ const BLOOD_LIVE = true, BLOOD_ODDS_ELIG = 0.3; // live 11-20 on Patrick's 'go l
 const BD_GAP = 40, BD_RUN = 840, BD_K = 2.6, BD_Y = 0.5, BD_P = 4.6, BD_LOW = 0.07; // the gap opening; first to last touch of the shadow; the shadow's radius, how far off the moon's middle it passes, the faint outer shading's radius (all in moon radii); how much lower it sits
 const BD_X1 = Math.sqrt((BD_K + 1) * (BD_K + 1) - BD_Y * BD_Y); // where the shadow's middle is at first touch
 const BLOOD = { on: false, test: false, at: -1, s: -1, clear: 0, cover: 0, seen: false, size: 4, x: 1 };
+const HELL = { k: 0, fix: -1, gfix: -1, gDist: -1, gLook: 0, bL: null, st: 0, T: 0, n: null, sil: null, base: null, gA: null, gB: null, fg: null, fog: null, air: null }; // (see hellStep)
 {
   const q = location.search, lh = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]evtest=1\b/.test(q);
-  const m = lh ? q.match(/[?&]blood(?:=(\d+(?:\.\d+)?))?(?=&|$)/) : null;
-  if (m) {
-    BLOOD.on = BLOOD.test = true; BLOOD.at = m[1] !== undefined ? +m[1] : 5;
+  const m = lh ? q.match(/[?&]blood(?:=(\d+(?:\.\d+)?))?(?=&|$)/) : null, hm = lh ? q.match(/[?&]hell(?:=(\d*\.?\d+))?(?=&|$)/) : null;
+  if (hm) HELL.fix = hm[1] !== undefined ? clamp(+hm[1], 0, 1) : 1; // (a test: Hell held at that strength whatever the moon is doing)
+  { const gm = lh ? q.match(/[?&]giant=(\d+(?:\.\d+)?)/) : null; if (gm) HELL.gfix = 300 + +gm[1]; } // (a test: the giant held at that second of its walk)
+  if (m || hm) {
+    BLOOD.on = BLOOD.test = true; BLOOD.at = m && m[1] !== undefined ? +m[1] : 5;
     BLAST.at = BLAST.at0 = -1; BLAST.jump = -1; RAID.at = -1; BLIMP.at = -1; // the blood moon alone
     STORY.blackout = STORY.fastDark; if (!STORY.fast) { STORY.knock = false; STORY.card = false; }
   } else if (BLOOD_LIVE && MOON_LIVE) {
@@ -4724,6 +4740,426 @@ function bloodStep() { // how far the night has got: the gap in the cloud, and w
   if (x > BD_P + 1) { B.cover = 0; MOON.umbra = null; return; }
   MOON.umbra = { k: BD_K, x: x, y: BD_Y, p: BD_P };
   B.cover = clamp((BD_K + 1 - Math.hypot(x, BD_Y)) / 2, 0, 1);
+}
+/* ---------- Hell (every blood moon): while the moon is wholly in the shadow, the city outside is the Hell of the old pictures ----------
+   It comes in slowly as the last of the moon goes red, holds for the six minutes of totality, and goes back as the shadow leaves, as if it
+   had never been. Nothing sudden, and the shelter itself is untouched (its lamp goes out for it: the fire is the only light).
+   What it is made of, drawn from old pictures of Hell and made our own: the city burning from behind and in its streets, so every row
+   stands black against the fire (Bosch's burning city at night), with tongues of flame along the far line, embers going up, ash coming
+   down where the rain was, and the air over the fires wavering; a wood of stakes along the far line and on the roofs, some bare, some
+   with a figure upright on them (Bruegel's Triumph of Death, the needle mountains of the Buddhist hell scrolls); four thorns the height
+   of towers on the far skyline that were not there before (for Dante's city of Dis); pterosaurs going round far off, one of them across
+   the moon; a horned giant far beyond the last towers that glides in, looks at the window for two minutes and glides away (the horned
+   devil of the medieval Last Judgment walls); a low sound under it all; and the six cameras each see their part of it.
+   The figures are still, far off and plain black: no detail.
+   How: the night city is darkened and warmed (multiply), then three plates of light are added (the sky and the streets, cut by the rows
+   in front of each; two of them breathe slowly), the moon goes over that, and a plate of the stakes and towers over the moon.
+   The plates are made a piece at a time once the eclipse starts, so no frame is held up. HELL.k is how much of it there is (0..1).
+   Local test: ?hell (held full) or ?hell=K, ?giant=S; on the live site only with &evtest=1. */
+function hellStep() {
+  const H = HELL;
+  if (!BLOOD.on || BLAST.swapped || !L || (H.fix < 0 && BLOOD.s < 0)) { H.k = 0; return; }
+  if (H.bL !== L) { H.bL = L; H.st = 0; H.n = []; }
+  if (H.st < 6 && !H.T) H.T = setTimeout(() => { H.T = 0; if (L && H.bL === L) hellBake(); }, H.st ? 140 : 500);
+  const want = H.fix >= 0 ? H.fix : smooth01((BLOOD.cover - 0.5) / 0.5) * (1 - DAY.k);
+  H.k = H.base ? want : 0;
+}
+function hellBake() { // one piece each call: the city's black shape, the four rows in front of it, then the plates
+  const H = HELL;
+  if (H.st === 0) { const s = silC || dayOwn("sil", 0, true); if (!s) return; H.sil = s; H.st = 1; return; }
+  if (H.st <= 4) { NEAR_SS = H.sil.width / L.apW; try { H.n[H.st] = bakeVariant("near" + H.st); } finally { NEAR_SS = 1; } H.st++; return; }
+  hellCompose(); H.n = null; H.st = 6;
+}
+function hellFigure(x, cx, cy, s, f, v) { // a figure upright on a stake, plain black: broad at the shoulders, the head fallen to one side, arms and legs hanging clear. (cx, cy) the middle of the shoulders, s shoulder to foot, f the side the head falls to, v 0..1 varies it
+  const P = (dx, dy) => [cx + dx * s * f, cy + dy * s], ln = pts => { x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) x.lineTo(pts[i][0], pts[i][1]); x.stroke(); };
+  x.lineCap = "round"; x.lineJoin = "round";
+  x.beginPath(); for (const [dx, dy] of [[-0.13, -0.01], [0.13, 0], [0.085, 0.36], [-0.075, 0.37]]) { const q = P(dx, dy); x.lineTo(q[0], q[1]); } x.closePath(); x.fill(); // the body
+  x.lineWidth = s * 0.068; ln([P(-0.14, 0.005), P(-0.225 - 0.03 * v, 0.2), P(-0.21, 0.42)]); ln([P(0.14, 0.01), P(0.235, 0.19 + 0.03 * v), P(0.225 + 0.03 * v, 0.4)]); // the arms
+  x.lineWidth = s * 0.085; ln([P(-0.045, 0.36), P(-0.075, 0.62), P(-0.065, 0.9)]); ln([P(0.05, 0.36), P(0.1 + 0.05 * v, 0.6), P(0.065, 0.85)]); // the legs
+  const h = P(0.045 + 0.04 * v, -0.155); x.beginPath(); x.arc(h[0], h[1], s * 0.1, 0, 7); x.fill(); // the head
+}
+function hellBird(x, cx, cy, W, d, a, fs, tilt) { // a pterosaur (the crested kind, Pteranodon) in plain black, far off, drawn the way everyone knows it: wings spread, the head in profile. W its span, d which way it heads (1 right, -1 left), a its wings in the beat (-1 down .. 1 up), fs how much of the span shows as it turns, tilt its bank
+  x.save(); x.translate(cx, cy); x.rotate(tilt * d); x.scale(W * d, W);
+  const wy = -0.07 - 0.085 * a, ty = 0.01 - 0.3 * a, wx = (0.19 - 0.03 * Math.abs(a)) * fs, tx = (0.5 - 0.08 * Math.abs(a)) * fs;
+  for (const sd of [-1, 1]) { // a wing: the arm straight out to the wrist and its claws, the long finger to the tip, the skin's hollow trailing edge back to the ankle
+    x.beginPath(); x.moveTo(sd * 0.015, -0.035); x.lineTo(sd * wx, wy); x.lineTo(sd * (wx + 0.012), wy - 0.022); x.lineTo(sd * (wx + 0.02), wy + 0.004); x.lineTo(sd * tx, ty);
+    x.quadraticCurveTo(sd * wx * 1.2, (wy + ty) * 0.5 + 0.035, sd * wx * 0.8, wy * 0.45 + 0.085);
+    x.quadraticCurveTo(sd * 0.07, 0.07, sd * 0.02, 0.12);
+    x.closePath(); x.fill();
+  }
+  x.beginPath(); x.ellipse(0, 0.025, 0.032, 0.075, 0, 0, 7); x.fill(); // the small body
+  x.beginPath(); x.moveTo(-0.018, 0.085); x.lineTo(-0.026, 0.19); x.lineTo(-0.005, 0.11); x.lineTo(0.012, 0.18); x.lineTo(0.02, 0.085); x.closePath(); x.fill(); // the legs trailing
+  x.beginPath(); x.moveTo(-0.018, -0.04); x.quadraticCurveTo(-0.005, -0.1, 0.03, -0.118); // the neck, then the crest swept back off the skull and the long beak
+  x.lineTo(-0.13, -0.215); x.lineTo(0.06, -0.158); x.lineTo(0.34, -0.075); x.lineTo(0.1, -0.088);
+  x.quadraticCurveTo(0.045, -0.075, 0.022, -0.03); x.closePath(); x.fill();
+  x.restore();
+}
+/* The giant (Hell's second minute on): a horned figure the height of the sky, far beyond the last towers, seen from the waist up over the
+   far line. The horned devil of the medieval Last Judgment walls (long horns, pointed ears, a long goat's face, gaunt, long arms), drawn as
+   our own: plain black going to the fire's colour at its foot, smoke drifting across it, two dull embers for eyes. It walks in along the
+   far line from the left, stops, turns its head to the window and looks at you for two minutes, turns away and walks on, passing in front
+   of the moon as it goes. It never comes nearer and nothing in the room moves for it. Each part is drawn twice over, from the front and
+   from the side, and blended as it turns. Local test: ?giant=S holds it at second S of its walk (0 in, 66 turning, 76 to 196 looking,
+   204 on, about 278 at the moon, 320 gone). */
+const HG = (() => { // each part twice: f from the front, p from the side (facing right); the two are blended as it turns. Units: the height from the top of its head to the far line. w: how shaggy each point is
+  const mir = a => a.map(q => [-q[0], q[1]]);
+  const fR = [[0.03, 0.13], [0.036, 0.185], [0.075, 0.215], [0.14, 0.24], [0.21, 0.255], [0.24, 0.275], [0.235, 0.31], [0.19, 0.35], [0.175, 0.42], [0.16, 0.5], [0.13, 0.57], [0.085, 0.62], [0.075, 0.7], [0.115, 0.78], [0.12, 0.86], [0.125, 1.08]]; // one side, neck to thigh: neck, the slope to the point of the shoulder, the armpit, the cage of the ribs, a hollow waist, the hip bone
+  const pR = [[0.055, 0.135], [0.048, 0.19], [0.04, 0.22], [0.05, 0.25], [0.07, 0.275], [0.085, 0.31], [0.095, 0.35], [0.09, 0.4], [0.08, 0.46], [0.065, 0.52], [0.04, 0.57], [0.015, 0.63], [0.02, 0.7], [0.05, 0.78], [0.055, 0.86], [0.06, 1.08]]; // side on, its front: throat, the keel of the chest, a sunk belly
+  const pL = [[-0.005, 0.115], [-0.035, 0.165], [-0.07, 0.2], [-0.105, 0.235], [-0.13, 0.27], [-0.145, 0.31], [-0.14, 0.35], [-0.135, 0.4], [-0.13, 0.46], [-0.12, 0.52], [-0.105, 0.57], [-0.085, 0.63], [-0.08, 0.7], [-0.09, 0.78], [-0.085, 0.86], [-0.075, 1.08]]; // and its back: the nape, the hump of the shoulders
+  const wS = [0.2, 0.5, 1, 1, 1, 1, 0.8, 0.3, 0.25, 0.25, 0.25, 0.1, 0.15, 0.7, 0.9, 1];
+  const fAr = [[0.215, 0.265], [0.25, 0.29], [0.262, 0.4], [0.268, 0.5], [0.285, 0.535], [0.27, 0.57], [0.262, 0.66], [0.262, 0.72], [0.238, 0.72], [0.24, 0.6], [0.238, 0.5], [0.225, 0.38], [0.2, 0.33]]; // an arm: thin, the knob of the elbow, hanging clear of the body
+  const fMr = [[0.238, 0.71], [0.264, 0.71], [0.268, 0.77], [0.284, 0.87], [0.262, 0.79], [0.264, 0.91], [0.252, 0.795], [0.246, 0.92], [0.242, 0.795], [0.226, 0.885], [0.233, 0.78], [0.21, 0.815], [0.232, 0.745]]; // a hand: four long claws and a thumb
+  const fHr = [[0.026, 0.012], [0.08, -0.085], [0.125, -0.21], [0.062, -0.33]], fEr = [[0.046, 0.035], [0.125, 0], [0.085, 0.04], [0.05, 0.075]]; // a horn (out, up, and in at the tip) and a long torn ear
+  return {
+    fT: fR.concat(mir(fR).reverse()), pT: pR.concat(pL.slice().reverse()), wT: wS.concat(wS.slice().reverse()),
+    fAr, fAl: mir(fAr), wA: [0.6, 0.9, 0.9, 0.6, 0.2, 0.9, 0.9, 0.3, 0.1, 0.2, 0.2, 0.2, 0.3],
+    pAr: [[0, 0.28], [0.02, 0.3], [0.025, 0.4], [0.025, 0.5], [0.03, 0.535], [0.03, 0.57], [0.03, 0.66], [0.03, 0.72], [0.005, 0.72], [0, 0.6], [-0.005, 0.5], [-0.01, 0.38], [-0.015, 0.33]],
+    pAl: [[-0.045, 0.27], [-0.06, 0.3], [-0.058, 0.4], [-0.055, 0.5], [-0.075, 0.535], [-0.05, 0.57], [-0.035, 0.66], [-0.025, 0.72], [0, 0.72], [-0.012, 0.6], [-0.02, 0.5], [-0.015, 0.38], [-0.01, 0.33]],
+    fMr, fMl: mir(fMr), pMr: fMr.map(q => [0.017 + (q[0] - 0.25) * 0.3, 0.7 + (q[1] - 0.71) * 0.4]), pMl: fMr.map(q => [-(q[0] - 0.25) * 0.9 - 0.012, q[1]]),
+    fH: [[0, 0], [0.028, 0.004], [0.046, 0.028], [0.05, 0.06], [0.04, 0.085], [0.034, 0.12], [0.022, 0.16], [0.012, 0.185], [0, 0.235], [-0.012, 0.185], [-0.022, 0.16], [-0.034, 0.12], [-0.04, 0.085], [-0.05, 0.06], [-0.046, 0.028], [-0.028, 0.004]], // a long skull: cheekbones, a narrow jaw, the point of a beard
+    pH: [[-0.012, 0], [0.028, 0.002], [0.052, 0.03], [0.062, 0.058], [0.085, 0.09], [0.105, 0.128], [0.09, 0.15], [0.062, 0.165], [0.05, 0.24], [0.035, 0.16], [0.01, 0.135], [-0.02, 0.115], [-0.042, 0.085], [-0.056, 0.05], [-0.052, 0.02], [-0.035, 0.004]],
+    wH: [0, 0, 0, 0.3, 0.6, 0.8, 0.8, 0.5, 0, 0.5, 0.8, 0.8, 0.6, 0.3, 0, 0],
+    fEr, fEl: mir(fEr), pEr: [[0, 0.04], [0, 0.03], [0, 0.045], [0, 0.06]], pEl: [[-0.03, 0.03], [-0.115, -0.02], [-0.075, 0.035], [-0.04, 0.075]],
+    fHr, fHl: mir(fHr), pHr: [[0, 0.004], [-0.02, -0.105], [-0.09, -0.21], [-0.2, -0.25]], pHl: [[-0.012, 0.006], [-0.045, -0.09], [-0.12, -0.18], [-0.225, -0.2]], // side on, both horns sweep back over the hump
+    fYr: [0.02, 0.068], fYl: [-0.02, 0.068], pYr: [0.05, 0.06], pYl: [0.03, 0.06]
+  };
+})();
+function hellGiantShape(x, Hh, u, v, sw, br, tilt) { // its black shape, the top of its head at the origin: bone and hair, no smooth edge on it. Hh the height from there to the far line, u how far the head has turned to us (0 side on, 1 full face), v the body the same, sw the swing of its arm, br its breath, tilt the lean of its head. Returns where the eyes are and the outline of its trunk
+  const mix = (f, pp, w) => f.map((q, i) => [(pp[i][0] + (q[0] - pp[i][0]) * w) * Hh, (pp[i][1] + (q[1] - pp[i][1]) * w) * Hh]);
+  const rnd = k => { const z = Math.sin(k * 127.1 + 311.7) * 43758.5453; return z - Math.floor(z); };
+  const fill = pts => { x.beginPath(); pts.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.closePath(); x.fill(); };
+  const rag = (pts, wts, seed, amp) => { // hair: along each shaggy edge, tufts standing off it and hanging down (the same ones every frame)
+    const out = [], n = pts.length; let ar = 0;
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; ar += a[0] * b[1] - b[0] * a[1]; }
+    const sg = ar >= 0 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n], w = (wts[i] + wts[(i + 1) % n]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, nx = sg * dy / len, ny = -sg * dx / len;
+      out.push(a);
+      if (w < 0.18 || len < amp) continue;
+      const m = Math.max(1, Math.round(len / (amp * 1.5)));
+      for (let k = 0; k < m; k++) {
+        const r1 = rnd(seed + i * 17.3 + k * 3.1), r2 = rnd(seed + i * 29.7 + k * 7.9 + 1), s0 = (k + 0.2) / m, s1 = (k + 0.9) / m, sm = s0 + (s1 - s0) * (0.3 + 0.5 * r2), h = amp * w * (0.45 + 0.9 * r1);
+        out.push([a[0] + dx * s0, a[1] + dy * s0], [a[0] + dx * sm + nx * h, a[1] + dy * sm + ny * h + amp * w * (0.4 + 1.2 * r2)], [a[0] + dx * s1, a[1] + dy * s1]);
+      }
+    }
+    return out;
+  };
+  const hang = (a, k) => { for (const q of a) q[0] += k * Math.pow(clamp((q[1] / Hh - 0.28) / 0.44, 0, 1.4), 1.3); return a; }; // the near arm swings from the shoulder as it walks
+  const T = mix(HG.fT, HG.pT, v); for (const i of [4, 5, 6, 7, 8, 9, 22, 23, 24, 25, 26, 27]) T[i][0] *= br;
+  fill(rag(T, HG.wT, 11, 0.024 * Hh));
+  fill(rag(mix(HG.fAr, HG.pAr, v), HG.wA, 23, 0.02 * Hh)); fill(mix(HG.fMr, HG.pMr, v));
+  { const k = (1 - v) * sw * Hh * 0.13; fill(rag(hang(mix(HG.fAl, HG.pAl, v), k), HG.wA, 37, 0.02 * Hh)); fill(hang(mix(HG.fMl, HG.pMl, v), k)); }
+  x.save(); x.translate(0.035 * (1 - u) * Hh, 0); x.translate(0, 0.15 * Hh); x.rotate(tilt); x.translate(0, -0.15 * Hh); // the head: carried forward of the body, low on its neck
+  fill(rag(mix(HG.fH, HG.pH, u), HG.wH, 53, 0.013 * Hh)); fill(mix(HG.fEr, HG.pEr, u)); fill(mix(HG.fEl, HG.pEl, u));
+  for (const [f, pp] of [[HG.fHr, HG.pHr], [HG.fHl, HG.pHl]]) { // a horn: a long curve thinning to a point, ringed like an ibex's
+    const c = mix(f, pp, u), L1 = [], L2 = [];
+    for (let i = 0; i <= 40; i++) {
+      const s = i / 40, r = 1 - s, bx = r * r * r * c[0][0] + 3 * r * r * s * c[1][0] + 3 * r * s * s * c[2][0] + s * s * s * c[3][0], by = r * r * r * c[0][1] + 3 * r * r * s * c[1][1] + 3 * r * s * s * c[2][1] + s * s * s * c[3][1];
+      const dx = 3 * r * r * (c[1][0] - c[0][0]) + 6 * r * s * (c[2][0] - c[1][0]) + 3 * s * s * (c[3][0] - c[2][0]), dy = 3 * r * r * (c[1][1] - c[0][1]) + 6 * r * s * (c[2][1] - c[1][1]) + 3 * s * s * (c[3][1] - c[2][1]), dl = Math.hypot(dx, dy) || 1, w = 0.0175 * Hh * Math.pow(r, 0.75) * (1 + (s < 0.82 ? 0.2 * Math.max(0, Math.sin(s * 44)) : 0));
+      L1.push([bx - dy / dl * w, by + dx / dl * w]); L2.unshift([bx + dy / dl * w, by - dx / dl * w]);
+    }
+    fill(L1.concat(L2));
+  }
+  const tf = x.getTransform(), E = [mix([HG.fYr], [HG.pYr], u)[0], mix([HG.fYl], [HG.pYl], u)[0]].map(q => [tf.a * q[0] + tf.c * q[1] + tf.e, tf.b * q[0] + tf.d * q[1] + tf.f]); // (in the canvas's own pixels)
+  x.restore();
+  return { E, T };
+}
+function hellGiantPaint(c, sc, gw, gh, oy, Hh, u, v, sw, br, tilt, tt, ey) { // the whole of it into its own small canvas: the shape, its colour, the fire catching it from below, the bones showing, the smoke across it, its eyes
+  const x = c.getContext("2d"), tw = c.width, th = c.height;
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, tw, th);
+  x.setTransform(sc, 0, 0, sc, gw / 2 * sc, oy * sc); x.fillStyle = "#000";
+  const { E, T } = hellGiantShape(x, Hh, u, v, sw, br, tilt);
+  // the fire under it catches every edge that faces down: the shape again in the fire's colour, less the shape moved up a little
+  if (!c.rim || c.rim.width !== tw || c.rim.height !== th) { c.rim = document.createElement("canvas"); c.rim.width = tw; c.rim.height = th; }
+  const rx = c.rim.getContext("2d"), d = Math.max(1, Math.round(Hh * 0.0075 * sc));
+  rx.setTransform(1, 0, 0, 1, 0, 0); rx.globalCompositeOperation = "copy"; rx.drawImage(c, 0, 0);
+  rx.globalCompositeOperation = "destination-out"; rx.drawImage(c, 0, -d);
+  rx.globalCompositeOperation = "source-in"; { const rg = rx.createLinearGradient(0, 0, 0, th); rg.addColorStop(0, "rgba(255,96,30,0.3)"); rg.addColorStop(0.5, "rgba(255,110,36,0.55)"); rg.addColorStop(1, "rgba(255,130,44,0.7)"); rx.fillStyle = rg; rx.fillRect(0, 0, tw, th); }
+  x.globalCompositeOperation = "source-atop"; x.setTransform(sc, 0, 0, sc, 0, 0); // its colour: black overhead, the fire's own at its foot, where it is lost in it
+  const gd = x.createLinearGradient(0, 0, 0, gh);
+  gd.addColorStop(0, "rgb(8,2,2)"); gd.addColorStop(0.5, "rgb(17,5,4)"); gd.addColorStop(0.8, "rgb(52,13,7)"); gd.addColorStop(0.93, "rgb(112,30,11)"); gd.addColorStop(1, "rgb(164,48,14)");
+  x.fillStyle = gd; x.fillRect(0, 0, gw, gh);
+  x.setTransform(sc, 0, 0, sc, gw / 2 * sc, oy * sc); // the bones under the skin, where the light finds them: the ribs, the breastbone, the collar bones
+  const edge = (y, i0, i1) => { for (let i = i0; i < i1; i++) { const a = T[i], b = T[i + 1]; if ((a[1] - y) * (b[1] - y) <= 0 && a[1] !== b[1]) return a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]); } return 0; };
+  x.lineCap = "round"; x.lineWidth = Math.max(0.5, Hh * 0.0055);
+  for (let i = 0; i < 6; i++) {
+    const y = (0.365 + 0.04 * i) * Hh, xr = edge(y, 0, 15), xl = edge(y, 16, 31), cx = (xr + xl) / 2, hf = (xr - xl) / 2;
+    x.strokeStyle = "rgba(255,104,36," + (0.27 - 0.03 * i).toFixed(3) + ")";
+    for (const sd of [-1, 1]) { x.beginPath(); x.moveTo(cx + sd * hf * 0.93, y); x.quadraticCurveTo(cx + sd * hf * 0.6, y - 0.004 * Hh, cx + sd * hf * 0.16, y - 0.034 * Hh); x.stroke(); }
+  }
+  { const y0 = 0.29 * Hh, y1 = 0.56 * Hh, c0 = (edge(y0, 0, 15) + edge(y0, 16, 31)) / 2, c1 = (edge(y1, 0, 15) + edge(y1, 16, 31)) / 2; x.strokeStyle = "rgba(255,104,36," + (0.18 * v).toFixed(3) + ")"; x.beginPath(); x.moveTo(c0, y0); x.lineTo(c1, y1); x.stroke();
+    x.strokeStyle = "rgba(255,104,36," + (0.3 * v).toFixed(3) + ")"; for (const [a, b] of [[T[1], T[5]], [T[30], T[26]]]) { x.beginPath(); x.moveTo(a[0] * 0.8, a[1] + 0.04 * Hh); x.lineTo(b[0] * 0.86, b[1] + 0.014 * Hh); x.stroke(); } }
+  x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(c.rim, 0, 0);
+  x.setTransform(sc, 0, 0, sc, 0, 0);
+  for (let i = 0; i < 4; i++) softBlob(x, ((tt * 0.011 * (1 + i * 0.3) + i * 0.37) % 1.5 - 0.25) * gw, gh * (0.44 + 0.13 * i), gw * 0.55, "150,40,14", 0.22, 0.26); // the smoke between it and us, across its body (its head stands clear)
+  x.globalCompositeOperation = "source-over"; x.setTransform(1, 0, 0, 1, 0, 0); // its eyes: embers, dull while it walks, a little more when it looks at you
+  const er = Hh * 0.017 * sc;
+  E.forEach((q, i) => { const a = ey * (i ? u : 1); if (a > 0.01) { softBlob(x, q[0], q[1], er * 2.6, "255,96,30", 0.5 * a, 1); softBlob(x, q[0], q[1], er, "255,150,70", a, 1); } });
+}
+function drawHellGiant(t) { // it does not walk, it glides, like a thing from somewhere else: it comes into being far to the left and slides along the far line without a stride, hanging a little off true, faint echoes of itself trailing where it has just been; it slows to a stand over a long while, looks, and slides away faster and faster until it thins out and is gone
+  const H = HELL, k = H.k;
+  if (k < 0.01 || !H.sil) { H.gDist = -1; H.gHere = 0; return; }
+  const ta = (H.gfix >= 0 ? H.gfix : BLOOD.s) - 300;
+  if (ta < 0 || ta > 325) { H.gDist = -1; H.gHere = 0; return; }
+  const { apW, apH } = L, xAt = a => a < 65 ? -0.02 + 0.36 * (1 - Math.pow(1 - clamp(a, 0, 65) / 65, 2.2)) : a < 204 ? 0.34 : 0.34 + 0.72 * Math.pow((a - 204) / 120, 2); // in fast and ever slower, to a stand; away slow and ever faster
+  const xk = xAt(ta), vel = (xAt(ta + 0.5) - xAt(ta - 0.5)) * apW; // (its speed, a second's worth of the window)
+  const u = ta < 66 ? 0 : ta < 76 ? smooth01((ta - 66) / 10) : ta < 196 ? 1 : ta < 206 ? 1 - smooth01((ta - 196) / 10) : 0; // the head comes round to the window, and two minutes later goes back
+  const v = 0.85 * (ta < 68 ? 0 : ta < 82 ? smooth01((ta - 68) / 14) : ta < 192 ? 1 : ta < 206 ? 1 - smooth01((ta - 192) / 14) : 0); // the shoulders follow it, almost square to you
+  const here = smooth01(ta / 14) * (1 - smooth01((ta - 311) / 13)); // it comes into being, and at the end thins out
+  H.gDist = xk; H.gLook = u; H.gV = v; H.gHere = here;
+  const Hh = apH * 0.38, gw = Hh * 0.96, gh = Hh * 1.46, oy = Hh * 0.38, sc = Math.min(2, Math.max(1, DPR)), tw = Math.ceil(gw * sc), th = Math.ceil(gh * sc), pad = Hh * 0.62, bw = Math.ceil((gw + 2 * pad) * sc);
+  if (!H.gntC || H.gntC.width !== tw || H.gntC.height !== th) { H.gntC = document.createElement("canvas"); H.gntC.width = tw; H.gntC.height = th; H.gntB = document.createElement("canvas"); H.gntB.width = bw; H.gntB.height = th; }
+  const tt = RM ? 0 : t, X0 = apW * xk - gw / 2 - pad, Y0 = apH * 0.54 - Hh - oy + (RM ? 0 : Math.sin(tt * 0.47) * Hh * 0.007); // (it hangs: a slow rise and fall, nothing like a step)
+  if (X0 > apW || X0 + gw + 2 * pad < 0) return;
+  const ey = RM ? 0.6 : (0.34 + 0.4 * u) * (0.9 + 0.1 * Math.sin(tt * 1.6) * Math.sin(tt * 0.43));
+  hellGiantPaint(H.gntC, sc, gw, gh, oy, Hh, u, v, 0, 1 + 0.012 * Math.sin(tt * 0.9) * u, 0.035 * Math.sin(tt * 0.13) * u, tt, ey);
+  const x = H.gntB.getContext("2d");
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, bw, th);
+  // it is not quite all here: laid down in thin bands that slide a hair against each other, slowly, now and then more; and where it has just been, two echoes of it fading (when it stands they draw in and breathe either side of it)
+  const sw = RM ? 0 : Math.pow(Math.max(0, Math.sin(tt * 0.21) * Math.sin(tt * 0.083 + 1)), 3), amp = RM ? 0 : Hh * (0.004 + 0.02 * sw) * sc, n = 34, bh = th / n;
+  const lay = (dx, a) => { x.globalAlpha = a; for (let i = 0; i < n; i++) x.drawImage(H.gntC, 0, i * bh, tw, bh + 1, pad * sc + dx * sc + Math.sin(i * 0.9 + tt * 0.6 + dx) * amp, i * bh, tw, bh + 1); };
+  const still = 1 - clamp(Math.abs(vel) / (Hh * 0.02), 0, 1), dr = Hh * 0.035 * still * (RM ? 0 : Math.sin(tt * 0.23));
+  if (!RM) { lay(clamp(-vel * 7, -pad, pad) - dr * 1.6, 0.13); lay(clamp(-vel * 3.5, -pad, pad) + dr, 0.26); }
+  lay(0, 1);
+  x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; // the city stands in front of it
+  const sk = H.sil.width / apW; x.drawImage(H.sil, X0 * sk, Y0 * sk, (gw + 2 * pad) * sk, gh * sk, 0, 0, bw, th);
+  g.globalAlpha = k * here; g.drawImage(H.gntB, X0, Y0, gw + 2 * pad, gh); g.globalAlpha = 1;
+}
+function drawHellFlyers(t, back) { // what flies in it: pterosaurs, each going round a slow flat circle far off, two slow beats and a long glide; one of them crosses the moon each round. back: the far half of each round (drawn behind the towers)
+  const H = HELL, k = H.k;
+  if (k < 0.01 || !H.fg) return;
+  const { apW, apH } = L, ps = clamp(apH / 540, 0.5, 1), tt = RM ? 31 : t, M = MOON;
+  if (!H.fly) H.fly = [{ x: 0.585, y: 0.19, A: 0.075, T: 52, p: 0.1, W: 22, dir: 1 }, { x: 0.6, y: 0.25, A: 0.05, T: 41, p: 0.6, W: 17, dir: -1 }, { x: 0.1, y: 0.22, A: 0.06, T: 47, p: 0.35, W: 19, dir: 1 }, { x: 0.33, y: 0.16, A: 0.13, T: 83, p: 0.8, W: 26, dir: -1 }, { moon: true, A: 0.13, T: 96, p: 0.62, dir: 1 }];
+  g.fillStyle = "rgba(9,3,3," + (0.92 * k).toFixed(3) + ")";
+  for (const f of H.fly) {
+    const th = (tt / f.T + f.p) * 6.2832 * f.dir, sn = Math.sin(th), cs = Math.cos(th);
+    if ((sn > 0) !== back) continue;
+    const A = apW * f.A, B = A * 0.24;
+    let cx0 = apW * f.x, cy0 = apH * f.y, W = f.W * ps;
+    if (f.moon) { if (!(M.r > 0)) continue; cx0 = M.mx; cy0 = M.my + B; W = M.r * 3; } // the top of its round is the moon
+    const beat = (tt * 0.62 + f.p * 7) % 9, a = f.moon ? -0.12 + 0.6 * Math.sin(tt * 6.2832 / 2.6) : beat < 3.2 ? -0.1 + 0.55 * Math.sin(beat * 6.2832 / 1.6) : 0.2 + 0.04 * Math.sin(tt * 0.7 + f.p * 9); // two slow beats and a long glide (the one that crosses the moon never stops beating: slow, heavy)
+    hellBird(g, cx0 + A * cs, cy0 + B * sn, W * (1 - 0.2 * sn), -sn * f.dir >= 0 ? 1 : -1, a, f.moon ? 1 : 0.72 + 0.28 * Math.abs(cs), f.moon ? 0.1 : 0.12 + 0.1 * Math.abs(cs));
+  }
+}
+function hellCompose() {
+  const H = HELL, aw = L.apW, ah = L.apH, sil = H.sil, near = H.n, S = sil.width / aw, ps = clamp(ah / 540, 0.5, 1), far = ah * 0.52, q = hashRng(66613);
+  const mk = sc => { const c = document.createElement("canvas"); c.width = Math.ceil(aw * sc); c.height = Math.ceil(ah * sc); const x = c.getContext("2d"); x.scale(sc, sc); return [c, x]; };
+  const wipe = x => { x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.clearRect(0, 0, aw + 2, ah + 2); };
+  const cut = (x, m) => { x.globalCompositeOperation = "destination-out"; x.globalAlpha = 1; x.drawImage(m, 0, 0, aw, ah); x.globalCompositeOperation = "source-over"; };
+  // the fires: along the far line (row -1) and in the street behind each row, each a soft glow; here and there the fire itself down a gap
+  const rowY = [0.545, 0.6, 0.68, 0.78], fires = [];
+  for (let i = 0; i < 11; i++) fires.push({ k: -1, x: (i + 0.2 + 0.6 * q()) / 11 * aw, y: far + ah * 0.012, r: aw * (0.06 + q() * 0.09), a: 0.3 + q() * 0.4, sy: 0.3, c: "255,104,26" });
+  for (let k = 0; k < 4; k++) for (let i = 0; i < 9; i++) {
+    const fx = (i + q()) / 9 * aw;
+    fires.push({ k, x: fx, y: ah * rowY[k] - ah * 0.012, r: aw * (0.035 + q() * 0.07) * (1 + 0.2 * k), a: (0.16 + q() * 0.3) * [1, 0.9, 0.72, 0.5][k], sy: 0.45, c: "255,92,22" });
+    if (q() < 0.5) fires.push({ k, x: fx + (q() - 0.5) * aw * 0.03, y: ah * rowY[k] - ah * 0.004, r: aw * (0.008 + q() * 0.012), a: (0.4 + q() * 0.3) * [1, 0.9, 0.75, 0.55][k], sy: 0.8, c: "255,170,74" });
+  }
+  const glow = (sc, sel, gain, sky) => { // a plate of light, to be added: each depth's fires cut by whatever stands in front of them
+    const [c, x] = mk(sc), [tc, tx] = mk(sc);
+    for (let k = -1; k < 4; k++) {
+      wipe(tx);
+      if (k === -1 && sky) { // the sky: near black overhead, red lower, the colour of a furnace along the far line, and smoke standing in it
+        const bot = far + ah * 0.16, f = far / bot, sg = tx.createLinearGradient(0, 0, 0, bot), qs = hashRng(77001);
+        for (const [p, col] of [[0, "14,2,2"], [0.3 * f, "34,4,3"], [0.62 * f, "86,15,6"], [0.9 * f, "164,40,10"], [f, "204,62,14"], [f + (1 - f) * 0.4, "146,38,10"], [1, "0,0,0"]]) sg.addColorStop(p, "rgb(" + col + ")");
+        tx.fillStyle = sg; tx.fillRect(0, 0, aw, bot);
+        for (let i = 0; i < 14; i++) softBlob(tx, qs() * aw, ah * (0.06 + qs() * 0.4), aw * (0.08 + qs() * 0.16), "10,2,2", 0.3 + qs() * 0.3, 0.07 + qs() * 0.1); // long torn bands of it
+        for (let i = 0; i < 6; i++) { const sx = aw * (0.04 + 0.92 * qs()), ln = 0.25 + qs() * 0.5; for (let j = 0; j < 9; j++) softBlob(tx, sx + j * j * aw * 0.009 * ln, far - j * ah * 0.04 * (0.8 + ln * 0.4), aw * (0.012 + j * 0.006), "8,2,2", 0.5 - j * 0.035, 1.2); } // and columns of it, leaning the way the wind goes
+      }
+      tx.globalCompositeOperation = "lighter";
+      fires.forEach((f, i) => { if (f.k === k && sel(i)) softBlob(tx, f.x, f.y, f.r, f.c, Math.min(1, f.a * gain), f.sy); });
+      if (k >= 0 && sky) { // the smoke lying in the street holds the light
+        const y = ah * rowY[k], bg = tx.createLinearGradient(0, y - ah * 0.05, 0, y + ah * 0.035), a = [0.2, 0.17, 0.13, 0.09][k];
+        bg.addColorStop(0, "rgba(200,52,12,0)"); bg.addColorStop(0.6, "rgba(200,52,12," + a + ")"); bg.addColorStop(1, "rgba(200,52,12,0)");
+        tx.fillStyle = bg; tx.fillRect(0, y - ah * 0.05, aw, ah * 0.085);
+      }
+      cut(tx, k < 0 ? sil : near[k + 1]);
+      x.globalCompositeOperation = "lighter"; x.drawImage(tc, 0, 0, aw, ah);
+    }
+    return c;
+  };
+  const base = glow(S, () => true, 0.5, true), gA = glow(0.5, i => i % 2 === 0, 0.5, false), gB = glow(0.5, i => i % 2 === 1, 0.5, false);
+  // the stakes and the towers: black, cut by the rows in front of them
+  const [fc, fx] = mk(S), [tc, tx] = mk(S);
+  const roofOf = (cv, thr) => { // where each column's roof is: the first solid pixel down it
+    const w = cv.width, h = cv.height, d = cv.getContext("2d").getImageData(0, 0, w, h).data, nn = Math.ceil(aw), out = new Float32Array(nn);
+    for (let i = 0; i < nn; i++) { const px = Math.min(w - 1, Math.round(i * w / aw)); let y = 0; while (y < h && d[(y * w + px) * 4 + 3] < thr) y++; out[i] = y * ah / h; }
+    return out;
+  };
+  const ln = (x, pts) => { x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) x.lineTo(pts[i][0], pts[i][1]); x.stroke(); };
+  const stake = (x, bx0, by0, top, lw, s, type, f) => { // one stake, a hair off the plumb, bare (type 0) or with a figure upright on it (1)
+    const tx0 = bx0 + (by0 - top) * (q() - 0.5) * 0.05;
+    x.lineCap = "round"; x.lineJoin = "round"; x.lineWidth = lw;
+    ln(x, [[bx0, by0], [tx0, top + lw * 2]]);
+    x.beginPath(); x.moveTo(tx0 - lw * 0.55, top + lw * 2.4); x.lineTo(tx0, top - lw * 1.5); x.lineTo(tx0 + lw * 0.55, top + lw * 2.4); x.fill(); // its point
+    if (type) hellFigure(x, tx0, top + s * 0.47, s, f, q());
+  };
+  const tower = (x, cx, top, w) => { // not a building: a thorn the height of a tower, bent a little, with two lesser ones at its foot and barbs up its sides; its foot is lost in the fire
+    const bot = far + ah * 0.06, hgt = bot - top, gd = x.createLinearGradient(0, top, 0, bot), bend = (q() - 0.5) * 0.16;
+    gd.addColorStop(0, "rgba(10,3,3,0.95)"); gd.addColorStop(0.62, "rgba(28,7,5,0.86)"); gd.addColorStop(1, "rgba(96,26,10,0.3)");
+    x.fillStyle = gd;
+    const thorn = (bx0, w0, tipX, tipY, bow) => { // a curved spike: wide at the foot, nothing at the tip
+      const mx = (bx0 + tipX) / 2 + bow, my = (bot + tipY) / 2;
+      x.beginPath(); x.moveTo(bx0 - w0, bot); x.quadraticCurveTo(mx - w0 * 0.45, my, tipX, tipY); x.quadraticCurveTo(mx + w0 * 0.45, my, bx0 + w0, bot); x.closePath(); x.fill();
+      return (u) => { const v = 1 - u; return [v * v * bx0 + 2 * v * u * mx + u * u * tipX, v * v * bot + 2 * v * u * my + u * u * tipY, w0 * v * 0.8]; }; // a point up its middle, and its half width there
+    };
+    const at = thorn(cx, w, cx + hgt * bend, top, hgt * bend * 0.5);
+    for (const sd of [-1, 1]) thorn(cx + sd * w * (1.1 + q() * 0.5), w * 0.55, cx + sd * w * (2.2 + q() * 1.6), bot - hgt * (0.34 + q() * 0.26), sd * w * 0.3);
+    for (let i = 0; i < 5; i++) { // the barbs
+      const u = 0.3 + 0.5 * (i + q() * 0.6) / 5, [px, py, hw] = at(u), sd = i % 2 ? 1 : -1, bl = w * (1.5 + q() * 1.3) * (1 - u * 0.5);
+      x.beginPath(); x.moveTo(px + sd * hw * 0.2, py + bl * 0.55); x.lineTo(px + sd * (hw + bl), py - bl * 0.9); x.lineTo(px + sd * hw * 0.2, py - bl * 0.25); x.closePath(); x.fill();
+    }
+  };
+  wipe(tx);
+  for (const [xk, top, w] of [[0.085, 0.19, 0.0085], [0.265, 0.3, 0.006], [0.585, 0.15, 0.0095], [0.705, 0.32, 0.0055]]) tower(tx, aw * xk, ah * top, aw * w);
+  cut(tx, sil); fx.drawImage(tc, 0, 0, aw, ah);
+  wipe(tx); tx.strokeStyle = tx.fillStyle = "rgba(24,6,5,0.92)"; // along the far line: a wood of them, small with distance
+  for (let bx0 = aw * 0.004; bx0 < aw; bx0 += aw * (0.007 + q() * 0.02)) {
+    const h = ah * (0.04 + q() * q() * 0.1), tp = q();
+    stake(tx, bx0, ah * 0.565, ah * 0.565 - h, Math.max(0.8, 1.1 * ps), (9 + q() * 3) * ps, tp < 0.6 ? 0 : 1, q() < 0.5 ? -1 : 1);
+  }
+  cut(tx, near[1]); fx.drawImage(tc, 0, 0, aw, ah);
+  const mast = anchors.tower ? anchors.tower.x : -1e9;
+  for (const [d, cnt, hMin, hMax, lw, sMin, sMax, col] of [[1, 9, 34, 62, 1.4, 16, 20, "rgb(15,4,3)"], [2, 6, 50, 88, 2, 23, 29, "rgb(7,2,2)"]]) { // on the roofs of the second and third rows: fewer, nearer
+    const rf = roofOf(near[d], 150), used = [], kind = () => q() < 0.3 ? 0 : 1;
+    wipe(tx); tx.strokeStyle = tx.fillStyle = col;
+    let placed = 0, tries = 0;
+    while (placed < cnt && tries++ < 500) {
+      const bx0 = aw * (0.02 + 0.96 * q()), i = clamp(Math.round(bx0), 3, rf.length - 4), ry = rf[i];
+      if (!(ry > ah * 0.4 && ry < ah * 0.74) || Math.abs(bx0 - mast) < aw * 0.035 || used.some(u => Math.abs(u - bx0) < aw * 0.022)) continue;
+      if (Math.abs(rf[i - 3] - ry) > 3 || Math.abs(rf[i + 3] - ry) > 3) continue; // a flat roof under it, not an edge or a mast
+      used.push(bx0); placed++;
+      const h = (hMin + q() * (hMax - hMin)) * ps;
+      stake(tx, bx0, ry + 3, ry - h, lw * ps, (sMin + q() * (sMax - sMin)) * ps, kind(), q() < 0.5 ? -1 : 1);
+      if (q() < 0.6) { // seldom alone
+        const b2 = bx0 + (q() < 0.5 ? -1 : 1) * aw * (0.011 + q() * 0.007), i2 = clamp(Math.round(b2), 0, rf.length - 1);
+        if (Math.abs(rf[i2] - ry) < 3) { used.push(b2); stake(tx, b2, ry + 3, ry - h * (0.55 + q() * 0.3), lw * ps * 0.9, (sMin + q() * (sMax - sMin)) * ps * 0.92, kind(), q() < 0.5 ? -1 : 1); }
+      }
+    }
+    cut(tx, near[d + 1]); fx.drawImage(tc, 0, 0, aw, ah);
+  }
+  let fog = null; // the mist between the near rows, the colour of what is burning under it
+  if (fogC) { fog = document.createElement("canvas"); fog.width = fogC.width; fog.height = fogC.height; const x = fog.getContext("2d"); x.drawImage(fogC, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "rgb(214,70,22)"; x.fillRect(0, 0, fog.width, fog.height); }
+  H.base = base; H.gA = gA; H.gB = gB; H.fg = fc; H.fog = fog;
+  { const qf = hashRng(90210); H.flames = []; for (let i = 0; i < 20; i++) H.flames.push({ x: aw * qf(), w: aw * (0.008 + qf() * 0.014), h: ah * (0.1 + qf() * 0.15), ph: qf() * 6.28 }); } // where the fire stands up along the far line
+}
+function drawHellSky(t) { // under the moon: the night city gone dark and warm, the sky and the streets burning behind it
+  const H = HELL, k = H.k;
+  if (k < 0.01 || !H.base) return;
+  const { apW, apH } = L, f1 = RM ? 0.7 : 0.6 + 0.4 * Math.sin(t * 0.83) * Math.sin(t * 0.31 + 1.1), f2 = RM ? 0.7 : 0.6 + 0.4 * Math.sin(t * 0.67 + 2.3) * Math.sin(t * 0.23);
+  g.save();
+  g.globalCompositeOperation = "multiply"; g.globalAlpha = k; g.fillStyle = "rgb(240,92,70)"; g.fillRect(0, 0, apW, apH);
+  g.globalCompositeOperation = "lighter"; g.drawImage(H.base, 0, 0, apW, apH);
+  g.globalAlpha = k * f1; g.drawImage(H.gA, 0, 0, apW, apH); // the fires breathe, slowly, half on one beat and half on another
+  g.globalAlpha = k * f2; g.drawImage(H.gB, 0, 0, apW, apH);
+  g.restore();
+}
+function drawHellFront() { // over the moon: the stakes and the towers
+  const H = HELL;
+  if (H.k < 0.01 || !H.fg) return;
+  g.globalAlpha = H.k; g.drawImage(H.fg, 0, 0, L.apW, L.apH); g.globalAlpha = 1;
+}
+function drawHellAir(t) { // where the rain was: ash coming down slowly on the wind, and embers going up out of the streets, a few of them close to the glass
+  const H = HELL, k = H.k;
+  if (k < 0.01) return;
+  const { apW, apH } = L, ps = clamp(apH / 540, 0.5, 1), tt = RM ? 0 : t;
+  if (!H.air) { const q = hashRng(4104); H.air = []; for (let i = 0; i < 150; i++) H.air.push({ x: q(), y: q(), s: 0.7 + q() * 1.5, v: 0.011 + q() * 0.02, ph: q() * 6.28, kind: i < 56 ? 0 : i < 140 ? 1 : 2 }); }
+  for (const a of H.air) {
+    if (a.kind === 0) { // ash: a flake turning as it falls
+      const u = (tt * a.v + a.y) % 1, xx = (((a.x + 0.035 * Math.sin(tt * 0.33 + a.ph) + tt * 0.004 * a.s) % 1) + 1) % 1 * apW, w = a.s * 1.25 * ps;
+      g.fillStyle = "rgba(168,128,112," + (0.42 * k * (0.6 + 0.4 * Math.sin(tt * 1.1 + a.ph))).toFixed(3) + ")"; g.fillRect(xx, u * apH, w, w * (0.5 + 0.5 * Math.abs(Math.sin(tt * 0.7 + a.ph))));
+      continue;
+    }
+    const near = a.kind === 2, u = (tt * a.v * (near ? 2.6 : 1.5) + a.y) % 1, yy = apH * (near ? 1.02 - 1.1 * u : 0.84 - 0.62 * u); // an ember: up from the streets on the wind, out before it is far into the sky
+    const xx = (((a.x + (near ? 0.16 : 0.07) * u + 0.014 * Math.sin(tt * 0.9 + a.ph) + 0.01 * Math.sin(tt * 2.3 + a.ph * 3) * u) % 1) + 1) % 1 * apW;
+    const al = Math.sin(Math.PI * Math.min(1, u * 1.12)) * (0.6 + 0.4 * Math.sin(tt * 5.3 + a.ph)) * k;
+    if (al < 0.02) continue;
+    if (near) { const z = a.s * 1.2 * ps; softBlob(g, xx, yy, a.s * 3.2 * ps, "255,120,40", 0.5 * al, 1); g.fillStyle = "rgba(255,200,120," + (0.9 * al).toFixed(3) + ")"; g.fillRect(xx - z / 2, yy - z / 2, z, z); }
+    else { const z = a.s * 0.95 * ps; g.fillStyle = "rgba(255,150,60," + (0.8 * al).toFixed(3) + ")"; g.fillRect(xx, yy, z, z); }
+  }
+}
+function drawHellFlames(t) { // the fire itself, along the far line: tongues of it standing up behind the roofs, leaning the way the wind goes, each rising and sinking slowly. Drawn small and soft, cut by the city, added as light
+  const H = HELL, k = H.k;
+  if (k < 0.01 || !H.sil || !H.flames) return;
+  const { apW, apH } = L, tt = RM ? 3 : t, sc = 0.5, y0 = apH * 0.26, hh = apH * 0.31, tw = Math.ceil(apW * sc), th = Math.ceil(hh * sc), yb = apH * 0.555;
+  if (!H.flC || H.flC.width !== tw || H.flC.height !== th) { H.flC = document.createElement("canvas"); H.flC.width = tw; H.flC.height = th; }
+  const x = H.flC.getContext("2d");
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, tw, th);
+  x.setTransform(sc, 0, 0, sc, 0, -y0 * sc); x.globalCompositeOperation = "lighter";
+  for (const f of H.flames) for (let j = 0; j < 3; j++) {
+    const ph = f.ph + j * 2.1, lick = 0.62 + 0.38 * Math.sin(tt * (0.9 + 0.23 * j) + ph) * Math.sin(tt * 0.37 + ph * 1.7), h = f.h * (j ? 0.5 + 0.12 * j : 1) * lick, w = f.w * (j ? 0.6 : 1), bx = f.x + [0, -0.75, 0.7][j] * f.w;
+    const sway = w * (0.9 * Math.sin(tt * 0.7 + ph) + 0.5 * Math.sin(tt * 1.6 + ph * 2.3)) + h * 0.12, gd = x.createLinearGradient(0, yb, 0, yb - h);
+    gd.addColorStop(0, "rgba(255,206,110,0.9)"); gd.addColorStop(0.3, "rgba(255,136,40,0.8)"); gd.addColorStop(0.7, "rgba(226,56,14,0.5)"); gd.addColorStop(1, "rgba(160,20,6,0)");
+    x.fillStyle = gd; x.beginPath(); x.moveTo(bx - w, yb);
+    x.bezierCurveTo(bx - w * 1.1, yb - h * 0.35, bx + sway * 0.4 - w * 0.3, yb - h * 0.7, bx + sway, yb - h);
+    x.bezierCurveTo(bx + sway * 0.5 + w * 0.5, yb - h * 0.62, bx + w * 1.15, yb - h * 0.3, bx + w, yb);
+    x.closePath(); x.fill();
+  }
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = "destination-out";
+  const sk = H.sil.width / apW; x.drawImage(H.sil, 0, y0 * sk, apW * sk, hh * sk, 0, 0, tw, th);
+  g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = k; g.drawImage(H.flC, 0, y0, apW, hh); g.restore();
+}
+function drawHellHeat(t) { // heat: the air over the fires wavers, so everything seen through it ripples, most just above the far line and less with height. The band of picture is taken once and laid back in thin strips, each a hair to one side; the ripple climbs
+  const H = HELL, k = H.k;
+  if (k < 0.05 || RM || !H.base) return;
+  const { apW, apH } = L, m = g.getTransform(), X = Math.round(m.e), Y = Math.round(m.f + apH * 0.3 * m.d), tw = Math.floor(apW * m.a), th = Math.floor(apH * 0.27 * m.d);
+  if (tw < 8 || th < 8 || m.b || m.c) return;
+  if (!H.htC || H.htC.width !== tw || H.htC.height !== th) { H.htC = document.createElement("canvas"); H.htC.width = tw; H.htC.height = th; }
+  const x = H.htC.getContext("2d");
+  x.globalCompositeOperation = "copy"; x.drawImage(cv, X, Y, tw, th, 0, 0, tw, th);
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+  const sh = Math.max(1, Math.round(1.1 * m.d)), cnt = Math.floor(th / sh), A = 0.75 * m.a * k;
+  for (let i = 1; i < cnt; i++) { const u = i / cnt, dx = A * u * u * u * (0.6 * Math.sin(i * 1.9 - t * 5.2) + 0.4 * Math.sin(i * 0.7 - t * 3.1 + 2) + 0.35 * Math.sin(i * 0.23 - t * 1.3 + 4)); if (Math.abs(dx) > 0.15) g.drawImage(H.htC, 0, i * sh, tw, sh, X + dx, Y + i * sh, tw, sh); }
+  g.restore();
+}
+/* Hell's sound: nothing screechy; all of it low and slow, no voices, nothing high. A deep rumble
+   like a furnace far below, breathing; a low wind that rises and falls; a soft dull crackle of fire; a far bell tolling about three times
+   a minute; and while the giant is there a very low hum that swells a little when it looks at you. It comes and goes with HELL.k, goes
+   through the weather's own gate (so the STORM knob and ONLY SIREN work on it, and the shutter muffles it), and is taken down again a
+   few seconds after Hell has gone. hellSoundBuild takes any audio context, so the same sound can be made into a file to listen to. */
+function hellSoundBuild(ac, out) {
+  const sr = ac.sampleRate, mk = (sec, fn) => { const b = ac.createBuffer(1, Math.floor(sr * sec), sr); fn(b.getChannelData(0)); return b; }, live = [];
+  const loop = (buf, off, rate) => { const sN = new AudioBufferSourceNode(ac, { buffer: buf, loop: true, loopStart: 0, loopEnd: buf.duration - 0.25, playbackRate: rate || 1 }); sN.start(0, off || 0); live.push(sN); return sN; };
+  const osc = (f, type) => { const o = new OscillatorNode(ac, { frequency: f, type: type || "sine" }); o.start(); live.push(o); return o; };
+  const nb = mk(7.25, d => { let l = 0; for (let i = 0; i < d.length; i++) { l = 0.9 * l + 0.1 * (Math.random() * 2 - 1); d[i] = l * 3; } const m = Math.floor(sr * 0.25); for (let i = 0; i < m; i++) { const q = i / m; d[i] = d[i] * q + d[d.length - m + i] * (1 - q); } }); // soft noise, its end run into its start so it goes round without a seam
+  const G = new GainNode(ac, { gain: 0 }); G.connect(out);
+  { // the rumble: a furnace a long way under the street, breathing
+    const lp = new BiquadFilterNode(ac, { type: "lowpass", frequency: 230, Q: 0.5 }), gn = new GainNode(ac, { gain: 0.5 }), lg = new GainNode(ac, { gain: 0.13 });
+    loop(nb, 0).connect(lp).connect(gn).connect(G); osc(0.061).connect(lg).connect(gn.gain);
+    const bp = new BiquadFilterNode(ac, { type: "bandpass", frequency: 350, Q: 0.7 }), g2 = new GainNode(ac, { gain: 0.2 }); loop(nb, 5.2, 0.9).connect(bp).connect(g2).connect(gn); // (its roar a little higher up, so a phone's small speaker gives some of it)
+  }
+  { // the wind: low, like wind in a pipe; it rises and falls and never gets to a whistle
+    const bp = new BiquadFilterNode(ac, { type: "bandpass", frequency: 250, Q: 2.6 }), gn = new GainNode(ac, { gain: 0.3 }), lf = new GainNode(ac, { gain: 95 }), lg = new GainNode(ac, { gain: 0.16 });
+    loop(nb, 3.1, 0.71).connect(bp).connect(gn).connect(G); osc(0.043).connect(lf).connect(bp.frequency); osc(0.071).connect(lg).connect(gn.gain);
+  }
+  { // the fire: a soft dull crackle, each one a short breath of noise with a rounded front (never a snap), a few seconds of them going round
+    const cb = mk(9.25, d => { for (let b = 0; b < 90; b++) { const at = Math.floor(Math.random() * (d.length - sr * 0.4)), len = Math.floor(sr * (0.01 + Math.random() * 0.035)), amp = 0.15 + Math.random() * Math.random() * 0.85; let l = 0; for (let i = 0; i < len; i++) { l = 0.7 * l + 0.3 * (Math.random() * 2 - 1); d[at + i] += l * amp * Math.exp(-i / (len * 0.3)) * Math.min(1, i / (sr * 0.004)); } } });
+    const bp = new BiquadFilterNode(ac, { type: "bandpass", frequency: 800, Q: 0.6 }), lp = new BiquadFilterNode(ac, { type: "lowpass", frequency: 1500, Q: 0.5 }), gn = new GainNode(ac, { gain: 0.3 });
+    loop(cb, 0).connect(bp).connect(lp).connect(gn).connect(G);
+  }
+  const gH = new GainNode(ac, { gain: 0 }); // the giant: three low notes close together, beating slowly against each other
+  { const lp = new BiquadFilterNode(ac, { type: "lowpass", frequency: 380, Q: 0.5 }); lp.connect(gH).connect(G); for (const [f, a] of [[110, 0.5], [110.9, 0.5], [155.56, 0.32], [220.6, 0.12]]) { const gn = new GainNode(ac, { gain: a }); osc(f).connect(gn).connect(lp); } }
+  const bell = at => { // a great bell a long way off: a low hum under it, the stroke soft with distance, dying over many seconds
+    const lp = new BiquadFilterNode(ac, { type: "lowpass", frequency: 620, Q: 0.5 }), gn = new GainNode(ac, { gain: 0.22 });
+    lp.connect(gn).connect(G);
+    for (const [f, a, dur] of [[110, 1, 10], [220, 0.7, 8], [262.4, 0.45, 6], [330, 0.3, 4.5], [441, 0.2, 3.2], [588, 0.08, 2.2]]) for (const dt of [1, 1.0045]) {
+      const o = new OscillatorNode(ac, { frequency: f * dt }), e = new GainNode(ac, { gain: 0 });
+      e.gain.setValueAtTime(0, at); e.gain.linearRampToValueAtTime(a * (dt === 1 ? 0.6 : 0.4), at + 0.035); e.gain.exponentialRampToValueAtTime(0.0002, at + dur);
+      o.connect(e).connect(lp); o.start(at); o.stop(at + dur + 0.1);
+    }
+  };
+  return { G, gH, bell, stop: () => { for (const q of live) { try { q.stop(); } catch (e) {} } try { G.disconnect(); } catch (e) {} } };
+}
+const HELL_VOL = 0.1; // the whole of Hell's sound against the rest: a low bed about as loud as far thunder rolling, well under the siren
+function hellSoundStep(t) { // twice a second, with the weather's own sound
+  const H = HELL;
+  if (!built || !ctx) return;
+  if (H.k > 0.01 && !H.snd) { H.snd = hellSoundBuild(ctx, N.ambW); H.bellT = t + 9; }
+  if (!H.snd) return;
+  const now = ctx.currentTime;
+  H.snd.G.gain.setTargetAtTime(H.k * HELL_VOL, now, 1.2);
+  H.snd.gH.gain.setTargetAtTime(0.09 * (H.gHere || 0) * (0.35 + 0.65 * (H.gLook || 0)), now, 1.5);
+  if (H.k > 0.35 && t > H.bellT) { H.snd.bell(now + 0.05); H.bellT = t + 19 + Math.random() * 8; }
+  if (H.k < 0.005) { if (!H.offT) H.offT = t; else if (t - H.offT > 6) { H.snd.stop(); H.snd = null; H.offT = 0; } } else H.offT = 0;
 }
 function moonPhaseNow(date) { // Meeus, abridged (the same terms as lumara-core.js): the phase 0..1 (0 new, 0.5 full) and the lit fraction
   const R = Math.PI / 180, E = R * 23.4397, d = date.getTime() / 86400000 - 0.5 + 2440588 - 2451545;
@@ -4825,7 +5261,8 @@ function drawMoon(t, flashA) { // in the backdrop: over the painted sky, under t
   softBlob(x, gr, gr, r * 4.5, tc, 0.2 * hide * bury * lightK * fl, 0.85);
   softBlob(x, gr, gr, r * 3.2, tc, 0.22 * lightK * (0.3 + 0.7 * M.vis) * fl, 1);
   const disc = moonBake(2 * r * DPR * 1.7);
-  const da = clamp(M.vis, 0, 1) * day * fl * (0.68 - 0.2 * (1 - open)); // never a bright white: seen through rain and haze
+  const da = Math.min(1, clamp(M.vis, 0, 1) * day * fl * (0.68 - 0.2 * (1 - open)) * (1 + 0.4 * HELL.k)); // never a bright white: seen through rain and haze (over Hell a little stronger)
+  if (HELL.k > 0.01) softBlob(x, gr, gr, r * 2.3, "196,44,22", 0.42 * HELL.k * M.vis * day, 1); // and a dull red burning round it
   if (disc && da > 0.01) {
     x.save(); x.translate(gr, gr); x.rotate((M.phase < 0.5 ? 0.42 : -0.42) + (M.south ? Math.PI : 0)); // the lit side tipped down toward the sun under the horizon
     x.globalAlpha = da; x.drawImage(disc, -r, -r, 2 * r, 2 * r); x.restore();
@@ -4837,7 +5274,16 @@ function drawMoon(t, flashA) { // in the backdrop: over the painted sky, under t
 }
 function drawMoonRoom() { // in a clear spell the window's right reveal and the wet sill catch a little of it: cold, and only just there
   const M = MOON;
-  if (!M.on || !L || M.room < 0.01) return;
+  if (!M.on || !L) return;
+  if (HELL.k > 0.01) { // Hell: the fire outside moves on the reveal and the sill, dull and slow
+    const { apX, apY, apW, apH } = L, rv = 16, tt = performance.now() / 1000, fl = RM ? 0.8 : 0.75 + 0.25 * Math.sin(tt * 1.3) * Math.sin(tt * 0.47 + 1), ha = HELL.k * (1 - 0.92 * shutterPos) * fl;
+    g.save(); g.globalCompositeOperation = "lighter";
+    g.fillStyle = "rgba(186,60,20," + (0.085 * ha).toFixed(3) + ")";
+    for (const sx of [0, 1]) { const x0 = apX + sx * apW, x1 = x0 + (sx ? -rv : rv); g.beginPath(); g.moveTo(x0, apY); g.lineTo(x1, apY + rv * 0.6); g.lineTo(x1, apY + apH - rv * 0.6); g.lineTo(x0, apY + apH); g.closePath(); g.fill(); }
+    if (L.sill) { g.fillStyle = "rgb(190,64,22)"; g.globalAlpha = 0.11 * ha; g.fillRect(apX - 10, L.sill.y, apW + 20, L.sill.tt); }
+    g.restore();
+  }
+  if (M.room < 0.01) return;
   const a = M.room * (1 - 0.92 * shutterPos) * (1 - 0.6 * BLIMP.dk);
   if (a < 0.01) return;
   const { apX, apY, apW, apH } = L, rv = 16, rd = M.red, mix = (c, w) => c.map((v, i) => Math.round(v * (1 - rd) + w[i] * rd)).join(",");
@@ -4858,7 +5304,9 @@ function drawBackdrop(t, flashA) {
   const { apW, apH } = L, B = BLAST, ruin = B.swapped && cityAfterC;
   g.drawImage(ruin ? cityAfterC : cityC, 0, 0, apW, apH);
   if (BLAST2.rv) blast2Reveal(t); // the far blast's broken skyline coming in outward from the spot
+  drawHellSky(t); // Hell, on a blood moon: its light under the moon
   drawMoon(t, flashA); // tonight's moon, behind the cloud
+  drawHellFlyers(t, true); drawHellGiant(t); drawHellFlames(t); drawHellFront(); drawHellFlyers(t, false); // and over it its stakes and towers, with what flies round them
   drawDaySky(); // dawn: the grey behind the city
   // lightning: the city as the flash shows it, laid over the night one only where it is lighter (the cloud lit from inside, the mist
   // between the rows glowing, the roof edges white, the fronts still black), strongest on the side the strike is on. It goes in
@@ -5752,7 +6200,7 @@ function drawLampAndGlow(t, amp, flashA) {
     jolt = dj < 0.07 ? 0.22 : dj < 0.18 ? 1.12 : dj < 0.5 ? 0.34 : dj < 0.62 ? 0.95 : dj < 1.12 ? 0.4 : dj < 1.27 ? 0.92 : dj < 1.65 ? 0.62 : 0.62 + 0.38 * (dj - 1.65) / 0.3;
   }
   jolt *= blast2Jolt(t);
-  let dk = Math.max(0, (1 - lampDim * Math.min(1, pwrLvl) * jolt) * 0.62) + deadK * 0.24;
+  let dk = Math.max(0, (1 - lampDim * (1 - HELL.k) * Math.min(1, pwrLvl) * jolt) * 0.62) + deadK * 0.24 + 0.2 * HELL.k * (1 - deadK); // (in Hell the lamp fades out: the fire outside is the only light)
   dk = Math.min(0.92, dk + blimpDark(flashA)); // the window's spill on the room, darker while the hull blocks the sky (the lamp does not dim: that would read as the power failing)
   if (deadK > 0) dk = Math.max(0.12, dk - (flashA || 0) * 3.2 * deadK); // in the dark, each flash shows you the room
   roomDark = dk;
@@ -5780,7 +6228,7 @@ function drawLampAndGlow(t, amp, flashA) {
     g.fillStyle = lg; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill();
   }
   // keeper's lamp: a soft ceiling glow, and the LAMP knob raises or lowers the whole room
-  const fl =(RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim * pwrLvl * jolt;
+  const fl =(RM ? 1 : 0.94 + 0.06 * Math.sin(t * 1.7) * Math.sin(t * 0.53 + 1.2)) * lampDim * (1 - HELL.k) * pwrLvl * jolt;
   g.save(); swing();
   softBlob(g, la.x, la.y, Math.min(L.w, L.h) * 0.30, "226,168,104", 0.09 * fl, 1);
   softBlob(g, la.x, la.y + Math.min(L.w, L.h) * 0.3, Math.min(L.w, L.h) * 0.35, "226,168,104", 0.035 * fl, 1); // its light on the wall below
@@ -6408,7 +6856,7 @@ function drawFeed(c, t, flick) {
     const sag = RM ? 0 : Math.max(0, Math.sin(t * 0.23 + ch) * Math.sin(t * 0.71) - 0.8) * 1.1; // once in a long while, and slowly: never a flicker
     if (sag > 0.01) { g.fillStyle = "rgba(0,0,0," + Math.min(0.22, sag).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
     if (ch === 1) { // the hall: your own lamp shows as a line of light under the shelter door (the LAMP knob and the power show on it)
-      const u = camPlate(1).under, lv = STORY.deadT >= 0 ? 0 : clamp(lampDim * Math.min(1, pwrLvl), 0, 1);
+      const u = camPlate(1).under, lv = STORY.deadT >= 0 ? 0 : clamp(lampDim * (1 - HELL.k) * Math.min(1, pwrLvl), 0, 1);
       if (u && lv > 0.02) {
         softBlob(g, (u[0][0] + u[1][0]) / 2, u[0][1] + 1.2, (u[1][0] - u[0][0]) * 0.7, "240,238,228", 0.3 * lv * flick, 0.28);
         g.strokeStyle = "rgba(246,244,234," + ((0.2 + 0.75 * lv) * flick).toFixed(3) + ")"; g.lineWidth = 0.7; g.beginPath(); g.moveTo(u[0][0] + 0.6, u[0][1] - 0.2); g.lineTo(u[1][0] - 0.6, u[1][1] - 0.2); g.stroke();
@@ -6425,6 +6873,24 @@ function drawFeed(c, t, flick) {
       const ma = Math.min(1, MOON.room * 1.4), mxr = MOON.south ? 34 : 116;
       const rd = MOON.red, cm = (a, b) => [0, 1, 2].map(i => Math.round(a[i] * (1 - rd) + b[i] * rd)).join(","); // red in the shadow
       softBlob(g, mxr, 24, 15, cm([190, 190, 190], [200, 70, 40]), 0.22 * ma, 1); softBlob(g, mxr, 24, 4.2, cm([245, 245, 245], [255, 120, 80]), 0.9 * ma, 1);
+    }
+    if (HELL.k > 0.02) { // Hell, from the roof: the sky lit from below, and three of the stakes standing close by
+      const hk = HELL.k;
+      softBlob(g, 75, 122, 100, "214,64,26", 0.42 * hk, 0.5);
+      if (HELL.gHere > 0.01) { // the giant, far beyond the tower and still taller than it from down here
+        const gx = 75 + (HELL.gDist - 0.47) * 170, Hh = 66;
+        g.save(); g.globalAlpha = hk * HELL.gHere * 0.8; g.translate(gx, 30); g.fillStyle = "#070505";
+        const er = 0.018 * Hh * g.getTransform().a, E = hellGiantShape(g, Hh, HELL.gLook, HELL.gV || 0, 0, 1, 0).E; g.restore();
+        g.save(); g.setTransform(1, 0, 0, 1, 0, 0); E.forEach((q, i) => { const a = hk * HELL.gHere * (0.4 + 0.5 * HELL.gLook) * (i ? HELL.gLook : 1); if (a > 0.01) { softBlob(g, q[0], q[1], er * 2.4, "255,110,50", 0.5 * a, 1); softBlob(g, q[0], q[1], er, "255,170,110", a, 1); } }); g.restore(); // its eyes (the one colour in the picture besides the beacon)
+      }
+      g.save(); g.globalAlpha = hk; g.strokeStyle = g.fillStyle = "#050404"; g.lineCap = "round"; g.lineJoin = "round";
+      for (const [px, top, s, f, kind] of [[24, 30, 24, 1, 1], [127, 47, 19, -1, 1], [103, 69, 11, 1, 0]]) {
+        g.lineWidth = s * 0.075; g.beginPath(); g.moveTo(px + f * 2, 112); g.lineTo(px, top + 2); g.stroke();
+        g.beginPath(); g.moveTo(px - s * 0.045, top + 2.4); g.lineTo(px, top - 1.6); g.lineTo(px + s * 0.045, top + 2.4); g.fill();
+        if (kind) hellFigure(g, px, top + s * 0.47, s, f, kind === 1 ? 0.3 : 0.8);
+      }
+      { const ph = RM ? 0.2 : (t / 41) % 1; if (ph < 0.36) { const u = ph / 0.36; g.fillStyle = "#050404"; hellBird(g, -22 + 194 * u, 22 + 7 * Math.sin(u * 3.1), 30, 1, RM ? 0.2 : -0.1 + 0.55 * Math.sin(t * 2.4), 1, 0.1); } } // one of the flyers goes over, low
+      g.restore();
     }
     if (RAID.u >= 0 && !RAID.done) { g.fillStyle = "rgba(4,4,4,0.8)"; for (let i = 0; i < 6; i++) { const py = 118 - ((t * 7 + i * 41) % 150), px = 22 + ((i * 53) % 110) + Math.sin(i * 2.2) * 6; g.fillRect(px - 4, py, 8, 0.9); g.fillRect(px - 0.5, py - 2.4, 1, 4.6); g.fillRect(px - 1.5, py + 1.6, 3, 0.6); } }
     if (af) { // after the bomb: its cloud comes over the sky from one side through the minutes; the tower stands a little out of true (or the bracket does)
@@ -6445,7 +6911,7 @@ function drawFeed(c, t, flick) {
       g.fillStyle = "rgba(255,70,46," + (on ? 0.8 : 0.06) + ")"; g.beginPath(); g.arc(75, 41.3, 1.1, 0, 7); g.fill(); }
     if (af) g.restore();
     g.strokeStyle = "rgba(225,225,225,0.22)"; g.lineWidth = 0.5; // rain coming down at the lens
-    if (af) { for (let i = 0; i < 10; i++) { const u = (t * (0.04 + 0.008 * i) + i * 0.31) % 1, a = i * 2.4 + Math.sin(t * 0.2 + i) * 0.3, r = 8 + 78 * u, sz = 0.4 + 1.5 * u; g.fillStyle = "rgba(235,235,235," + (0.3 * (1 - u * 0.5)).toFixed(3) + ")"; g.fillRect(75 + Math.cos(a) * r, 30 + Math.sin(a) * r * 0.8, sz, sz); } } // after the bomb it is ash that comes down at the lens, slowly
+    if (af || HELL.k > 0.5) { for (let i = 0; i < 10; i++) { const u = (t * (0.04 + 0.008 * i) + i * 0.31) % 1, a = i * 2.4 + Math.sin(t * 0.2 + i) * 0.3, r = 8 + 78 * u, sz = 0.4 + 1.5 * u; g.fillStyle = "rgba(235,235,235," + (0.3 * (1 - u * 0.5)).toFixed(3) + ")"; g.fillRect(75 + Math.cos(a) * r, 30 + Math.sin(a) * r * 0.8, sz, sz); } } // after the bomb it is ash that comes down at the lens, slowly
     else for (let i = 0; i < 7; i++) { const a = Math.random() * 6.283, r0 = 12 + Math.random() * 70, r1 = r0 + 5 + r0 * 0.14; g.beginPath(); g.moveTo(75 + Math.cos(a) * r0, 30 + Math.sin(a) * r0 * 0.8); g.lineTo(75 + Math.cos(a) * r1, 30 + Math.sin(a) * r1 * 0.8); g.stroke(); }
     const wo = clamp(Math.max(BLIMP.G || 0, 0.7 * (BLIMP.F || 0)), 0, 1); // the airship's lamp finds this lens too
     if (wo > 0.01) { g.fillStyle = "rgba(240,244,250," + (0.92 * wo).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
@@ -6458,7 +6924,7 @@ function drawFeed(c, t, flick) {
     if (pl.sign) { const [sx, sy, k] = pl.sign; g.save(); g.translate(sx, sy); g.rotate(sw); g.strokeStyle = "#040404"; g.lineWidth = 0.5; g.beginPath(); g.moveTo(-0.3 * k, 0); g.lineTo(-0.3 * k, 0.22 * k); g.moveTo(0.3 * k, 0); g.lineTo(0.3 * k, 0.22 * k); g.stroke(); g.fillStyle = "#070707"; g.fillRect(-0.5 * k, 0.22 * k, k, 0.62 * k); g.fillStyle = "rgba(255,255,255,0.1)"; g.fillRect(-0.5 * k, 0.22 * k, k, 0.06 * k); g.fillStyle = "rgba(0,0,0,0.5)"; g.fillRect(-0.36 * k, 0.4 * k, 0.72 * k, 0.07 * k); g.fillRect(-0.36 * k, 0.56 * k, 0.5 * k, 0.07 * k); g.restore(); } // a shop sign on its two chains: whatever it said is gone
     if (pl.sig) { const [sx, sy, k] = pl.sig; g.save(); g.translate(sx, sy); g.rotate(s2); g.fillStyle = "#050505"; g.fillRect(-0.03 * k, 0, 0.06 * k, 0.3 * k); g.fillRect(-0.17 * k, 0.3 * k, 0.34 * k, 0.95 * k); g.fillStyle = "rgba(255,255,255,0.07)"; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(0, (0.46 + 0.3 * i) * k, 0.09 * k, 0, 7); g.fill(); } g.restore(); } // the signal: three dead lenses
   } else if (ch === 5) { // your own window: the lamp knob, the shutter and the power all show on it; a flash lights the whole wall
-    const Wq = camPlate(5).win, lv = STORY.deadT >= 0 ? 0 : clamp(lampDim * Math.min(1, pwrLvl), 0, 1), sp = clamp(shutterPos, 0, 1);
+    const Wq = camPlate(5).win, lv = STORY.deadT >= 0 ? 0 : clamp(lampDim * (1 - HELL.k) * Math.min(1, pwrLvl), 0, 1), sp = clamp(shutterPos, 0, 1);
     if (fa > 0.004) { g.fillStyle = "rgba(215,222,235," + Math.min(0.5, fa * 2.2).toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); }
     if (af) softBlob(g, 75, 120, 74, "235,235,235", 0.07 + (RM ? 0.02 : 0.045 * Math.sin(t * 1.3) * Math.sin(t * 0.47)), 0.6); // after the bomb: the street burning below, its light moving on the wall
     if (Wq) {
@@ -6478,13 +6944,54 @@ function drawFeed(c, t, flick) {
     }
     const bw = clamp(0.8 * (BLIMP.F || 0), 0, 0.6); if (bw > 0.01) { g.fillStyle = "rgba(235,240,250," + bw.toFixed(3) + ")"; g.fillRect(0, 0, 150, 110); } // the airship's lamp crossing the wall
   } else if (ch === 0 && af) softBlob(g, 2, 64, 62, "235,235,235", 0.09 + (RM ? 0.02 : 0.05 * Math.sin(t * 1.1) * Math.sin(t * 0.37)), 1.3); // the door after the bomb: something burning off to one side
+  const hk = HELL.k;
+  if (hk > 0.02 && !af) { // Hell, as each camera sees it. Nothing of it is inside: the cameras indoors get only its light
+    const fl = RM ? 0.8 : 0.72 + 0.28 * Math.sin(t * 1.3) * Math.sin(t * 0.47 + 1);
+    if (ch === 0) softBlob(g, 2, 64, 66, "255,120,70", (0.2 + 0.1 * fl) * hk, 1.3); // the door: fire off to one side, moving on the steel
+    else if (ch === 1) { softBlob(g, 36, 72, 30, "255,104,64", 0.13 * hk * fl, 1.2); softBlob(g, 4, 60, 40, "255,104,64", 0.1 * hk * fl, 1.6); } // the hall: a dull red from the doorway on the left, on the floor
+    else if (ch === 2) softBlob(g, 150, 0, 78, "255,112,70", 0.2 * hk * fl, 1); // the stairs: it comes down the well from above
+    else if (ch === 4) { // the street: the far end of it is burning, stakes stand down the middle of the road, and beyond the last roofs the giant goes by
+      const vp = camPlate(4).vp, N0 = [70, 100];
+      softBlob(g, vp[0], vp[1] + 4, 46, "255,150,96", (0.42 + 0.14 * fl) * hk, 0.75); softBlob(g, vp[0], vp[1] + 2, 15, "255,226,180", (0.5 + 0.2 * fl) * hk, 0.9);
+      softBlob(g, vp[0] - 26, vp[1] + 26, 60, "255,130,84", 0.14 * hk * fl, 0.45); // its light along the road
+      if (HELL.gHere > 0.01) { // the lower part of the giant, across the far end: so big only a piece of it is in the picture
+        const gx = 128 + (HELL.gDist - 0.34) * 70, q = hashRng(7717), yb = vp[1] + 9;
+        g.fillStyle = "rgba(6,4,4," + (0.82 * hk * HELL.gHere).toFixed(3) + ")"; g.beginPath(); g.moveTo(gx - 9, -4);
+        for (let i = 0; i <= 9; i++) g.lineTo(gx - 9 + 3.5 * (i / 9) - (i % 2 ? 1.6 * q() : 0), -4 + (yb + 4) * i / 9 + (i % 2 ? 2 * q() : 0)); // one side of it, shaggy
+        g.lineTo(gx - 3, yb); g.lineTo(gx + 5, yb);
+        for (let i = 9; i >= 0; i--) g.lineTo(gx + 8.5 - 3 * (i / 9) + (i % 2 ? 1.6 * q() : 0), -4 + (yb + 4) * i / 9 + (i % 2 ? 2 * q() : 0));
+        g.closePath(); g.fill();
+        for (let j = 0; j < 4; j++) { g.beginPath(); g.moveTo(gx + 12 + j * 1.5, 22); g.lineTo(gx + 11.4 + j * 2.1, 34 + (j % 2) * 2); g.lineTo(gx + 13.2 + j * 1.5, 22); g.closePath(); g.fill(); } // a hand hanging by it, the claws
+        g.fillRect(gx + 11.5, -4, 6, 26.5);
+      }
+      g.strokeStyle = g.fillStyle = "rgba(4,3,3," + (0.94 * hk).toFixed(3) + ")"; g.lineCap = "round";
+      [[0.3, -3, 1], [0.45, 2.5, 0], [0.58, -2, 1], [0.68, 2, 1], [0.77, -1.4, 0], [0.84, 1.2, 1]].forEach(([sd, off, fig], i) => { // (how far down the road, which side of its middle, bare or not)
+        const bx = N0[0] + (vp[0] - N0[0]) * sd + off * (1 - sd), by = N0[1] + (vp[1] - N0[1]) * sd, h = 44 * (1 - sd) + 3, fs = h * 0.4;
+        g.lineWidth = Math.max(0.35, 1.3 * (1 - sd)); g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + 0.4, by - h); g.stroke();
+        if (fig) hellFigure(g, bx + 0.4, by - h + fs * 0.5, fs, i % 2 ? 1 : -1, 0.2 + 0.2 * i);
+      });
+    } else if (ch === 5) softBlob(g, 75, 128, 96, "255,128,84", (0.24 + 0.12 * fl) * hk, 0.6); // your own window from outside: the wall lit from the street below (the window itself is dark: your lamp is out)
+  }
   g.restore();
+  if (hk > 0.02) { // and over all of them: the picture goes warm, and while the giant has its eyes on you a slow band of interference rolls down it
+    g.save(); g.beginPath(); g.rect(c.x, c.y, c.w, c.h); g.clip();
+    g.globalCompositeOperation = "multiply"; g.fillStyle = "rgb(255,168,146)"; g.globalAlpha = 0.9 * hk; g.fillRect(c.x, c.y, c.w, c.h);
+    g.globalCompositeOperation = "source-over"; g.globalAlpha = 1;
+    const lk = hk * (HELL.gHere || 0) * (HELL.gLook || 0);
+    if (lk > 0.02 && !RM) {
+      const by = c.y + ((t * 0.11) % 1.25 - 0.2) * c.h, bh = c.h * 0.16, bg = g.createLinearGradient(0, by, 0, by + bh);
+      bg.addColorStop(0, "rgba(255,210,190,0)"); bg.addColorStop(0.5, "rgba(255,210,190," + (0.11 * lk).toFixed(3) + ")"); bg.addColorStop(1, "rgba(255,210,190,0)");
+      g.fillStyle = bg; g.fillRect(c.x, by, c.w, bh);
+      g.fillStyle = "rgba(0,0,0," + (0.22 * lk).toFixed(3) + ")"; for (let i = 0; i < 5; i++) g.fillRect(c.x, by + bh * (0.12 + 0.19 * i) + Math.sin(t * 0.9 + i) * 1.5, c.w, Math.max(1, c.s * 0.5)); // thin dark lines in it, drifting
+    }
+    g.restore();
+  }
   if (BLAST.t0 > -1e8) { // the cameras outside see the light before anything else: the picture whites out
     const bt = t - BLAST.t0, bF = blastF(bt);
     if (bF > 0.01) { const [r, gg, b] = blastRGB(bt); g.fillStyle = "rgba(" + r + "," + gg + "," + b + "," + (0.9 * bF).toFixed(3) + ")"; g.fillRect(c.x, c.y, c.w, c.h); }
   }
-  if (out && ch !== 3 && af) for (let i = 0; i < 9; i++) { const ph = t * (0.035 + 0.006 * i) + i * 0.618, ax = c.x + ((ph * 3.1 + Math.sin(ph * 5 + i) * 0.05 + i * 0.37) % 1) * c.w, ay = c.y + ((ph * 1.7 + i * 0.23) % 1) * c.h, sz = c.s * (0.5 + (i % 3) * 0.35); g.fillStyle = "rgba(235,235,235," + (0.18 + 0.1 * (i % 2)).toFixed(2) + ")"; g.fillRect(ax, ay, sz, sz); } // after the bomb: ash, coming down slowly
-  if (out && ch !== 3 && !af) { g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = Math.max(1, c.s * 0.6); // live rain specks
+  if (out && ch !== 3 && (af || HELL.k > 0.5)) for (let i = 0; i < 9; i++) { const ph = t * (0.035 + 0.006 * i) + i * 0.618, ax = c.x + ((ph * 3.1 + Math.sin(ph * 5 + i) * 0.05 + i * 0.37) % 1) * c.w, ay = c.y + ((ph * 1.7 + i * 0.23) % 1) * c.h, sz = c.s * (0.5 + (i % 3) * 0.35); g.fillStyle = "rgba(235,235,235," + (0.18 + 0.1 * (i % 2)).toFixed(2) + ")"; g.fillRect(ax, ay, sz, sz); } // after the bomb: ash, coming down slowly
+  if (out && ch !== 3 && !af && HELL.k <= 0.5) { g.strokeStyle = "rgba(235,235,235,0.20)"; g.lineWidth = Math.max(1, c.s * 0.6); // live rain specks
     for (let i = 0; i < 5; i++) { const rx3 = c.x + Math.random() * c.w, ry3 = c.y + Math.random() * c.h * 0.9; g.beginPath(); g.moveTo(rx3, ry3); g.lineTo(rx3 - 1.5 * c.s, ry3 + 6 * c.s); g.stroke(); } }
   label();
 }
@@ -6561,7 +7068,7 @@ function drawCRT(t) {
   if (s > 1.3) { // the glass is a bulge: it falls off dark into its corners, and the lamp sits in it as one dull smear, top right
     const cg = g.createRadialGradient(c.x + c.w / 2, c.y + c.h / 2, c.h * 0.42, c.x + c.w / 2, c.y + c.h / 2, c.w * 0.74);
     cg.addColorStop(0, "rgba(0,0,0,0)"); cg.addColorStop(1, "rgba(0,0,0," + (0.42 * e).toFixed(3) + ")"); g.fillStyle = cg; g.fillRect(c.x, c.y, c.w, c.h);
-    if (STORY.deadT < 0) softBlob(g, c.x + c.w * 0.86, c.y + c.h * 0.1, c.w * 0.16, "255,196,128", 0.05 * e * lampDim * Math.min(1, pwrLvl), 0.55);
+    if (STORY.deadT < 0) softBlob(g, c.x + c.w * 0.86, c.y + c.h * 0.1, c.w * 0.16, "255,196,128", 0.05 * e * lampDim * (1 - HELL.k) * Math.min(1, pwrLvl), 0.55);
   }
   if (pwrLvl < 1) { g.fillStyle = "rgba(0,0,0," + (1 - pwrLvl).toFixed(3) + ")"; g.fillRect(c.x, c.y, c.w, c.h); }
   g.restore();
@@ -7323,9 +7830,10 @@ function frame(now) {
   // weather: the squall engine paces the rain, the fog, the smoke, and the rain bed (gain only, the recording is untouched)
   const wk = stepWeather(t, dt);
   stepStormCycle(t, dt);
+  if (built && t - (HELL.sndT || 0) > 0.5) { HELL.sndT = t; hellSoundStep(t); } // (Hell's sound does not wait on the rain recording)
   if (built && N.rainG && t - wxAudioT > 0.5) {
     wxAudioT = t;
-    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk) * (1 - 0.45 * BLIMP.hush) * SX.rain, ctx.currentTime, 1.5);
+    N.rainG.gain.setTargetAtTime((powered ? 0.09 : 0.165) * (0.6 + 0.6 * wk) * (1 - 0.45 * BLIMP.hush) * SX.rain * (1 - 0.7 * HELL.k), ctx.currentTime, 1.5);
     if (N.windVol) N.windVol.gain.setTargetAtTime(S.wind * 0.16 * (0.75 + 0.5 * wk) * SX.wind, ctx.currentTime, 2.0);
     if (SX.on && N.rainLp) { N.rainLp.frequency.setTargetAtTime(5200 * SX.lp, ctx.currentTime, 1.5); N.rainHp.frequency.setTargetAtTime(240 * SX.hp, ctx.currentTime, 1.5); }
   }
@@ -7350,6 +7858,7 @@ function frame(now) {
 
   let shX = 0, shY = 0;
   flashA *= stepDay(dt); // the day clock; a flash reads weaker against the grey
+  hellStep(); flashA *= 1 - 0.8 * HELL.k; // (and against Hell)
   curFlash = flashA;
   if (t - shakeT < shakeDur) {
     const e = t - shakeT, kk = (1 - e / shakeDur) * shakeAmp;
