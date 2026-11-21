@@ -4709,7 +4709,7 @@ const MOON = { on: MOON_LIVE, phase: 0.5, frac: 1, fixP: -1, south: false, size:
    Hooks for the eclipse after it: BLOOD.cover (0..1, how much of the disc is in the shadow) and BLOOD.s (seconds into it).
    Local test: ?blood (5 s after the sound comes on) or ?blood=N, ?bloodsize=3|4 (3 = 1.5x the everyday moon, 4 = 2x), ?bloodx=K (K times faster); on the
    live site only with &evtest=1. BLOOD_LIVE true (live 11-20): ordinary return visits can have it. Times are story seconds. */
-const BLOOD_LIVE = true, BLOOD_ODDS_ELIG = 0.3; // live 11-20 on Patrick's 'go live'
+const BLOOD_LIVE = true, BLOOD_ODDS_ELIG = 0.385; // live 11-20 on Patrick's 'go live'
 const BD_GAP = 40, BD_RUN = 840, BD_K = 2.6, BD_Y = 0.5, BD_P = 4.6, BD_LOW = 0.07; // the gap opening; first to last touch of the shadow; the shadow's radius, how far off the moon's middle it passes, the faint outer shading's radius (all in moon radii); how much lower it sits
 const BD_X1 = Math.sqrt((BD_K + 1) * (BD_K + 1) - BD_Y * BD_Y); // where the shadow's middle is at first touch
 const BLOOD = { on: false, test: false, at: -1, s: -1, clear: 0, cover: 0, seen: false, size: 4, x: 1 };
@@ -4739,7 +4739,7 @@ function bloodStep() { // how far the night has got: the gap in the cloud, and w
   if (!B.on) return;
   const s = B.s = STORY.clk < 0 ? -1 : (STORY.clk - B.at) * B.x;
   if (s < 0) { B.clear = 0; B.cover = 0; MOON.umbra = null; return; }
-  if (!B.seen) { B.seen = true; if (!B.test) try { localStorage.setItem("sf.blood", "1"); } catch (e) {} }
+  if (!B.seen) { B.seen = true; if (!B.test) try { localStorage.setItem("sf.blood", "1"); } catch (e) {} sfMark(1); }
   const end = BD_GAP + BD_RUN;
   B.clear = s < BD_GAP ? smooth01(s / BD_GAP) : s < end + 20 ? 1 : 1 - smooth01((s - end - 20) / 60);
   const x = -BD_X1 + 2 * BD_X1 * (s - BD_GAP) / BD_RUN; // the shadow's middle, crossing from the left at one even speed
@@ -4762,6 +4762,10 @@ function bloodStep() { // how far the night has got: the gap in the cloud, and w
    in front of each; two of them breathe slowly), the moon goes over that, and a plate of the stakes and towers over the moon.
    The plates are made a piece at a time once the eclipse starts, so no frame is held up. HELL.k is how much of it there is (0..1).
    Local test: ?hell (held full) or ?hell=K, ?giant=S; on the live site only with &evtest=1. */
+function sfMark(k) { // one quiet count on this site that a rare event played (m1 the blood moon began, m2 the eclipse was total, m3 the visitor was still there when the long look ended): a plain fetch of a tiny file, no cookie, nothing sent; never from a test link or a local page
+  if (BLOOD.test || HELL.fix >= 0 || HELL.gfix >= 0 || HELL["p" + k] || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return;
+  HELL["p" + k] = 1; try { fetch("/e/m" + k + ".txt", { cache: "no-store", keepalive: true }).catch(() => {}); } catch (e) {}
+}
 function hellStep() {
   const H = HELL;
   if (!BLOOD.on || BLAST.swapped || !L || (H.fix < 0 && BLOOD.s < 0)) { H.k = 0; return; }
@@ -4769,6 +4773,7 @@ function hellStep() {
   if (H.st < 6 && !H.T) H.T = setTimeout(() => { H.T = 0; if (L && H.bL === L) hellBake(); }, H.st ? 140 : 500);
   const want = H.fix >= 0 ? H.fix : smooth01((BLOOD.cover - 0.5) / 0.5) * (1 - DAY.k);
   H.k = H.base ? want : 0;
+  if (H.k >= 0.99) sfMark(2);
 }
 function hellBake() { // one piece each call: the city's black shape, the four rows in front of it, then the plates
   const H = HELL;
@@ -4913,6 +4918,7 @@ function drawHellGiant(t) { // it does not walk, it glides, like a thing from so
   const v = 0.85 * (ta < 68 ? 0 : ta < 82 ? smooth01((ta - 68) / 14) : ta < 192 ? 1 : ta < 206 ? 1 - smooth01((ta - 192) / 14) : 0); // the shoulders follow it, almost square to you
   const here = smooth01(ta / 14) * (1 - smooth01((ta - 311) / 13)); // it comes into being, and at the end thins out
   H.gDist = xk; H.gLook = u; H.gV = v; H.gHere = here;
+  if (ta >= 196) sfMark(3);
   const Hh = apH * 0.38, gw = Hh * 0.96, gh = Hh * 1.46, oy = Hh * 0.38, sc = Math.min(2, Math.max(1, DPR)), tw = Math.ceil(gw * sc), th = Math.ceil(gh * sc), pad = Hh * 0.62, bw = Math.ceil((gw + 2 * pad) * sc);
   if (!H.gntC || H.gntC.width !== tw || H.gntC.height !== th) { H.gntC = document.createElement("canvas"); H.gntC.width = tw; H.gntC.height = th; H.gntB = document.createElement("canvas"); H.gntB.width = bw; H.gntB.height = th; }
   const tt = RM ? 0 : t, X0 = apW * xk - gw / 2 - pad, Y0 = apH * 0.54 - Hh - oy + (RM ? 0 : Math.sin(tt * 0.47) * Hh * 0.007); // (it hangs: a slow rise and fall, nothing like a step)
